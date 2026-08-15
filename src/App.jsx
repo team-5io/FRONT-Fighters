@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import AppShell from "./components/layout/AppShell";
 import AiReviewPage from "./pages/AiReviewPage";
+import AssignApproverPage from "./pages/AssignApproverPage";
 import AiStructurePage from "./pages/AiStructurePage";
 import DashboardPage from "./pages/DashboardPage";
 import DocPrDetailPage from "./pages/DocPrDetailPage";
@@ -31,6 +32,7 @@ const ROUTES = {
   // Figma(41:182)가 사이드바에서 '설정'을 선택 상태로 그려 두었다 — 원본 유지
   "#/ai-review": { page: AiReviewPage, activeNav: "설정" },
   "#/human-review": { page: HumanReviewPage, activeNav: "Doc PR" },
+  "#/assign-approver": { page: AssignApproverPage, activeNav: "설정" },
   "#/graph": { page: DocumentGraphPage, activeNav: "그래프" },
   "#/write": { page: DocumentWritePage, activeNav: "작성" },
   "#/ai-structure": { page: AiStructurePage, activeNav: "작성" },
