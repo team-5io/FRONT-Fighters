@@ -12,6 +12,7 @@ import DocumentsPage from "./pages/DocumentsPage";
 import HumanReviewPage from "./pages/HumanReviewPage";
 import LinkDocumentsPage from "./pages/LinkDocumentsPage";
 import LoginPage from "./pages/LoginPage";
+import RaciRolesPage from "./pages/RaciRolesPage";
 import TeamInvitePage from "./pages/TeamInvitePage";
 import TeamSettingsPage from "./pages/TeamSettingsPage";
 import TranslationPage from "./pages/TranslationPage";
@@ -35,6 +36,7 @@ const ROUTES = {
   "#/human-review": { page: HumanReviewPage, activeNav: "Doc PR" },
   "#/assign-approver": { page: AssignApproverPage, activeNav: "설정" },
   "#/settings": { page: TeamSettingsPage, activeNav: "설정" },
+  "#/raci-roles": { page: RaciRolesPage, activeNav: "설정" },
   "#/graph": { page: DocumentGraphPage, activeNav: "그래프" },
   "#/write": { page: DocumentWritePage, activeNav: "작성" },
   "#/ai-structure": { page: AiStructurePage, activeNav: "작성" },
