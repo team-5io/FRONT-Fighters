@@ -13,6 +13,7 @@ import HumanReviewPage from "./pages/HumanReviewPage";
 import LinkDocumentsPage from "./pages/LinkDocumentsPage";
 import LoginPage from "./pages/LoginPage";
 import TeamInvitePage from "./pages/TeamInvitePage";
+import TeamSettingsPage from "./pages/TeamSettingsPage";
 import TranslationPage from "./pages/TranslationPage";
 import TeamResetPage from "./pages/TeamResetPage";
 
@@ -33,6 +34,7 @@ const ROUTES = {
   "#/ai-review": { page: AiReviewPage, activeNav: "설정" },
   "#/human-review": { page: HumanReviewPage, activeNav: "Doc PR" },
   "#/assign-approver": { page: AssignApproverPage, activeNav: "설정" },
+  "#/settings": { page: TeamSettingsPage, activeNav: "설정" },
   "#/graph": { page: DocumentGraphPage, activeNav: "그래프" },
   "#/write": { page: DocumentWritePage, activeNav: "작성" },
   "#/ai-structure": { page: AiStructurePage, activeNav: "작성" },
