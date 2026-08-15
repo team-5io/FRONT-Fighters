@@ -8,6 +8,7 @@ import DocPrListPage from "./pages/DocPrListPage";
 import DocumentGraphPage from "./pages/DocumentGraphPage";
 import DocumentWritePage from "./pages/DocumentWritePage";
 import DocumentsPage from "./pages/DocumentsPage";
+import HumanReviewPage from "./pages/HumanReviewPage";
 import LinkDocumentsPage from "./pages/LinkDocumentsPage";
 import LoginPage from "./pages/LoginPage";
 import TeamInvitePage from "./pages/TeamInvitePage";
@@ -29,6 +30,7 @@ const ROUTES = {
   "#/doc-pr-detail": { page: DocPrDetailPage, activeNav: "Doc PR" },
   // Figma(41:182)가 사이드바에서 '설정'을 선택 상태로 그려 두었다 — 원본 유지
   "#/ai-review": { page: AiReviewPage, activeNav: "설정" },
+  "#/human-review": { page: HumanReviewPage, activeNav: "Doc PR" },
   "#/graph": { page: DocumentGraphPage, activeNav: "그래프" },
   "#/write": { page: DocumentWritePage, activeNav: "작성" },
   "#/ai-structure": { page: AiStructurePage, activeNav: "작성" },
