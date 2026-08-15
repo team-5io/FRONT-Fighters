@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import AppShell from "./components/layout/AppShell";
 import AiStructurePage from "./pages/AiStructurePage";
 import DashboardPage from "./pages/DashboardPage";
+import DocPrDetailPage from "./pages/DocPrDetailPage";
 import DocPrListPage from "./pages/DocPrListPage";
 import DocumentGraphPage from "./pages/DocumentGraphPage";
 import DocumentWritePage from "./pages/DocumentWritePage";
@@ -24,6 +25,7 @@ const ROUTES = {
   "#/dashboard": { page: DashboardPage, activeNav: "대시보드" },
   "#/documents": { page: DocumentsPage, activeNav: "문서" },
   "#/doc-pr": { page: DocPrListPage, activeNav: "Doc PR" },
+  "#/doc-pr-detail": { page: DocPrDetailPage, activeNav: "Doc PR" },
   "#/graph": { page: DocumentGraphPage, activeNav: "그래프" },
   "#/write": { page: DocumentWritePage, activeNav: "작성" },
   "#/ai-structure": { page: AiStructurePage, activeNav: "작성" },
