@@ -9,6 +9,7 @@ import DocumentsPage from "./pages/DocumentsPage";
 import LinkDocumentsPage from "./pages/LinkDocumentsPage";
 import LoginPage from "./pages/LoginPage";
 import TeamInvitePage from "./pages/TeamInvitePage";
+import TranslationPage from "./pages/TranslationPage";
 import TeamResetPage from "./pages/TeamResetPage";
 
 /**
@@ -27,6 +28,7 @@ const ROUTES = {
   "#/write": { page: DocumentWritePage, activeNav: "작성" },
   "#/ai-structure": { page: AiStructurePage, activeNav: "작성" },
   "#/link-documents": { page: LinkDocumentsPage, activeNav: "작성" },
+  "#/translation": { page: TranslationPage, activeNav: "작성" },
 };
 
 export default function App() {
