@@ -10,6 +10,7 @@ import DocPrListPage from "./pages/DocPrListPage";
 import DocumentGraphPage from "./pages/DocumentGraphPage";
 import DocumentWritePage from "./pages/DocumentWritePage";
 import DocumentsPage from "./pages/DocumentsPage";
+import GlossaryPage from "./pages/GlossaryPage";
 import HumanReviewPage from "./pages/HumanReviewPage";
 import LinkDocumentsPage from "./pages/LinkDocumentsPage";
 import LoginPage from "./pages/LoginPage";
@@ -39,6 +40,7 @@ const ROUTES = {
   "#/settings": { page: TeamSettingsPage, activeNav: "설정" },
   "#/raci-roles": { page: RaciRolesPage, activeNav: "설정" },
   "#/charter": { page: CharterPage, activeNav: "설정" },
+  "#/glossary": { page: GlossaryPage, activeNav: "설정" },
   "#/graph": { page: DocumentGraphPage, activeNav: "그래프" },
   "#/write": { page: DocumentWritePage, activeNav: "작성" },
   "#/ai-structure": { page: AiStructurePage, activeNav: "작성" },
