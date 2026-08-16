@@ -465,6 +465,41 @@ export const IconText = ({ size = 33, className = "" }) => (
   </svg>
 );
 
+/* ---- 팀원 관리(34:578) 화면 아이콘 ---- */
+
+/** 채워진 사람 실루엣 — 승인권자 지정됨. 원본이 24×25라 정사각이 아니다 */
+export const IconPerson = ({ height = 25, className = "" }) => (
+  <svg
+    width={(height * 24) / 25}
+    height={height}
+    viewBox="0 0 24 25"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden
+    focusable={false}
+    className={className}
+  >
+    <path
+      d="M6 5.92105C6 9.18553 8.692 11.8421 12 11.8421C15.308 11.8421 18 9.18553 18 5.92105C18 2.65658 15.308 0 12 0C8.692 0 6 2.65658 6 5.92105ZM22.6667 25H24V23.6842C24 18.6066 19.812 14.4737 14.6667 14.4737H9.33333C4.18667 14.4737 0 18.6066 0 23.6842V25H22.6667Z"
+      fill="currentColor"
+    />
+  </svg>
+);
+
+/**
+ * pepicons-pencil:no-entry — 승인권자 부재
+ * 원본은 Figma의 inside-stroke 내보내기라 mask + 채움 경로로 뽑히는데,
+ * 실제 그림은 테두리 원 + 대각선이라 stroke 두 개로 다시 그렸다.
+ */
+export const IconNoEntry = ({ size = 28, className = "" }) => (
+  <svg {...base(size)} viewBox="0 0 28.5 28.5" className={className}>
+    <g stroke="currentColor" strokeWidth="1.9" strokeLinecap="round">
+      <circle cx="14.25" cy="14.25" r="13.3" />
+      <path d="M23.66 4.85L4.85 23.66" />
+    </g>
+  </svg>
+);
+
 /* clarity:talk-bubbles-solid — 사이드바 로고 마크 */
 export const IconTalkBubbles = ({ size = 30, className = "" }) => (
   <svg {...base(size)} viewBox="0 0 30 30" className={className}>

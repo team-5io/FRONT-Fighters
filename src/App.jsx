@@ -16,6 +16,7 @@ import LinkDocumentsPage from "./pages/LinkDocumentsPage";
 import LoginPage from "./pages/LoginPage";
 import RaciRolesPage from "./pages/RaciRolesPage";
 import TeamInvitePage from "./pages/TeamInvitePage";
+import TeamMembersPage from "./pages/TeamMembersPage";
 import TeamSettingsPage from "./pages/TeamSettingsPage";
 import TranslationPage from "./pages/TranslationPage";
 import TeamResetPage from "./pages/TeamResetPage";
@@ -41,6 +42,7 @@ const ROUTES = {
   "#/raci-roles": { page: RaciRolesPage, activeNav: "설정" },
   "#/charter": { page: CharterPage, activeNav: "설정" },
   "#/glossary": { page: GlossaryPage, activeNav: "설정" },
+  "#/team-members": { page: TeamMembersPage, activeNav: "설정" },
   "#/graph": { page: DocumentGraphPage, activeNav: "그래프" },
   "#/write": { page: DocumentWritePage, activeNav: "작성" },
   "#/ai-structure": { page: AiStructurePage, activeNav: "작성" },
