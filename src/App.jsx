@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import AppShell from "./components/layout/AppShell";
 import AiReviewPage from "./pages/AiReviewPage";
 import AssignApproverPage from "./pages/AssignApproverPage";
-import AiStructurePage from "./pages/AiStructurePage";
 import CharterPage from "./pages/CharterPage";
 import DashboardPage from "./pages/DashboardPage";
 import DocPrDetailPage from "./pages/DocPrDetailPage";
@@ -47,7 +46,9 @@ const ROUTES = {
   "#/assign-approver": { page: AssignApproverPage, activeNav: "승인권자 지정" },
   "#/graph": { page: DocumentGraphPage, activeNav: "그래프" },
   "#/write": { page: DocumentWritePage, activeNav: "작성" },
-  "#/ai-structure": { page: AiStructurePage, activeNav: "작성" },
+  // 2차 정상화: 구조 추천 풀페이지를 없애고 작성 화면의 플로팅 패널로 흡수했다.
+  // 딥링크는 유지 — 이 해시로 들어오면 작성 화면이 열리며 패널이 펼쳐진다.
+  "#/ai-structure": { page: DocumentWritePage, activeNav: "작성" },
   "#/link-documents": { page: LinkDocumentsPage, activeNav: "작성" },
   "#/translation": { page: TranslationPage, activeNav: "작성" },
 };
