@@ -1,264 +1,272 @@
-import Button from "../components/ui/Button";
+import Page, { Section } from "../components/layout/Page";
+import PageHeader from "../components/layout/PageHeader";
 import {
-  IconBook,
-  IconCheck,
-  IconClock,
-  IconPaper,
-  IconTeam,
-  IconUserCircle,
-} from "../components/icons";
+  AiDisclaimer,
+  Button,
+  Card,
+  CardHeader,
+  CioBadge,
+  CioMark,
+  MyRoleBar,
+  RaciChip,
+  StatusBadge,
+  cx,
+  tone,
+} from "../components/ui";
+import { IconSun } from "../components/icons";
 
 /**
- * Figma 41:182 — AI 리뷰 결과
+ * CIO 1차 검토 결과 — `#/ai-review`
  *
- * 본문 좌측 350, 폭 1033 (타이틀만 348 — 카드 기준인 350에 맞췄다).
- *
- * 세로 좌표 (프레임 1440×1812, 본문 시작 y=80):
- *   타이틀 126 · 대상 문서 줄 181 · 요약 257(1033×199) · 리뷰 근거 480(1033×547)
- *   리뷰 상태 / 다음 작업자 1053(504×326) · AI 리뷰 이력 1405(1031×286)
- *
- * 배지 폭이 같은 톤 안에서도 제각각이라(72~124) Figma 폭을 데이터로 들고 간다.
+ * 정상화 지시서 5.I 적용:
+ *  - 사이드바 선택을 `설정` → `Doc PR`로 정정 (App.jsx). 유저플로우 n23 → n51 기준.
+ *  - CIO 배지 통일. 1차 구현은 "AI 리뷰 결과"라고만 하고 어떤 AI인지 밝히지 않았다.
+ *    화면 전체를 CIO(DocumentLion) 산출물로 표시하고 "참고용" 안내를 붙인다.
+ *  - 검토 결과에 근거를 함께 보여 준다 (기능명세서 5.2 · `GET /doc-prs/{prId}/review/evidence`).
+ *  - `리뷰 상태` 목록에서 CIO 항목과 사람 항목을 주체별로 구분했다.
  */
 
-const CARD = "rounded-md border-2 border-neutral-300 bg-neutral-50";
-const TONE = {
-  success: "border-success/50 bg-success-tint text-success",
-  error: "border-error/40 bg-error-tint text-error",
-  info: "border-info/35 bg-info-tint text-info",
-  neutral: "border-neutral-300 bg-neutral-100 text-neutral-700",
+const TARGET = {
+  prId: "PR #141",
+  title: "API 명세서 v2.1 — 결제 모듈 통합 가이드",
+  requester: { name: "김재원", role: "R" },
+  reviewedAt: "2026-08-12",
+  verdict: "reject",
 };
-/** 배지 공통 — 폭은 호출부에서 지정한다 */
-const BADGE =
-  "flex h-[33px] shrink-0 items-center justify-center rounded-full border-2 font-semibold";
 
+/** 기능명세서 5.2 결과 구분: 문제 없음 / 주의 / 반려 권장 */
+const VERDICT = {
+  reject: { tone: "error", label: "반려 권장" },
+  warn: { tone: "warning", label: "주의" },
+  pass: { tone: "success", label: "문제 없음" },
+};
+
+/**
+ * 검토 항목. kind는 DocumentLion의 세 가지 검토 요청과 대응한다
+ * (review/conflict · review/consistency · review/charter-violation).
+ */
 const FINDINGS = [
   {
-    tone: "success",
-    badge: "구축 제안",
-    width: 112,
-    note: "섹션 3.1 목차 5.1 - 이미지 출처 누락",
+    kind: "협업 규칙",
+    level: "reject",
+    title: "피드백 반영 여부가 확인되지 않았습니다",
+    where: "섹션 4 · 변경 요약",
+    detail:
+      "이전 리뷰에서 요청된 수정 사항이 반영되었는지 문서에 드러나지 않습니다. 채택된 협업 규칙은 반려 후 재제출 시 반영 내역을 남기도록 합니다.",
+    evidence: "채택된 협업 규칙 — 반려 시 72시간 내 재제출",
   },
   {
-    tone: "error",
-    badge: "경고",
-    width: 93,
-    note: "섹션4. 하단 표에서 시나리오 변경 권장",
+    kind: "문서 충돌",
+    level: "warn",
+    title: "연결 문서와 표기가 어긋납니다",
+    where: "섹션 3.1 · 결제 상태 코드 표",
+    detail:
+      "`결제 정책 문서`가 정의한 상태 코드와 이름이 다릅니다. 어느 쪽을 기준으로 할지 확인이 필요합니다.",
+    evidence: "Document Graph — 연결 문서 `결제 정책 문서 v1.0`",
+  },
+  {
+    kind: "정합성",
+    level: "pass",
+    title: "기존 Merge 결정과 모순되지 않습니다",
+    where: "문서 전체",
+    detail: "이전에 확정된 결정과 충돌하는 내용은 발견되지 않았습니다.",
+    evidence: "확정된 Doc PR 12건 대조",
   },
 ];
 
+/** 주체를 밝혀 CIO 결과가 사람 승인처럼 읽히지 않게 한다 */
 const REVIEW_STATUS = [
-  { label: "AI 리뷰", tone: "success", badge: "완료", width: 72 },
-  { label: "사람 리뷰", tone: "info", badge: "대기중", width: 86 },
-  { label: "승인/재검 승인", tone: "neutral", badge: "미지정", width: 86 },
-];
-
-const HANDOVER = [
-  { name: "김민섭 (한국)", zone: "UTC+9 · 한국 근무 시간" },
-  { name: "고나영 (승인자/미지정)", zone: "UTC+1 · 오전 근무 시간" },
+  { label: "CIO 1차 검토", status: "완료", tone: "success", actor: "ai" },
+  { label: "사람 리뷰", status: "대기중", tone: "warning", actor: "human" },
+  { label: "최종 승인 (A 역할)", status: "미지정", tone: "neutral", actor: "human" },
 ];
 
 const HISTORY = [
-  { date: "2026-08-08", tone: "success", badge: "완료", width: 72 },
-  { date: "2026-08-09", tone: "info", badge: "검토중", width: 86 },
-  { date: "2026-08-11", tone: "neutral", badge: "초안", width: 72 },
+  { at: "2026-08-08", label: "1차 검토", result: "주의 2건" },
+  { at: "2026-08-09", label: "재검토", result: "반려 권고 1건" },
+  { at: "2026-08-12", label: "재검토", result: "반려 권고 1건 · 주의 1건" },
 ];
 
-function SkeletonBar({ width, className = "" }) {
-  return (
-    <span
-      aria-hidden
-      className={`block h-[12px] rounded-full bg-neutral-100 ${className}`}
-      style={{ width }}
-    />
-  );
-}
-
-/**
- * 38px 연보라 타일 + 24px 제목.
- * Figma가 타일 기준으로 제목을 2px 아래에 두고(세로 중앙 아님) 카드마다 간격도
- * 다르게 잡아서(17~26) items-start + gap 지정으로 재현한다.
- */
-function CardHead({ icon, title, gap = 24, children }) {
-  return (
-    <div className="flex h-[38px] items-start">
-      <span className="flex size-[38px] shrink-0 items-center justify-center rounded-md bg-main-50 text-main-500">
-        {icon}
-      </span>
-      <h2
-        className="mt-[2px] shrink-0 text-2xl font-semibold leading-[29px] text-neutral-700"
-        style={{ marginLeft: gap }}
-      >
-        {title}
-      </h2>
-      {children}
-    </div>
-  );
-}
+const HANDOVER = [
+  { name: "김민섭", role: "R", zone: "UTC+9 · 한국 근무 시간" },
+  { name: "고나영", role: "A", zone: "UTC+1 · 오전 근무 시간" },
+];
 
 export default function AiReviewPage() {
+  const verdict = VERDICT[TARGET.verdict];
+
   return (
-    <div className="pb-[121px] pl-[56px] pt-[46px]">
-      <div className="flex w-[1033px] items-start">
-        <h1 className="text-[32px] font-semibold leading-[38px] text-main-500">
-          AI 리뷰 결과
-        </h1>
-        <Button className="ml-auto mt-[3px] h-[44px] w-[136px] justify-center rounded-md px-0 py-0 text-base">
-          Doc PR 상세로
-        </Button>
-      </div>
-
-      <div className="mt-[8px] flex h-[33px] items-center">
-        <span className="text-xl font-semibold leading-[24px] text-neutral-500">
-          대상 문서: API 명세서 v2.1 - 결제 모듈 통합 가이드
-        </span>
-        <span className={`ml-[15px] w-[93px] text-xl leading-[24px] ${BADGE} ${TONE.error}`}>
-          반려
-        </span>
-        <span className="ml-[40px] text-xl font-semibold leading-[24px] text-neutral-500">
-          요청자: 김재원 2026-08-12
-        </span>
-      </div>
-
-      {/* ── AI 리뷰 요약 ── */}
-      <section className={`mt-[43px] h-[199px] w-[1033px] pl-[31px] pr-[7px] pt-[36px] ${CARD}`}>
-        <CardHead icon={<IconCheck height={16} />} title="AI 리뷰 요약">
-          <span
-            className={`ml-[21px] mt-[1px] w-[93px] text-xl leading-[24px] ${BADGE} ${TONE.success}`}
-          >
-            완료
-          </span>
-          <span className="ml-auto mt-[3px] text-xl font-semibold leading-[24px] text-neutral-500">
-            전체 이슈 2건 · 경고 1건
-          </span>
-        </CardHead>
-        <SkeletonBar width="363px" className="ml-[71px] mt-[23px]" />
-        <SkeletonBar width="363px" className="ml-[71px] mt-[23px]" />
-        {/* Figma는 두 줄 사이에 빈 줄이 있어 두 번째 줄이 카드 밖으로 넘친다 — 붙여서 카드 안에 넣었다 */}
-        <p className="ml-[161px] mt-[13px] text-base font-semibold leading-[19px] text-neutral-700">
-          지정된 승인권자(김성민)가 현재 팀에서 비활성 상태입니다.
-          <br />
-          최소 한 명의 A 역할 승인권자가 필요합니다.
-        </p>
-      </section>
-
-      {/* ── 리뷰 근거 ── */}
-      <section className={`mt-[24px] h-[547px] w-[1033px] pl-[31px] pt-[34px] ${CARD}`}>
-        <CardHead icon={<IconPaper size={24} />} title="리뷰 근거" />
-        <ul className="ml-[-2px] mt-[41px] flex flex-col gap-[23px]">
-          {FINDINGS.map((f) => (
-            <li
-              key={f.badge}
-              className="h-[188px] w-[966px] rounded-md border-2 border-neutral-100 bg-neutral-0 pl-[30px] pt-[19px]"
-            >
-              <div className="flex h-[33px] items-center">
-                <span
-                  className={`text-xl leading-[24px] ${BADGE} ${TONE[f.tone]}`}
-                  style={{ width: f.width }}
-                >
-                  {f.badge}
-                </span>
-                <span className="ml-[18px] text-xl font-semibold leading-[24px] text-neutral-500">
-                  {f.note}
-                </span>
-              </div>
-              <SkeletonBar width="631px" className="ml-[8px] mt-[26px]" />
-              <SkeletonBar width="631px" className="ml-[8px] mt-[23px]" />
-              <SkeletonBar width="631px" className="ml-[8px] mt-[23px]" />
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {/* ── 리뷰 상태 / 다음 작업자 ── */}
-      <div className="mt-[26px] flex gap-[25px]">
-        <section className={`h-[326px] w-[504px] pl-[31px] pr-[52px] pt-[32px] ${CARD}`}>
-          <CardHead icon={<IconBook size={25} />} title="리뷰 상태" />
-          <ul className="mt-[41px]">
-            {REVIEW_STATUS.map((row, i) => (
-              <li key={row.label}>
-                {i > 0 && (
-                  <span
-                    aria-hidden
-                    className="ml-[7px] mt-[11px] block h-[2px] w-[412px] bg-neutral-300"
-                  />
+    <Page>
+      <PageHeader
+        breadcrumb={[
+          { label: "5IO주", href: "#/dashboard" },
+          { label: "Doc PR", href: "#/doc-pr" },
+          { label: TARGET.prId, href: "#/doc-pr-detail" },
+          { label: "CIO 1차 검토" },
+        ]}
+        title="CIO 1차 검토 결과"
+        description={TARGET.title}
+        properties={[
+          { label: "검토 주체", value: <CioBadge feature="DocumentLion" size="sm" /> },
+          {
+            label: "결과",
+            value: (
+              <span
+                className={cx(
+                  "inline-flex h-[24px] items-center rounded-full border px-[9px] font-mono text-[12px] font-bold",
+                  tone(verdict.tone).chip,
                 )}
-                {/* 라벨과 배지가 세로 중앙이 아니라 둘 다 행 상단에서 시작한다 */}
-                <div className={`flex h-[33px] items-start ${i > 0 ? "mt-[10px]" : ""}`}>
-                  <span className="ml-[13px] text-xl font-semibold leading-[24px] text-neutral-500">
-                    {row.label}
-                  </span>
-                  <span
-                    className={`ml-auto text-[18px] leading-[21px] ${BADGE} ${TONE[row.tone]}`}
-                    style={{ width: row.width }}
-                  >
-                    {row.badge}
-                  </span>
-                </div>
-              </li>
-            ))}
-          </ul>
-          <p className="ml-[13px] mt-[22px] text-[15px] font-semibold leading-[19px] text-neutral-500">
-            AI 리뷰 완료 후, 문제가 없을시 Merge 처리에 제출됩니다.
-          </p>
-        </section>
+              >
+                {verdict.label}
+              </span>
+            ),
+          },
+          {
+            label: "요청자",
+            value: <RaciChip role={TARGET.requester.role} name={TARGET.requester.name} size="sm" />,
+          },
+          { label: "검토일", value: TARGET.reviewedAt },
+        ]}
+        actions={
+          <Button
+            variant="secondary"
+            className="rounded-sm"
+            onClick={() => (window.location.hash = "#/doc-pr-detail")}
+          >
+            Doc PR 상세로
+          </Button>
+        }
+      />
 
-        <section className={`h-[326px] w-[504px] pl-[29px] pt-[32px] ${CARD}`}>
-          <CardHead icon={<IconTeam size={29} />} title="다음 작업자" gap={17} />
-          <p className="ml-[57px] mt-[9px] text-base font-semibold leading-[19px] text-neutral-500">
-            Follow-the-Sun 연결
-          </p>
-          <ul className="mt-[24px] flex flex-col gap-[30px]">
-            {HANDOVER.map((person) => (
-              <li key={person.name} className="flex items-center">
-                <IconUserCircle size={47} className="shrink-0 text-main-500" />
-                <div className="ml-[27px]">
-                  <p className="text-[18px] font-semibold leading-[21px] text-neutral-700">
-                    {person.name}
+      <MyRoleBar className="mt-[20px]" scope="이 Doc PR" />
+
+      {/* 화면 전체가 AI 산출물이므로 안내를 맨 위에 한 번 더 못박는다 */}
+      <Card padding="md" className="mt-[16px] border-info/25 bg-info-tint/40">
+        <AiDisclaimer />
+        <p className="mt-[8px] text-[13px] font-medium leading-[19px] text-neutral-500">
+          이 화면의 모든 판단은 CIO가 만든 1차 검토입니다. 승인·반려는 Doc PR 상세에서 A 역할이
+          결정합니다.
+        </p>
+      </Card>
+
+      {/* ── 검토 근거 ── */}
+      <Section
+        title="검토 항목과 근거"
+        caption="문서 충돌 · 정합성 · 협업 규칙 위반 세 가지를 검토했습니다."
+      >
+        <div className="flex flex-col gap-[12px]">
+          {FINDINGS.map((finding) => {
+            const level = VERDICT[finding.level];
+            return (
+              <Card key={finding.title} padding="none" className="overflow-hidden">
+                <div className={cx("h-[3px] w-full", tone(level.tone).solid)} />
+                <div className="p-[20px]">
+                  <div className="flex flex-wrap items-center gap-[8px]">
+                    <span
+                      className={cx(
+                        "flex h-[24px] shrink-0 items-center rounded-full border px-[9px] font-mono text-[12px] font-bold",
+                        tone(level.tone).chip,
+                      )}
+                    >
+                      {level.label}
+                    </span>
+                    <span className="rounded-full border border-line bg-neutral-50 px-[9px] py-[3px] font-mono text-[12px] font-bold text-neutral-700">
+                      {finding.kind}
+                    </span>
+                    <h3 className="text-[15px] font-semibold text-neutral-900">{finding.title}</h3>
+                    <span className="ml-auto shrink-0 text-[13px] font-medium text-neutral-500">
+                      {finding.where}
+                    </span>
+                  </div>
+                  <p className="mt-[10px] text-[14px] font-medium leading-[21px] text-neutral-700">
+                    {finding.detail}
                   </p>
-                  <p className="mt-[14px] text-base font-semibold leading-[19px] text-neutral-500">
-                    {person.zone}
+                  <p className="mt-[8px] flex items-start gap-[6px] text-[13px] font-medium leading-[19px] text-neutral-500">
+                    <CioMark size={12} className="mt-[3px] text-info" />
+                    근거 — {finding.evidence}
                   </p>
                 </div>
-              </li>
-            ))}
-          </ul>
-          <p className="ml-[19px] mt-[21px] text-[15px] font-semibold leading-[19px] text-neutral-500">
-            승인자가 지정되지 않았습니다. 담당자에게 승인자 지정 요청을 해주세요.
-          </p>
-        </section>
+              </Card>
+            );
+          })}
+        </div>
+      </Section>
+
+      {/* ── 리뷰 상태 / 이력 ── */}
+      <div className="flex gap-[24px]">
+        <Section title="리뷰 진행 상태" className="min-w-0 flex-1">
+          <Card padding="none">
+            <ul>
+              {REVIEW_STATUS.map((row) => (
+                <li
+                  key={row.label}
+                  className="flex items-center gap-[12px] border-b border-line px-[16px] py-[12px] last:border-b-0"
+                >
+                  {row.actor === "ai" ? (
+                    <CioMark size={14} className="shrink-0 text-info" />
+                  ) : (
+                    <span aria-hidden className="size-[6px] shrink-0 rounded-full bg-main-500" />
+                  )}
+                  <span className="text-[14px] font-medium text-neutral-700">{row.label}</span>
+                  <span
+                    className={cx(
+                      "ml-auto flex h-[24px] shrink-0 items-center rounded-full border px-[9px] font-mono text-[12px] font-bold",
+                      tone(row.tone).chip,
+                    )}
+                  >
+                    {row.status}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </Section>
+
+        <Section title="CIO 검토 이력" className="min-w-0 flex-1">
+          <Card padding="none">
+            <ul>
+              {HISTORY.map((item) => (
+                <li
+                  key={item.at}
+                  className="flex items-center gap-[12px] border-b border-line px-[16px] py-[12px] last:border-b-0"
+                >
+                  <StatusBadge status="aiReview" size="sm" />
+                  <span className="min-w-0">
+                    <span className="block text-[13px] font-semibold text-neutral-900">
+                      {item.label}
+                    </span>
+                    <span className="block text-[12px] text-neutral-500">{item.result}</span>
+                  </span>
+                  <span className="ml-auto shrink-0 font-mono text-[12px] text-neutral-500">
+                    {item.at}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </Section>
       </div>
 
-      {/* ── AI 리뷰 이력 ── */}
-      <section className={`mt-[26px] h-[286px] w-[1031px] pl-[29px] pt-[31px] ${CARD}`}>
-        <CardHead icon={<IconClock size={29} />} title="AI 리뷰 이력" gap={26} />
-        <ul className="mt-[34px]">
-          {HISTORY.map((row, i) => (
-            <li key={row.date}>
-              {i > 0 && (
-                <span
-                  aria-hidden
-                  className="ml-[12px] mt-[13px] block h-[2px] w-[958px] bg-neutral-300"
-                />
-              )}
-              <div className={`flex h-[33px] items-center ${i > 0 ? "mt-[12px]" : ""}`}>
-                <span className="w-[190px] shrink-0 pl-[17px] text-xl font-semibold leading-[24px] text-neutral-500">
-                  {row.date}
-                </span>
-                {/* 배지 폭이 72~86으로 달라 고정폭 칸에서 가운데 정렬 (Figma 중심 614) */}
-                <span className="flex w-[86px] shrink-0 justify-center">
-                  <span
-                    className={`text-[18px] leading-[21px] ${BADGE} ${TONE[row.tone]}`}
-                    style={{ width: row.width }}
-                  >
-                    {row.badge}
-                  </span>
-                </span>
-                <SkeletonBar width="380px" className="ml-[63px]" />
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
-    </div>
+      {/* ── 다음 작업자 ── */}
+      <Section
+        title="다음 작업자"
+        caption="시차가 다른 팀원에게 넘길 때 참고할 정보입니다. 자동 추천은 후속 단계 범위입니다."
+      >
+        <Card padding="md">
+          <CardHeader title="Follow-the-Sun" right={<IconSun size={18} className="text-warning" />} />
+          <ul className="mt-[14px] flex flex-col gap-[8px]">
+            {HANDOVER.map((person) => (
+              <li
+                key={person.name}
+                className="flex items-center gap-[10px] rounded-sm border border-line bg-neutral-50 px-[12px] py-[10px]"
+              >
+                <RaciChip role={person.role} name={person.name} size="sm" />
+                <span className="text-[13px] font-medium text-neutral-500">{person.zone}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      </Section>
+    </Page>
   );
 }

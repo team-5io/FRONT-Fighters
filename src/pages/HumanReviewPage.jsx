@@ -1,264 +1,339 @@
-import Button from "../components/ui/Button";
+import { useState } from "react";
+import Page, { Section } from "../components/layout/Page";
+import PageHeader from "../components/layout/PageHeader";
 import {
-  IconCheckboxFilled,
-  IconClock,
-  IconExclamationCircle,
-  IconPaper,
-  IconPen,
-  IconShield,
-  IconSparkle,
-} from "../components/icons";
+  AiReviewCard,
+  Button,
+  Card,
+  CardHeader,
+  CioMark,
+  MyRoleBar,
+  RaciChip,
+  StatusBadge,
+  cx,
+  tone,
+} from "../components/ui";
+import { ACTOR_META, MERGE_BLOCKERS } from "../data/status";
+import { CURRENT_USER, RACI_ROLES } from "../data/raci";
 
 /**
- * Figma 51:30 — 사람 리뷰
+ * 사람 리뷰 — `#/human-review`
  *
- * 2단: 좌측 478 + 간격 24 + 우측 509 (348..1359).
- *   좌 — Doc PR 콘테스트 277 / AI 리뷰 요약 523 / 처리 이력 769 (각 232)
- *   우 — 리뷰 코멘트 작성 277(326) / 자세한 안내 619(181) / Merge 차단 조건 816(181)
- *
- * 세로 좌표 (프레임 1440×1024, 본문 시작 y=80): 타이틀 126 · PR 제목 182 · 메타 224
+ * 정상화 지시서 5.J 적용:
+ *  - **mock 데이터 정합성 수정.** 1차 구현은 작성자가 `김성민`인데 처리 이력은
+ *    `김민정님이 제출`, 승인자는 `고나영`인데 이력은 `김성민(승인자)님이 시작`으로
+ *    인물이 서로 어긋나 있었다. R=김성민 / A=고나영 / C=김준한·김재원으로 통일했다.
+ *  - 카드 제목 `Doc PR 콘테스트` → `Doc PR 컨텍스트` (문맥상 오탈자).
+ *  - CIO 피드백은 `AiReviewCard`로 감싸 사람 리뷰 영역과 분리했다(원칙 3).
+ *  - 승인·반려는 A 역할만 가능하도록 잠갔다 (`POST /doc-prs/{prId}/approve` = A).
  */
 
-const CARD = "rounded-md border-2 border-neutral-300 bg-neutral-50";
-/** 연보라 배지 — 상태·필수 표시에 공통으로 쓴다 */
-const PILL =
-  "flex h-[28px] shrink-0 items-center justify-center rounded-full border-2 border-main-500/20 bg-main-50 text-sm font-semibold leading-[17px] text-main-500";
+const DOC_PR = {
+  id: "PR #42",
+  title: "온보딩 가이드 v2 개정안",
+  document: "온보딩 가이드",
+  status: "humanReview",
+  createdAt: "2026-08-10",
+  author: { name: "김성민", role: "R" },
+  approver: { name: "고나영", role: "A" },
+  reviewers: [
+    { name: "김준한", role: "C", done: true },
+    { name: "김재원", role: "C", done: false },
+  ],
+  minApprovals: 1,
+};
 
-const CONTEXT_ROWS = [
-  { label: "상태", value: "사람 리뷰 대기", accent: true },
-  { label: "AI 리뷰", value: "통과", accent: true },
-  { label: "승인자", value: "고나영 (A 역할)" },
-  { label: "리뷰어", value: "김준한, 김재원" },
-  { label: "최소 승인 필요", value: "1명 이상" },
+/** CIO(DocumentLion) 1차 검토가 남긴 참고 사항 */
+const AI_FEEDBACK = [
+  "섹션 2의 단계 순서를 다른 가이드와 맞추는 편이 좋습니다.",
+  "표 2건의 항목 유효성 확인이 필요합니다.",
+  "외부 링크 3건은 출처를 함께 적어 두길 권장합니다.",
 ];
 
-const AI_FEEDBACK = [
-  "섹션2. 순서 일관성 강화",
-  "표 2건의 유효성 확인 필요",
-  "보조지 3건의 링크 기술 권장",
+/** 사람 리뷰어가 직접 확인하는 항목 */
+const INITIAL_CHECKLIST = [
+  { id: "terms", label: "용어 일관성 확인", checked: true },
+  { id: "links", label: "외부 링크 유효성 확인", checked: false },
+  { id: "version", label: "버전 기록 일치 규칙 준수", checked: true },
+  { id: "raci", label: "RACI 참여자 검토 완료", checked: false },
 ];
 
 const HISTORY = [
-  { date: "2026-08-08", text: "김민정님이 Doc PR을 제출했습니다.", badge: "초안" },
-  { date: "2026-08-09", text: "AI 리뷰가 완료되었습니다.", badge: "통과" },
-  { date: "2026-08-10", text: "김성민(승인자)님이 사람 리뷰를 시작했습니다." },
+  {
+    at: "2026-08-08",
+    actor: "human",
+    by: "김성민",
+    text: "Doc PR을 제출했습니다.",
+    status: "created",
+  },
+  {
+    at: "2026-08-09",
+    actor: "ai",
+    by: "CIO",
+    text: "1차 검토를 완료했습니다. 반려 권고는 없습니다.",
+    status: "aiReview",
+  },
+  {
+    at: "2026-08-10",
+    actor: "human",
+    by: "고나영",
+    text: "사람 리뷰를 시작했습니다.",
+    status: "humanReview",
+  },
+  {
+    at: "2026-08-11",
+    actor: "human",
+    by: "김준한",
+    text: "리뷰 의견을 등록했습니다.",
+    status: "humanReview",
+  },
 ];
 
-/** 체크리스트 2열 × 2행 — 좌우 열의 x가 878 / 1059 */
-const CHECKLIST = [
-  [
-    { label: "용어 일관성 확인", checked: true },
-    { label: "외부 링크 유효성 확인", checked: false },
-  ],
-  [
-    { label: "버전 기록 일치 규칙 준수", checked: true },
-    { label: "RACI 참여자 검토 완료", checked: false },
-  ],
-];
-
-const MERGE_BLOCKERS = [
-  "AI 리뷰 미통과",
-  "사람 리뷰 미완료",
-  "승인자 지정 필요",
-];
-
-/** 38px 연보라 타일 + 20px 제목 (여섯 카드 공통, 제목은 타일보다 6px 아래) */
-function CardHead({ icon, title }) {
-  return (
-    <div className="flex h-[38px] items-start">
-      <span className="flex size-[38px] shrink-0 items-center justify-center rounded-md bg-main-50 text-main-500">
-        {icon}
-      </span>
-      <h2 className="ml-[19px] mt-[6px] text-xl font-semibold leading-[24px] text-neutral-700">
-        {title}
-      </h2>
-    </div>
-  );
-}
+/** 아직 못 넘은 Merge 조건 */
+const OPEN_BLOCKERS = ["reviewIncomplete"];
 
 export default function HumanReviewPage() {
+  const myRole = RACI_ROLES[CURRENT_USER.role];
+  const canDecide = CURRENT_USER.role === "A";
+  const canComment = CURRENT_USER.role === "A" || CURRENT_USER.role === "C";
+
+  const [checklist, setChecklist] = useState(INITIAL_CHECKLIST);
+  const [comment, setComment] = useState("");
+
+  const pendingReviewers = DOC_PR.reviewers.filter((reviewer) => !reviewer.done);
+
   return (
-    <div className="pl-[54px] pt-[46px]">
-      <div className="flex w-[1011px] items-start">
-        <h1 className="text-[32px] font-semibold leading-[38px] text-main-500">
-          사람 리뷰
-        </h1>
-        <span className={`ml-[19px] mt-[4px] w-[126px] ${PILL}`}>리뷰어 지정 필요</span>
-        <Button className="ml-auto mt-[4px] h-[44px] w-[136px] justify-center rounded-md px-0 py-0 text-base">
-          Doc PR 상세로
-        </Button>
-      </div>
+    <Page>
+      <PageHeader
+        breadcrumb={[
+          { label: "5IO주", href: "#/dashboard" },
+          { label: "Doc PR", href: "#/doc-pr" },
+          { label: DOC_PR.id, href: "#/doc-pr-detail" },
+          { label: "사람 리뷰" },
+        ]}
+        title={`${DOC_PR.id} · ${DOC_PR.title}`}
+        properties={[
+          { label: "상태", value: <StatusBadge status={DOC_PR.status} size="sm" /> },
+          { label: "문서", value: DOC_PR.document },
+          {
+            label: "작성자",
+            value: <RaciChip role={DOC_PR.author.role} name={DOC_PR.author.name} size="sm" />,
+          },
+          {
+            label: "승인자",
+            value: <RaciChip role={DOC_PR.approver.role} name={DOC_PR.approver.name} size="sm" />,
+          },
+          { label: "생성일", value: DOC_PR.createdAt },
+        ]}
+        actions={
+          <Button
+            variant="secondary"
+            className="rounded-sm"
+            onClick={() => (window.location.hash = "#/doc-pr-detail")}
+          >
+            Doc PR 상세로
+          </Button>
+        }
+      />
 
-      <div className="mt-[8px] flex h-[28px] items-center">
-        <span className="text-xl font-semibold leading-[24px] text-neutral-500">
-          Doc PR #42 - 온보딩 가이드 v2 개정안
-        </span>
-        <span className="ml-[23px] flex h-[28px] w-[66px] shrink-0 items-center justify-center rounded-full border-2 border-neutral-300 bg-neutral-100 text-[15px] font-semibold leading-[18px] text-neutral-700">
-          검토중
-        </span>
-      </div>
-      <p className="mt-[14px] text-xl font-semibold leading-[24px] text-neutral-500">
-        문서: 온보딩 가이드 / 작성자: 김성민 / 생성일: 2026-08-10
-      </p>
+      <MyRoleBar className="mt-[20px]" scope="이 Doc PR" />
 
-      <div className="mt-[29px] flex gap-[24px]">
-        {/* ── 좌측 ── */}
-        <div className="w-[478px]">
-          <section className={`h-[232px] pl-[14px] pt-[12px] ${CARD}`}>
-            <CardHead icon={<IconPaper size={24} />} title="Doc PR 콘테스트" />
-            <dl className="ml-[19px] mt-[14px]">
-              {CONTEXT_ROWS.map((row, i) => (
-                <div key={row.label} className={`flex ${i > 0 ? "mt-[9px]" : ""}`}>
-                  <dt className="w-[145px] shrink-0 text-base font-semibold leading-[24px] text-neutral-500">
-                    {row.label}
-                  </dt>
-                  <dd
-                    className={`text-sm font-semibold leading-[24px] ${
-                      row.accent ? "text-main-500" : "text-neutral-700"
-                    }`}
-                  >
-                    {row.value}
-                  </dd>
-                </div>
-              ))}
+      <div className="mt-[24px] flex gap-[24px]">
+        {/* ── 좌: 컨텍스트 · CIO 참고 · 이력 ── */}
+        <div className="min-w-0 flex-1">
+          <Card padding="md">
+            <CardHeader
+              title="Doc PR 컨텍스트"
+              caption="리뷰를 시작하기 전에 확인할 정보입니다."
+            />
+            <dl className="mt-[14px] flex flex-col gap-[10px]">
+              <div className="flex items-center gap-[12px]">
+                <dt className="w-[120px] shrink-0 text-[13px] font-medium text-neutral-500">
+                  리뷰어
+                </dt>
+                <dd className="flex flex-wrap items-center gap-[6px]">
+                  {DOC_PR.reviewers.map((reviewer) => (
+                    <span key={reviewer.name} className="flex items-center gap-[5px]">
+                      <RaciChip role={reviewer.role} name={reviewer.name} size="sm" />
+                      <span
+                        className={cx(
+                          "font-mono text-[11px] font-bold",
+                          reviewer.done ? "text-success-text" : "text-neutral-500",
+                        )}
+                      >
+                        {reviewer.done ? "제출" : "대기"}
+                      </span>
+                    </span>
+                  ))}
+                </dd>
+              </div>
+              <div className="flex items-center gap-[12px]">
+                <dt className="w-[120px] shrink-0 text-[13px] font-medium text-neutral-500">
+                  최소 승인
+                </dt>
+                <dd className="text-[13px] font-semibold text-neutral-700">
+                  {DOC_PR.minApprovals}명 이상
+                </dd>
+              </div>
+              <div className="flex items-center gap-[12px]">
+                <dt className="w-[120px] shrink-0 text-[13px] font-medium text-neutral-500">
+                  남은 Merge 조건
+                </dt>
+                <dd className="flex flex-wrap items-center gap-[6px]">
+                  {OPEN_BLOCKERS.map((key) => {
+                    const blocker = MERGE_BLOCKERS[key];
+                    const actor = ACTOR_META[blocker.actor];
+                    return (
+                      <span
+                        key={key}
+                        className={cx(
+                          "flex h-[24px] items-center gap-[5px] rounded-full border px-[9px] font-mono text-[12px] font-bold",
+                          tone(actor.tone).chip,
+                        )}
+                      >
+                        {blocker.actor === "ai" && <CioMark size={11} />}
+                        {blocker.label}
+                      </span>
+                    );
+                  })}
+                </dd>
+              </div>
             </dl>
-          </section>
+          </Card>
 
-          <section className={`mt-[14px] h-[232px] pl-[14px] pt-[15px] ${CARD}`}>
-            <CardHead icon={<IconSparkle size={20} />} title="AI 리뷰 요약" />
-            <div className="ml-[19px] mt-[27px] flex">
-              <span className="w-[90px] shrink-0 text-base font-semibold leading-[24px] text-neutral-500">
-                동작
-              </span>
-              <span className="text-sm font-semibold leading-[24px] text-neutral-700">
-                문서 구조 및 문법 규칙 기준 충족
-              </span>
-            </div>
-            <div className="ml-[19px] mt-[15px] flex">
-              <span className="w-[83px] shrink-0 text-base font-semibold leading-[24px] text-neutral-500">
-                주요 피드백
-              </span>
-              <ul className="list-disc pl-[21px]">
-                {AI_FEEDBACK.map((line, i) => (
-                  <li
-                    key={line}
-                    className={`text-sm font-semibold leading-[17px] text-neutral-700 ${
-                      i > 0 ? "mt-[15px]" : ""
-                    }`}
-                  >
-                    {line}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </section>
-
-          <section className={`mt-[14px] h-[232px] pl-[14px] pt-[16px] ${CARD}`}>
-            <CardHead icon={<IconClock size={22} />} title="처리 이력" />
-            <ul className="ml-[17px] mt-[23px] flex flex-col gap-[19px]">
-              {HISTORY.map((row) => (
-                <li key={row.date} className="flex h-[28px] items-center">
-                  <span className="w-[111px] shrink-0 text-sm font-semibold leading-[17px] text-neutral-700">
-                    {row.date}
-                  </span>
-                  <span className="text-sm font-semibold leading-[17px] text-neutral-700">
-                    {row.text}
-                  </span>
-                  {row.badge && (
-                    <span className={`ml-[10px] w-[57px] ${PILL}`}>{row.badge}</span>
-                  )}
+          <AiReviewCard
+            className="mt-[16px]"
+            title="CIO가 남긴 참고 사항"
+            caption="반려 권고는 없습니다. 아래는 확인해 볼 만한 항목입니다."
+          >
+            <ul className="flex flex-col gap-[8px]">
+              {AI_FEEDBACK.map((item) => (
+                <li
+                  key={item}
+                  className="flex gap-[8px] text-[14px] font-medium leading-[21px] text-neutral-700"
+                >
+                  <span aria-hidden className="mt-[8px] size-[4px] shrink-0 rounded-full bg-info" />
+                  {item}
                 </li>
               ))}
             </ul>
-          </section>
+          </AiReviewCard>
+
+          <Section title="처리 이력">
+            <Card padding="none">
+              <ol>
+                {HISTORY.map((item) => (
+                  <li
+                    key={item.at + item.by}
+                    className="flex items-start gap-[12px] border-b border-line px-[16px] py-[12px] last:border-b-0"
+                  >
+                    <StatusBadge status={item.status} size="sm" className="mt-[1px]" />
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-medium leading-[19px] text-neutral-700">
+                        {item.text}
+                      </p>
+                      <p className="mt-[2px] flex items-center gap-[5px] text-[12px] font-medium text-neutral-500">
+                        {item.actor === "ai" && <CioMark size={11} className="text-info" />}
+                        <span className={item.actor === "ai" ? "font-semibold text-info-text" : ""}>
+                          {item.by}
+                        </span>
+                        · {item.at}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </Card>
+          </Section>
         </div>
 
-        {/* ── 우측 ── */}
-        <div className="w-[509px]">
-          <section className={`h-[326px] pb-[11px] pl-[18px] pr-[13px] pt-[12px] ${CARD}`}>
-            <CardHead icon={<IconPen size={25} />} title="리뷰 코멘트 작성" />
-            <p className="ml-[6px] mt-[14px] text-base font-semibold leading-[24px] text-neutral-500">
-              리뷰 근거 및 의견을 작성하세요.
-            </p>
-            <textarea
-              placeholder="리뷰 근거 및 의견을 작성하세요."
-              aria-label="리뷰 코멘트"
-              className="mt-[7px] h-[82px] w-[467px] resize-none rounded-md border-2 border-neutral-100 bg-neutral-0 px-[15px] py-[11px] font-sans text-base font-medium text-neutral-700 outline-none placeholder:text-neutral-300"
+        {/* ── 우: 사람이 하는 판단 ── */}
+        <div className="w-[380px] shrink-0">
+          <Card padding="md">
+            <CardHeader
+              title="리뷰 체크리스트"
+              caption="사람이 직접 확인하는 항목입니다."
             />
-            <p className="ml-[8px] mt-[3px] text-base font-semibold leading-[24px] text-neutral-500">
-              체크리스트
-            </p>
-            {/* 열 간격 181 = Figma 체크박스 x 878 / 1059. 폭이 좁으면 라벨이 두 줄로 접힌다 */}
-            <div className="ml-[8px] mt-[5px] flex">
-              {CHECKLIST.map((column, ci) => (
-                <ul key={ci} className="w-[181px]">
-                  {column.map((item, ri) => (
-                    <li
-                      key={item.label}
-                      className={`flex h-[20px] items-center ${ri > 0 ? "mt-[7px]" : ""}`}
-                    >
-                      {item.checked ? (
-                        <IconCheckboxFilled size={20} className="shrink-0 text-main-500" />
-                      ) : (
-                        <span
-                          aria-hidden
-                          className="ml-[2px] size-[16px] shrink-0 rounded-xs border-2 border-neutral-300 bg-neutral-0"
-                        />
-                      )}
-                      <span
-                        className={`whitespace-nowrap text-sm font-semibold leading-[24px] text-neutral-700 ${
-                          item.checked ? "ml-[12px]" : "ml-[14px]"
-                        }`}
-                      >
-                        {item.label}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+            <ul className="mt-[14px] flex flex-col gap-[8px]">
+              {checklist.map((item) => (
+                <li key={item.id}>
+                  <label
+                    className={cx(
+                      "flex cursor-pointer items-center gap-[8px] rounded-sm border border-line px-[12px] py-[9px] text-[13px] font-medium",
+                      item.checked ? "bg-neutral-50 text-neutral-700" : "bg-neutral-0 text-neutral-700",
+                      !canComment && "cursor-not-allowed opacity-60",
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={item.checked}
+                      disabled={!canComment}
+                      onChange={() =>
+                        setChecklist((prev) =>
+                          prev.map((row) =>
+                            row.id === item.id ? { ...row, checked: !row.checked } : row,
+                          ),
+                        )
+                      }
+                      className="size-[15px] accent-main-500"
+                    />
+                    {item.label}
+                  </label>
+                </li>
               ))}
-            </div>
-            <div className="mt-[13px] flex justify-end gap-[7px]">
+            </ul>
+          </Card>
+
+          <Card padding="md" className="mt-[16px]">
+            <CardHeader title="리뷰 의견" caption="C·A 역할이 의견을 남길 수 있습니다." />
+            <textarea
+              value={comment}
+              onChange={(event) => setComment(event.target.value)}
+              disabled={!canComment}
+              rows={5}
+              placeholder="어떤 점을 확인했는지, 무엇을 고쳐야 하는지 적어주세요."
+              className="mt-[12px] w-full resize-none rounded-sm border border-line bg-neutral-0 px-[12px] py-[10px] font-sans text-[14px] font-medium leading-[21px] text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500 disabled:cursor-not-allowed disabled:bg-neutral-50"
+            />
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={!canComment || !comment.trim()}
+              className="mt-[10px] w-full justify-center rounded-sm"
+            >
+              의견 등록
+            </Button>
+          </Card>
+
+          <Card padding="md" className="mt-[16px]">
+            <CardHeader
+              title="최종 결정"
+              caption={
+                canDecide
+                  ? "승인·반려는 A 역할인 회원님이 결정합니다."
+                  : `승인·반려는 A 역할만 할 수 있습니다. 현재 역할은 ${myRole.key}입니다.`
+              }
+            />
+            {pendingReviewers.length > 0 && (
+              <p className="mt-[10px] rounded-sm border border-warning/25 bg-warning-tint px-[12px] py-[9px] text-[13px] font-medium leading-[19px] text-warning-text">
+                {pendingReviewers.map((reviewer) => reviewer.name).join(" · ")}님의 리뷰가 아직
+                등록되지 않았습니다.
+              </p>
+            )}
+            <div className="mt-[12px] flex gap-[8px]">
               <Button
                 variant="secondary"
-                className="h-[44px] w-[86px] justify-center rounded-md border-2 px-0 py-0 text-base text-neutral-700"
+                disabled={!canDecide}
+                className="flex-1 justify-center rounded-sm"
               >
-                취소
+                반려
               </Button>
-              <Button className="h-[44px] w-[86px] justify-center rounded-md px-0 py-0 text-base">
+              <Button disabled={!canDecide} className="flex-1 justify-center rounded-sm">
                 승인
               </Button>
             </div>
-          </section>
-
-          <section className={`mt-[16px] h-[181px] pl-[18px] pt-[15px] ${CARD}`}>
-            <CardHead icon={<IconExclamationCircle size={26} />} title="자세한 안내" />
-            <p className="ml-[24px] mt-[29px] text-base font-semibold leading-[24px] text-neutral-500">
-              반려된 Doc PR은 작성자가 내용을 수정한 뒤 재제출 할 수 있습니다
-            </p>
-            <button
-              type="button"
-              className="ml-[24px] mt-[18px] flex h-[31px] w-[419px] items-center justify-between rounded-md border-2 border-main-500 bg-neutral-0 pl-[146px] pr-[22px] text-sm font-semibold leading-[19px] text-main-500"
-            >
-              자세한 가이드로 이동
-              <span aria-hidden>&gt;</span>
-            </button>
-          </section>
-
-          <section className={`mt-[16px] h-[181px] pl-[18px] pt-[15px] ${CARD}`}>
-            <CardHead icon={<IconShield size={23} />} title="Merge 차단 조건" />
-            <ul className="mt-[13px] flex flex-col gap-[9px]">
-              {MERGE_BLOCKERS.map((label) => (
-                <li key={label} className="flex h-[28px] items-center">
-                  <span className={`ml-[1px] w-[57px] ${PILL}`}>필수</span>
-                  <span className="ml-[17px] text-sm font-semibold leading-[17px] text-neutral-700">
-                    {label}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
+          </Card>
         </div>
       </div>
-    </div>
+    </Page>
   );
 }
