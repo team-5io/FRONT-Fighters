@@ -3,6 +3,7 @@ import AppShell from "./components/layout/AppShell";
 import AiReviewPage from "./pages/AiReviewPage";
 import AssignApproverPage from "./pages/AssignApproverPage";
 import AiStructurePage from "./pages/AiStructurePage";
+import CharterPage from "./pages/CharterPage";
 import DashboardPage from "./pages/DashboardPage";
 import DocPrDetailPage from "./pages/DocPrDetailPage";
 import DocPrListPage from "./pages/DocPrListPage";
@@ -37,6 +38,7 @@ const ROUTES = {
   "#/assign-approver": { page: AssignApproverPage, activeNav: "설정" },
   "#/settings": { page: TeamSettingsPage, activeNav: "설정" },
   "#/raci-roles": { page: RaciRolesPage, activeNav: "설정" },
+  "#/charter": { page: CharterPage, activeNav: "설정" },
   "#/graph": { page: DocumentGraphPage, activeNav: "그래프" },
   "#/write": { page: DocumentWritePage, activeNav: "작성" },
   "#/ai-structure": { page: AiStructurePage, activeNav: "작성" },
