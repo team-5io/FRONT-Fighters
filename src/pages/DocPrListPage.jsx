@@ -1,152 +1,194 @@
-import ListFilterBar from "../components/ui/ListFilterBar";
+import Page from "../components/layout/Page";
+import PageHeader from "../components/layout/PageHeader";
 import {
-  IconBook,
-  IconCard,
-  IconDatabase,
-  IconGlobe,
-  IconPaper,
-  IconShield,
-  IconSun,
-} from "../components/icons";
+  Button,
+  CioMark,
+  DataTable,
+  ListFilterBar,
+  MyRoleBar,
+  RaciChip,
+  StatusBadge,
+} from "../components/ui";
+import { CURRENT_USER, RACI_ROLES } from "../data/raci";
+import { DOC_PR_STATUS } from "../data/status";
+import { IconStar } from "../components/icons";
 
 /**
- * Figma 17:284 — Doc PR 목록
+ * Doc PR 목록 — `#/doc-pr`
  *
- * 문서 목록(17:212)과 같은 구조지만 우측 상세 패널이 없어 목록이 1033px 전폭이다.
- *
- * 세로 좌표 (프레임 1440×1024, 본문 시작 y=80):
- *   타이틀 126 · 설명 177 · 필터 라벨 221 · 컨트롤 247(38) · 목록 306(1033×650)
- *
- * 7행 + 2px 구분선. Figma 행 피치가 96/90/91/96/94/92로 들쭉날쭉해
- * 균등 분할(90.57px)했다 — 문서 목록과 같은 처리.
+ * 정상화 지시서 5.D 적용:
+ *  - 상태 7종을 API 명세서(`GET /doc-prs/{prId}`)의 상태 집합으로 재정의하고
+ *    StatusBadge 하나로만 그린다. 배지 폭을 고정하던 코드를 걷어냈다.
+ *  - "내 역할" 표시 추가 — 역할 필터만 있고 정작 내 역할이 안 보이던 문제(원칙 2).
+ *  - 각 Doc PR에서 내가 맡은 역할을 행마다 보여 준다.
  */
-
-const CARD = "rounded-md border-2 border-neutral-300 bg-neutral-50";
-
-/**
- * 상태 배지. Figma는 배경=연한 틴트 + 테두리=같은 색 반투명 조합인데
- * '반려'만 테두리가 error-tint 실색이라, 다른 배지와 같은 규칙(error/40)으로 맞췄다.
- */
-const STATUS = {
-  "승인 대기": "bg-warning-tint border-warning/40 text-warning",
-  "AI 리뷰중": "bg-info-tint border-info/35 text-info",
-  반려: "bg-error-tint border-error/40 text-error",
-  재제출: "bg-main-50 border-main-500/20 text-main-500",
-  확정: "bg-success-tint border-success/50 text-success",
-  "검토 대기": "bg-warning-tint border-warning/40 text-warning",
-  "리뷰어 지정 필요": "bg-neutral-100 border-neutral-300 text-neutral-700",
-};
 
 const FILTERS = [
   { label: "상태", value: "전체" },
-  { label: "역할", value: "전체" },
+  { label: "내 역할", value: "전체" },
   { label: "기간", value: "전체" },
 ];
 
-// Figma 원문의 오탈자는 교정해서 옮김:
-//   '문서의 셍성'→'생성', '결제 게이트 웨이'→'게이트웨이',
-//   '데이터 베이스'→'데이터베이스', '운영 메뉴얼'→'운영 매뉴얼'
 const DOC_PRS = [
   {
-    icon: <IconPaper size={36} />,
+    id: "PR #42",
     title: "서비스 아키텍처 설계 문서 v2.1",
-    meta: "작성자: 김민섭 · 3분 전 업데이트",
-    status: "승인 대기",
+    author: "김민섭",
+    status: "humanReview",
+    myRole: "A",
+    updated: "3분 전",
   },
   {
-    icon: <IconCard size={31} />,
+    id: "PR #41",
     title: "API 연동 명세서 - 결제 게이트웨이",
-    meta: "작성자: 김재원 · 1시간 전 업데이트",
-    status: "AI 리뷰중",
+    author: "김재원",
+    status: "aiReview",
+    myRole: "A",
+    updated: "1시간 전",
   },
   {
-    icon: <IconBook size={31} />,
+    id: "PR #40",
     title: "온보딩 플로우 개선 기획안",
-    meta: "작성자: 김준한 · 2시간 전 업데이트",
-    status: "반려",
+    author: "김준한",
+    status: "rejected",
+    myRole: "C",
+    updated: "2시간 전",
   },
   {
-    icon: <IconGlobe size={33} />,
+    id: "PR #39",
     title: "글로벌 협업 가이드라인 초안",
-    meta: "작성자: 김성민 · 5시간 전 업데이트",
-    status: "재제출",
+    author: "김성민",
+    status: "resubmitted",
+    myRole: "A",
+    updated: "5시간 전",
   },
   {
-    icon: <IconDatabase size={31} />,
+    id: "PR #38",
     title: "데이터베이스 스키마 정의서 r3",
-    meta: "작성자: 김재원 · 어제 업데이트",
-    status: "확정",
+    author: "김재원",
+    status: "merged",
+    myRole: "I",
+    updated: "어제",
   },
   {
-    icon: <IconSun size={37} />,
+    id: "PR #37",
     title: "Follow-the-Sun 운영 매뉴얼",
-    meta: "작성자: 김준한 · 2일 전 업데이트",
-    status: "검토 대기",
+    author: "김준한",
+    status: "created",
+    myRole: "C",
+    updated: "2일 전",
   },
   {
-    icon: <IconShield size={31} />,
+    id: "PR #36",
     title: "보안 정책 문서 2024-Q4",
-    meta: "작성자: 강다운 · 3일 전 업데이트",
-    status: "리뷰어 지정 필요",
+    author: "강다운",
+    status: "needsReviewer",
+    myRole: "A",
+    updated: "3일 전",
+  },
+];
+
+const COLUMNS = [
+  {
+    key: "title",
+    label: "Doc PR",
+    render: (row) => (
+      <div className="min-w-0">
+        <p className="truncate font-semibold text-neutral-900">
+          <span className="font-mono text-[13px] font-bold text-neutral-500">{row.id}</span>{" "}
+          {row.title}
+        </p>
+        <p className="mt-[2px] truncate text-[13px] text-neutral-500">
+          작성자 {row.author} · {row.updated} 업데이트
+        </p>
+      </div>
+    ),
+  },
+  {
+    key: "status",
+    label: "상태",
+    width: 150,
+    render: (row) => <StatusBadge status={row.status} size="sm" />,
+  },
+  {
+    key: "myRole",
+    label: "내 역할",
+    width: 130,
+    render: (row) => <RaciChip role={row.myRole} showLabel size="sm" />,
+  },
+  {
+    key: "action",
+    label: "",
+    width: 96,
+    align: "right",
+    render: () => (
+      <Button variant="secondary" size="sm" className="rounded-sm">
+        자세히
+      </Button>
+    ),
   },
 ];
 
 export default function DocPrListPage() {
+  const myRoleMeta = RACI_ROLES[CURRENT_USER.role];
+  /** AI가 만든 상태와 사람이 만든 상태가 각각 몇 건인지 — 원칙 3 */
+  const aiCount = DOC_PRS.filter((pr) => DOC_PR_STATUS[pr.status].ai).length;
+
   return (
-    <div className="pl-[54px] pt-[46px]">
-      <h1 className="text-[32px] font-semibold leading-[38px] text-main-500">
-        Doc PR
-      </h1>
-      <p className="mt-[13px] text-base font-semibold leading-[19px] text-neutral-500">
-        문서의 생성, 검토, 승인 상태를 한눈에 관리하세요.
+    <Page>
+      <PageHeader
+        breadcrumb={[{ label: "5IO주", href: "#/dashboard" }, { label: "Doc PR" }]}
+        title="Doc PR"
+        description="문서의 생성, 검토, 승인 상태를 한눈에 관리하세요."
+        properties={[
+          { label: "전체", value: `${DOC_PRS.length}건` },
+          {
+            label: "CIO 검토중",
+            value: (
+              <span className="flex items-center gap-[4px] text-info-text">
+                <CioMark size={12} />
+                {aiCount}건
+              </span>
+            ),
+          },
+          {
+            label: "내가 승인해야 하는 것",
+            value: `${DOC_PRS.filter((pr) => pr.myRole === "A").length}건`,
+          },
+        ]}
+      />
+
+      <MyRoleBar
+        className="mt-[20px]"
+        scope="이 팀"
+      />
+      <p className="mt-[8px] text-[13px] font-medium leading-[19px] text-neutral-500">
+        기본 역할은 {myRoleMeta.key}({myRoleMeta.label})이고, Doc PR마다 배정된 역할은 아래
+        &lsquo;내 역할&rsquo; 열에서 확인할 수 있습니다. {myRoleMeta.hidden.join(" · ")}은
+        표시되지 않습니다.
       </p>
 
-      <div className="mt-[25px]">
-        <ListFilterBar filters={FILTERS} searchLabel="Doc PR 검색" />
+      <div className="mt-[24px]">
+        <ListFilterBar
+          filters={FILTERS}
+          searchLabel="Doc PR 검색"
+          searchPlaceholder="Doc PR 제목·작성자 검색"
+        />
+        <DataTable
+          className="mt-[12px]"
+          columns={COLUMNS}
+          rows={DOC_PRS}
+          onRowClick={() => (window.location.hash = "#/doc-pr-detail")}
+          empty={{
+            title: "조건에 맞는 Doc PR이 없습니다",
+            description:
+              "필터를 바꾸거나, 문서를 수정한 뒤 Doc PR을 만들면 여기에 나타납니다.",
+            actionLabel: "문서 작성하기",
+            icon: <IconStar size={20} />,
+            onAction: () => (window.location.hash = "#/write"),
+          }}
+        />
       </div>
-
-      <ul className={`mt-[21px] flex h-[650px] w-[1033px] flex-col ${CARD}`}>
-        {DOC_PRS.map((pr, i) => (
-          <li
-            key={pr.title}
-            className={`flex flex-1 items-center pl-[16px] pr-[33px] ${
-              i > 0 ? "border-t-2 border-neutral-300" : ""
-            }`}
-          >
-            <span className="flex size-[58px] shrink-0 items-center justify-center rounded-md bg-main-50 text-main-500">
-              {pr.icon}
-            </span>
-            <div className="ml-[18px] min-w-0 flex-1">
-              <p className="truncate text-base font-semibold leading-[19px] text-neutral-700">
-                {pr.title}
-              </p>
-              <p className="mt-[6px] truncate text-[15px] font-semibold leading-[18px] text-neutral-500">
-                {pr.meta}
-              </p>
-            </div>
-            {/* 배지 폭이 60~125px로 제각각이라, 고정폭 칸 안에서 중앙(x≈1125)을 맞춘다 */}
-            <span className="flex w-[130px] shrink-0 justify-center">
-              <span
-                className={`flex h-[28px] items-center rounded-full border-2 px-[14px] text-[15px] font-semibold leading-[18px] ${STATUS[pr.status]}`}
-              >
-                {pr.status}
-              </span>
-            </span>
-            <button
-              type="button"
-              className="ml-[16px] h-[38px] w-[102px] shrink-0 rounded-md border-2 border-neutral-300 bg-neutral-0 text-sm font-semibold leading-[19px] text-neutral-700"
-            >
-              자세히 보기
-            </button>
-            <span
-              aria-hidden
-              className="ml-[25px] shrink-0 text-xl font-semibold leading-[23px] text-neutral-500"
-            >
-              &gt;
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
+    </Page>
   );
 }

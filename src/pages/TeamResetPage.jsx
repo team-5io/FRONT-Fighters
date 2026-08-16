@@ -1,6 +1,9 @@
-import Button from "../components/ui/Button";
+import { useState } from "react";
+import Page, { Section } from "../components/layout/Page";
+import PageHeader from "../components/layout/PageHeader";
+import { Button, Card, CardHeader, PermissionNotice } from "../components/ui";
+import { canManageTeam } from "../data/raci";
 import {
-  IconExclamationCircle,
   IconRelationship,
   IconShield,
   IconSun,
@@ -9,112 +12,109 @@ import {
 } from "../components/icons";
 
 /**
- * Figma 4:126 — 팀설정 초기화
+ * 팀 설정 초기화 — `#/team-reset`
  *
- * 본문은 가운데 정렬이 아니라 좌측 348px 고정 (본문 영역 시작 294 + 54).
- * 패널/입력/버튼행 모두 폭 1015px로 x=1363에서 끝난다.
- *
- * 세로 좌표 (프레임 1440×1024, 본문 시작 y=80):
- *   타이틀 126 · 설명 177 · 소제목 221 · 패널1 266(1015×272)
- *   패널2 556(1015×178) · '초기화 확인' 761 · 안내 793 · 입력 825(50)
- *   버튼 918(210×54) · 링크 935
- *
- * 반경: 패널·입력은 Figma 2px 그대로(xs), 버튼 10px는 md(12px)로 스냅.
+ * 정상화 지시서 5.A 적용:
+ *  - 팀 관리자 전용 동작인데 권한 안내가 없던 문제를 해소 (2차 체크리스트 RACI 가시성).
+ *  - 되돌릴 수 없는 동작이라 확인 입력을 실제로 검사한다 — 1차는 입력만 있고
+ *    버튼이 항상 활성이었다.
+ *  - 카드 톤 절제, 2px 테두리·회색 배경 제거.
  */
 
-/** 패널1의 초기화 대상 5줄 — 라벨 y=298부터 47px 간격, 아이콘은 라벨 글자 중앙에 정렬 */
 const RESET_TARGETS = [
-  { icon: <IconTeam />, label: "협업 규칙 (Team Collaboration Charter)" },
-  { icon: <IconUser />, label: "Doc PR 리뷰어 및 승인권자 지정 내역" },
-  { icon: <IconSun />, label: "Follow-the-Sun 작업자 배정 설정" },
-  { icon: <IconRelationship />, label: "Document Graph 관계 설정" },
-  { icon: <IconShield />, label: "팀 역할 (RACI) 및 권한 구성" },
+  { icon: <IconTeam size={16} />, label: "협업 규칙 (Team Collaboration Charter)" },
+  { icon: <IconUser size={16} />, label: "Doc PR 리뷰어 및 승인권자 지정 내역" },
+  { icon: <IconSun size={16} />, label: "Follow-the-Sun 작업자 배정 설정" },
+  { icon: <IconRelationship size={16} />, label: "Document Graph 관계 설정" },
+  { icon: <IconShield size={16} />, label: "팀 역할 (RACI) 및 권한 구성" },
 ];
 
 const WARNINGS = [
-  "위 항목을 초기화하면 현재 진행 중인 Doc PR의 리뷰 · 승인 흐름이 중단될 수 있습니다.",
+  "위 항목을 초기화하면 현재 진행 중인 Doc PR의 리뷰·승인 흐름이 중단될 수 있습니다.",
   "삭제된 협업 규칙과 승인권자 지정 내역은 복구할 수 없습니다.",
   "초기화 후에는 팀 관리자가 설정을 다시 구성해야 합니다.",
 ];
 
+const CONFIRM_PHRASE = "초기화";
+
 export default function TeamResetPage() {
+  const editable = canManageTeam();
+  const [confirm, setConfirm] = useState("");
+  const ready = editable && confirm.trim() === CONFIRM_PHRASE;
+
   return (
-    <div className="pl-[54px] pt-[46px]">
-      <div className="w-[1015px]">
-        <h1 className="text-[32px] font-semibold leading-[38px] text-main-500">
-          팀 설정 초기화
-        </h1>
-        {/* Figma는 x=351이지만 나머지가 전부 348이라 3px 어긋난 것으로 보고 맞춤 */}
-        <p className="mt-[13px] text-base font-semibold leading-[19px] text-neutral-500">
-          팀의 모든 기본 설정과 초기 협업 환경을 처음 상태로 되돌립니다. 아래
-          항목을 꼼꼼히 확인 후 진행해 주세요.
-        </p>
+    <Page>
+      <PageHeader
+        breadcrumb={[
+          { label: "5IO주", href: "#/dashboard" },
+          { label: "설정", href: "#/settings" },
+          { label: "팀 설정 초기화" },
+        ]}
+        title="팀 설정 초기화"
+        description="팀의 모든 기본 설정과 초기 협업 환경을 처음 상태로 되돌립니다. 아래 항목을 꼼꼼히 확인한 뒤 진행해 주세요."
+      />
 
-        <h2 className="mt-[25px] text-xl font-semibold leading-[24px] text-neutral-900">
-          초기화 대상 항목
-        </h2>
+      <PermissionNotice className="mt-[20px]" allowed={editable} action="팀 설정 초기화" />
 
-        {/* 패널1 — 행 높이 30px + 간격 17px = Figma 47px 피치 */}
-        <ul className="mt-[21px] h-[272px] rounded-xs border border-neutral-300 bg-neutral-50 pl-[32px] pt-[26px]">
-          {RESET_TARGETS.map((item, i) => (
-            <li
-              key={item.label}
-              className={`flex h-[30px] items-center ${i > 0 ? "mt-[17px]" : ""}`}
-            >
-              <span className="flex w-[28px] shrink-0 justify-center text-main-500">
-                {item.icon}
-              </span>
-              <span className="ml-[12px] text-base font-semibold leading-[19px] text-neutral-700">
-                {item.label}
-              </span>
-            </li>
-          ))}
-        </ul>
-
-        {/* 패널2 — 경고 배너 */}
-        <section className="mt-[18px] h-[178px] rounded-xs border border-main-500/20 bg-main-25 pl-[36px] pt-[24px]">
-          <h2 className="flex h-[28px] items-center text-xl font-semibold leading-[24px] text-main-500">
-            <IconExclamationCircle className="shrink-0" />
-            <span className="ml-[8px]">초기화 전 반드시 확인하세요</span>
-          </h2>
-          <ul className="ml-[27px] mt-[17px] list-disc pl-[24px]">
-            {WARNINGS.map((text, i) => (
+      <Section title="초기화 대상 항목">
+        <Card padding="none">
+          <ul>
+            {RESET_TARGETS.map((item) => (
               <li
-                key={text}
-                className={`text-base font-semibold leading-[19px] text-neutral-700 ${
-                  i > 0 ? "mt-[13px]" : ""
-                }`}
+                key={item.label}
+                className="flex items-center gap-[10px] border-b border-line px-[16px] py-[12px] text-[14px] font-medium text-neutral-700 last:border-b-0"
               >
-                {text}
+                <span className="flex size-[26px] shrink-0 items-center justify-center rounded-sm bg-main-50 text-main-500">
+                  {item.icon}
+                </span>
+                {item.label}
               </li>
             ))}
           </ul>
-        </section>
+        </Card>
+      </Section>
 
-        <h2 className="mt-[27px] text-xl font-semibold leading-[24px] text-neutral-900">
-          초기화 확인
-        </h2>
-        <p className="mt-[8px] text-base font-semibold leading-[19px] text-neutral-500">
-          초기화를 진행하려면 아래에 ‘초기화 확인’을 입력하세요.
-        </p>
-        <input
-          type="text"
-          aria-label="초기화 확인"
-          className="mt-[13px] h-[50px] w-full rounded-xs border-2 border-main-500/50 bg-neutral-50 px-[14px] font-sans text-base text-neutral-900 outline-none"
-        />
+      <Section title="주의사항">
+        <Card padding="md" className="border-error/25 bg-error-tint/40">
+          <ul className="flex flex-col gap-[8px]">
+            {WARNINGS.map((warning) => (
+              <li
+                key={warning}
+                className="flex gap-[8px] text-[14px] font-medium leading-[21px] text-neutral-700"
+              >
+                <span aria-hidden className="mt-[8px] size-[4px] shrink-0 rounded-full bg-error" />
+                {warning}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      </Section>
 
-        <div className="mt-[43px] flex items-center justify-end gap-[44px]">
-          <a
-            href="#/team-invite"
-            className="text-base font-semibold leading-[19px] text-main-500 underline underline-offset-[3px]"
-          >
-            팀 생성 또는 참여로 돌아가기
-          </a>
-          <Button className="h-[54px] w-[210px] justify-center rounded-md px-0 py-0 text-base">
-            팀 설정 초기화
-          </Button>
-        </div>
-      </div>
-    </div>
+      <Section title="초기화 확인">
+        <Card padding="md">
+          <CardHeader
+            title={`계속하려면 아래에 "${CONFIRM_PHRASE}"를 입력하세요`}
+            caption="되돌릴 수 없는 작업입니다."
+          />
+          <input
+            type="text"
+            value={confirm}
+            disabled={!editable}
+            onChange={(event) => setConfirm(event.target.value)}
+            placeholder={CONFIRM_PHRASE}
+            aria-label="초기화 확인 문구"
+            className="mt-[12px] h-[38px] w-full max-w-[320px] rounded-sm border border-line bg-neutral-0 px-[12px] text-[14px] font-medium text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500 disabled:cursor-not-allowed disabled:bg-neutral-50"
+          />
+          <div className="mt-[16px] flex items-center gap-[10px]">
+            <Button variant="danger" className="rounded-sm" disabled={!ready}>
+              팀 설정 초기화
+            </Button>
+            <a href="#/settings" className="text-[13px] font-semibold text-main-500">
+              팀 설정으로 돌아가기
+            </a>
+          </div>
+        </Card>
+      </Section>
+    </Page>
   );
 }

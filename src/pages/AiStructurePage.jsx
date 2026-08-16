@@ -1,178 +1,160 @@
-import Button from "../components/ui/Button";
-import { IconPaper, IconPen } from "../components/icons";
+import { useState } from "react";
+import Page, { Section } from "../components/layout/Page";
+import PageHeader from "../components/layout/PageHeader";
+import {
+  AiDisclaimer,
+  Button,
+  Card,
+  CardHeader,
+  CioBadge,
+  EmptyState,
+} from "../components/ui";
 
 /**
- * Figma 23:586 — AI 구조 추천
+ * 구조 추천 — `#/ai-structure`
  *
- * 본문 좌측 348, 폭 1033.
- *   입력 카드 271(1033×294) — 안에서 좌 499 / 간격 47 / 우 422 두 열
- *   추천 섹션 카드 627·755·883(648×110) + 간격 13 + 적용 전 확인 1009(372×366)
- *
- * 세로 좌표 (프레임 1440×1024, 본문 시작 y=80):
- *   타이틀 126 · 설명 177 · '문서 정보 입력' 228 · 입력 카드 271
- *   '추천 구조 미리보기' 584 · 섹션 카드 627
+ * 정상화 지시서 5.F 적용:
+ *  - CIO 배지로 통일. "AI 구조 추천"이라는 별도 AI처럼 보이던 표기를 걷어내고
+ *    작성 도우미와 같은 CIO 산출물로 표시한다(지시서 2장 — 단일 AI 정체성).
+ *  - 스켈레톤 막대이던 섹션 내용을 실제 추천 문구로 채웠다(원칙 4).
+ *  - `적용 전 확인` 문구의 오탈자 `빅 섹션` → `빈 섹션`.
+ *  - 수락해야만 반영된다는 규칙을 화면에서 지킨다 (기능명세서 5.1).
  */
 
-const CARD = "rounded-md border-2 border-neutral-300 bg-neutral-50";
-/** 높이는 필드마다 붙인다 — 여기서 h-*를 고정하면 문자열 이어붙이기라 호출부 override가 진다 */
-const FIELD =
-  "w-full rounded-md border-2 border-neutral-300 bg-neutral-0 px-[14px] font-sans text-base font-medium text-neutral-700 outline-none placeholder:text-neutral-300";
-const LABEL = "block text-base font-semibold leading-[19px] text-neutral-700";
-
-/** 추천된 섹션. bars = 카드 안에 들어가는 자리표시 막대 수 */
-const SECTIONS = [
-  { title: "개요", bars: 1 },
-  { title: "상세 내용", bars: 2 },
-  { title: "참고 자료", bars: 1 },
+const SUGGESTED_SECTIONS = [
+  {
+    id: "overview",
+    title: "개요",
+    items: ["이 문서가 다루는 범위", "읽는 사람과 전제 조건"],
+  },
+  {
+    id: "detail",
+    title: "상세 내용",
+    items: ["인증 방식과 토큰 만료 정책", "요청·응답 형식", "오류 코드 표"],
+  },
+  {
+    id: "reference",
+    title: "참고 자료",
+    items: ["연결 문서 목록", "예제 요청/응답 블록"],
+  },
 ];
 
-const CONFIRM_LINES = [
-  "위 구조를 적용하면 현재 문서의 기존 내용은",
-  "유지되며, 빅 섹션이 추가됩니다.",
-  "섹션 순서와 제목은 문서 편집 화면에서 언제든지",
-  "수정할 수 있습니다.",
+const CONFIRM_NOTES = [
+  "구조를 적용해도 현재 문서의 기존 내용은 그대로 유지되고, 빈 섹션만 추가됩니다.",
+  "섹션 순서와 제목은 문서 편집 화면에서 언제든지 수정할 수 있습니다.",
 ];
 
 export default function AiStructurePage() {
+  const [selected, setSelected] = useState(SUGGESTED_SECTIONS.map((section) => section.id));
+
+  function toggle(id) {
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+    );
+  }
+
   return (
-    <div className="pl-[54px] pt-[46px]">
-      <h1 className="text-[32px] font-semibold leading-[38px] text-main-500">
-        AI 구조 추천
-      </h1>
-      <p className="mt-[13px] text-base font-semibold leading-[19px] text-neutral-500">
-        문서의 정보를 입력하면 AI가 구조를 제안해드립니다.
-      </p>
-
-      {/* ── 문서 정보 입력 ── */}
-      <h2 className="mt-[32px] text-xl font-semibold leading-[24px] text-neutral-700">
-        문서 정보 입력
-      </h2>
-      <section className={`mt-[19px] h-[294px] w-[1033px] pl-[41px] pr-[20px] pt-[22px] ${CARD}`}>
-        <div className="flex gap-[47px]">
-          <div className="w-[499px]">
-            <label htmlFor="ai-title" className={LABEL}>
-              문서 제목
-            </label>
-            <input
-              id="ai-title"
-              type="text"
-              placeholder="문서 제목을 입력하세요."
-              className={`mt-[13px] h-[35px] ${FIELD}`}
-            />
-            <label htmlFor="ai-purpose" className={`mt-[17px] ${LABEL}`}>
-              문서 목적 및 주제
-            </label>
-            <textarea
-              id="ai-purpose"
-              placeholder="문서 목적 및 주제를 입력하세요."
-              className={`mt-[9px] h-[129px] resize-none py-[9px] ${FIELD}`}
-            />
-          </div>
-
-          <div className="w-[422px]">
-            <span className={LABEL}>문서 유형</span>
-            {/* 셀렉트 2종 — 우측 끝 표식만 다르다 (화살표 / 파일 아이콘) */}
-            <button
-              type="button"
-              className={`mt-[13px] flex h-[35px] items-center justify-between pr-[10px] ${FIELD}`}
-            >
-              <span className="text-neutral-300">기술 명세</span>
-              <span
-                aria-hidden
-                className="rotate-90 text-xl font-semibold leading-none text-neutral-300"
-              >
-                &gt;
-              </span>
-            </button>
-            <span className={`mt-[17px] ${LABEL}`}>참고할 기준 문서 (선택)</span>
-            <button
-              type="button"
-              className={`mt-[9px] flex h-[35px] items-center justify-between pr-[10px] ${FIELD}`}
-            >
-              <span className="text-neutral-300">참고할 문서를 선택하세요.</span>
-              <IconPaper size={24} className="shrink-0 text-neutral-300" />
-            </button>
-            <div className="mt-[54px] flex justify-end">
-              <Button className="h-[44px] w-[164px] justify-center rounded-md px-0 py-0 text-base">
-                구조 추천 생성
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── 추천 구조 미리보기 ── */}
-      <div className="mt-[19px] flex items-center">
-        <h2 className="text-xl font-semibold leading-[24px] text-neutral-700">
-          추천 구조 미리보기
-        </h2>
-        <span className="ml-[22px] text-base font-semibold leading-[19px] text-neutral-500">
-          AI 추천 결과 · 3개 섹션 구성
-        </span>
-      </div>
-
-      <div className="mt-[19px] flex gap-[13px]">
-        <ol className="flex flex-col gap-[18px]">
-          {SECTIONS.map((section, i) => (
-            <li
-              key={section.title}
-              className={`h-[110px] w-[648px] pl-[29px] pr-[16px] pt-[13px] ${CARD}`}
-            >
-              {/* 연필은 번호/편집 줄보다 5px 위에서 시작한다 (Figma 642.5 vs 647) */}
-              <div className="flex items-start">
-                <div className="mt-[5px] flex items-center">
-                  <span className="text-base font-semibold leading-[19px] text-neutral-700">
-                    {i + 1}. {section.title}
-                  </span>
-                  <span className="ml-[28px] flex h-[28px] items-center rounded-full border-2 border-main-500/20 bg-main-50 px-[14px] text-[15px] font-semibold leading-[18px] text-main-500">
-                    편집
-                  </span>
-                </div>
-                <IconPen size={16} className="ml-auto shrink-0 text-neutral-500" />
-              </div>
-              {Array.from({ length: section.bars }, (_, b) => (
-                <span
-                  key={b}
-                  aria-hidden
-                  className={`ml-[18px] block h-[12px] w-[252px] rounded-full bg-neutral-100 ${
-                    b > 0 ? "mt-[13px]" : section.bars > 1 ? "mt-[10px]" : "mt-[17px]"
-                  }`}
-                />
-              ))}
-            </li>
-          ))}
-        </ol>
-
-        {/* ── 적용 전 확인 ── */}
-        <section
-          className={`flex h-[366px] w-[372px] flex-col pb-[23px] pl-[32px] pr-[20px] pt-[23px] ${CARD}`}
-        >
-          <h2 className="text-xl font-semibold leading-[24px] text-neutral-700">
-            적용 전 확인
-          </h2>
-          {CONFIRM_LINES.map((line, i) => (
-            <p
-              key={line}
-              className={`text-base font-semibold leading-[19px] text-neutral-500 ${
-                i === 0 ? "mt-[30px]" : "mt-[27px]"
-              }`}
-            >
-              {line}
-            </p>
-          ))}
-          <div className="mt-auto flex justify-end gap-[17px]">
+    <Page>
+      <PageHeader
+        breadcrumb={[
+          { label: "5IO주", href: "#/dashboard" },
+          { label: "문서", href: "#/documents" },
+          { label: "API 설계 원칙", href: "#/write" },
+          { label: "구조 추천" },
+        ]}
+        title="구조 추천"
+        description="지금까지 쓴 내용과 연결 문서를 바탕으로 CIO가 제안한 문서 구조입니다."
+        properties={[
+          { label: "제안 주체", value: <CioBadge feature="Writing Assistant" size="sm" /> },
+          { label: "선택", value: `${selected.length}/${SUGGESTED_SECTIONS.length}개 섹션` },
+        ]}
+        actions={
+          <>
             <Button
               variant="secondary"
-              className="h-[44px] w-[86px] justify-center rounded-md border-2 px-0 py-0 text-base text-neutral-700"
+              className="rounded-sm"
+              onClick={() => (window.location.hash = "#/write")}
             >
-              취소
+              돌아가기
             </Button>
-            <Button className="h-[44px] w-[136px] justify-center rounded-md px-0 py-0 text-base">
-              문서에 적용
+            <Button className="rounded-sm" disabled={selected.length === 0}>
+              선택한 구조 적용
             </Button>
+          </>
+        }
+      />
+
+      <Card padding="md" className="mt-[20px] border-info/25 bg-info-tint/40">
+        <AiDisclaimer />
+        <p className="mt-[8px] text-[13px] font-medium leading-[19px] text-neutral-500">
+          제안은 수락해야만 문서에 반영됩니다. CIO는 문서를 대신 완성하거나 자동 저장하지
+          않습니다.
+        </p>
+      </Card>
+
+      <Section title="추천 구조" caption="적용할 섹션만 선택하세요.">
+        {SUGGESTED_SECTIONS.length > 0 ? (
+          <div className="flex flex-col gap-[12px]">
+            {SUGGESTED_SECTIONS.map((section) => (
+              <Card key={section.id} padding="md">
+                <label className="flex cursor-pointer items-start gap-[10px]">
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(section.id)}
+                    onChange={() => toggle(section.id)}
+                    className="mt-[3px] size-[15px] accent-main-500"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[15px] font-semibold text-neutral-900">
+                      {section.title}
+                    </span>
+                    <ul className="mt-[8px] flex flex-col gap-[6px]">
+                      {section.items.map((item) => (
+                        <li
+                          key={item}
+                          className="flex gap-[8px] text-[13px] font-medium leading-[19px] text-neutral-500"
+                        >
+                          <span
+                            aria-hidden
+                            className="mt-[7px] size-[4px] shrink-0 rounded-full bg-neutral-300"
+                          />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </span>
+                </label>
+              </Card>
+            ))}
           </div>
-        </section>
-      </div>
-    </div>
+        ) : (
+          <Card padding="none">
+            <EmptyState
+              title="아직 제안할 구조가 없습니다"
+              description="내용이 조금 더 쌓이면 CIO가 목차와 필수 섹션을 제안합니다. 그동안은 자유롭게 작성하세요."
+              actionLabel="문서로 돌아가기"
+              onAction={() => (window.location.hash = "#/write")}
+            />
+          </Card>
+        )}
+      </Section>
+
+      <Section title="적용 전 확인">
+        <Card padding="md">
+          <CardHeader title="적용하면 이렇게 됩니다" />
+          <ul className="mt-[12px] flex flex-col gap-[8px]">
+            {CONFIRM_NOTES.map((note) => (
+              <li
+                key={note}
+                className="flex gap-[8px] text-[14px] font-medium leading-[21px] text-neutral-700"
+              >
+                <span aria-hidden className="mt-[8px] size-[4px] shrink-0 rounded-full bg-main-500" />
+                {note}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      </Section>
+    </Page>
   );
 }

@@ -1,3 +1,5 @@
+import { CURRENT_USER } from "../../data/raci";
+import { cx } from "../ui/cx";
 import {
   IconGraph,
   IconHome,
@@ -8,79 +10,107 @@ import {
   IconTalkBubbles,
 } from "../icons";
 
+/**
+ * 좌측 고정 사이드바 — 노션 워크스페이스 구조 (지시서 3장).
+ *
+ * 팀 표시 → 최상위 섹션을 페이지 트리처럼 → 하단에 설정 진입점(하위 항목 포함).
+ * 1차 구현은 모든 항목이 `href="#"` 자리표시였고 설정 하위 5개 화면으로 가는
+ * 길이 화면에 없었다. 실제 라우트를 연결한다.
+ */
+
 const NAV_ITEMS = [
-  { label: "대시보드", icon: <IconHome size={24} /> },
-  { label: "문서", icon: <IconPaper size={24} /> },
-  { label: "Doc PR", icon: <IconStar size={24} /> },
-  { label: "그래프", icon: <IconGraph size={18} /> },
-  { label: "작성", icon: <IconPen size={19} /> },
-  { label: "설정", icon: <IconSettings size={20} /> },
+  { label: "대시보드", href: "#/dashboard", icon: <IconHome size={16} /> },
+  { label: "문서", href: "#/documents", icon: <IconPaper size={16} /> },
+  { label: "Doc PR", href: "#/doc-pr", icon: <IconStar size={16} /> },
+  { label: "그래프", href: "#/graph", icon: <IconGraph size={14} /> },
+  { label: "작성", href: "#/write", icon: <IconPen size={14} /> },
 ];
 
-/**
- * 좌측 글로벌 내비게이션 (폭 294px, 우측 2px 구분선)
- *
- * 폭 주의: 사이드바 사각형은 세 프레임 모두 304px인데 배치가 다르다.
- *   1:9(로그인) x=-10 → 경계 294
- *   4:126(팀설정 초기화) x=-10 → 경계 294
- *   4:86(팀생성/참여) x=0 → 경계 304  ← 이 프레임만 다름
- * 안쪽 내용(로고 37, 아이콘 60, 라벨 98)은 세 프레임이 모두 같으므로
- * 다수인 294px로 통일했다.
- */
-export default function Sidebar({ active }) {
+/** 설정은 하위 화면이 다섯 개라 트리로 편다 */
+const SETTINGS_ITEM = {
+  label: "설정",
+  href: "#/settings",
+  icon: <IconSettings size={15} />,
+  children: [
+    { label: "RACI 역할 관리", href: "#/raci-roles" },
+    { label: "협업 규칙 (Charter)", href: "#/charter" },
+    { label: "팀 용어집", href: "#/glossary" },
+    { label: "팀원 관리", href: "#/team-members" },
+    { label: "승인권자 지정", href: "#/assign-approver" },
+  ],
+};
+
+function NavLink({ item, active, depth = 0 }) {
   return (
-    <aside className="flex w-[294px] shrink-0 flex-col border-r-2 border-neutral-300 bg-neutral-50">
-      {/* 로고 영역 — Rectangle 10 (37,28) 220×68 */}
-      <div className="pl-[37px] pt-[28px]">
-        <div className="flex h-[68px] w-[220px] items-center rounded-sm bg-main-25 pl-[34px]">
-          <span className="flex size-[40px] items-center justify-center rounded-full bg-main-500">
-            <IconTalkBubbles size={30} className="text-neutral-0" />
-          </span>
-          <span className="ml-[19px] text-2xl font-semibold leading-none text-main-500">
+    <a
+      href={item.href}
+      aria-current={active ? "page" : undefined}
+      className={cx(
+        "flex items-center gap-[8px] rounded-sm py-[6px] pr-[10px] text-[14px] transition-colors",
+        depth === 0 ? "pl-[10px] font-medium" : "pl-[32px] text-[13px]",
+        active
+          ? "bg-main-50 font-semibold text-main-700"
+          : "text-neutral-700 hover:bg-neutral-75",
+      )}
+    >
+      {item.icon && (
+        <span className="flex w-[16px] shrink-0 items-center justify-center text-neutral-500">
+          {item.icon}
+        </span>
+      )}
+      <span className="truncate">{item.label}</span>
+    </a>
+  );
+}
+
+export default function Sidebar({ active }) {
+  const settingsOpen =
+    active === SETTINGS_ITEM.label ||
+    SETTINGS_ITEM.children.some((child) => child.label === active);
+
+  return (
+    <aside className="flex w-[248px] shrink-0 flex-col border-r border-line bg-neutral-50">
+      {/* 워크스페이스 */}
+      <a
+        href="#/dashboard"
+        className="mx-[12px] mt-[12px] flex items-center gap-[10px] rounded-sm px-[8px] py-[8px] transition-colors hover:bg-neutral-75"
+      >
+        <span className="flex size-[28px] shrink-0 items-center justify-center rounded-sm bg-main-500">
+          <IconTalkBubbles size={18} className="text-neutral-0" />
+        </span>
+        <span className="min-w-0">
+          <span className="block truncate text-[14px] font-bold leading-[18px] text-neutral-900">
             Doc PR
           </span>
-        </div>
-      </div>
+          <span className="block truncate text-[12px] font-medium leading-[16px] text-neutral-500">
+            5IO주 · {CURRENT_USER.name}
+          </span>
+        </span>
+      </a>
 
-      {/* 내비게이션 — 아이콘 x=60, 라벨 x=98, 행 간격 67px */}
-      <nav className="mt-[46px]">
-        <ul className="flex flex-col gap-[41px]">
-          {NAV_ITEMS.map((item) => {
-            const isActive = item.label === active;
-            return (
-              <li key={item.label} className="relative">
-                {/* 선택 상태 (17:734/17:736): 칩 220×68 @ y-23, 표시바 3×37 @ y-8 */}
-                {isActive && (
-                  <>
-                    <span
-                      aria-hidden
-                      className="absolute left-[38px] top-[-23px] h-[68px] w-[220px] rounded-sm bg-main-25"
-                    />
-                    <span
-                      aria-hidden
-                      className="absolute left-[38px] top-[-8px] h-[37px] w-[3px] bg-main-500"
-                    />
-                  </>
-                )}
-                <a
-                  href="#"
-                  aria-current={isActive ? "page" : undefined}
-                  className={`relative flex items-center pl-[60px] transition-colors hover:text-main-500 ${
-                    isActive ? "text-main-500" : "text-neutral-700"
-                  }`}
-                >
-                  <span className="flex w-[38px] shrink-0 items-center">
-                    {item.icon}
-                  </span>
-                  <span className="text-xl font-medium leading-[26px]">
-                    {item.label}
-                  </span>
-                </a>
-              </li>
-            );
-          })}
+      <nav className="mt-[16px] flex-1 overflow-y-auto px-[12px]">
+        <ul className="flex flex-col gap-[2px]">
+          {NAV_ITEMS.map((item) => (
+            <li key={item.label}>
+              <NavLink item={item} active={item.label === active} />
+            </li>
+          ))}
         </ul>
       </nav>
+
+      {/* 하단 설정 진입점 */}
+      <div className="border-t border-line px-[12px] py-[12px]">
+        <NavLink item={SETTINGS_ITEM} active={SETTINGS_ITEM.label === active} />
+        {settingsOpen && (
+          <ul className="mt-[2px] flex flex-col gap-[2px]">
+            {SETTINGS_ITEM.children.map((child) => (
+              <li key={child.label}>
+                <NavLink item={child} active={child.label === active} depth={1} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </aside>
   );
 }

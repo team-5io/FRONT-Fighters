@@ -1,49 +1,47 @@
 import { IconSearch } from "../icons";
+import { cx } from "./cx";
 
 /**
- * 목록 화면 상단의 검색 + 필터 셀렉트 줄.
- * 문서 목록(Figma 17:212)과 Doc PR 목록(17:284)이 라벨/값만 다르고 구조가 같다.
+ * 목록 화면 상단의 검색 + 필터 줄 (노션 표 뷰의 필터 바 — 지시서 3장).
+ * 표 위에 붙고, 표와 같은 1px 선 톤을 쓴다.
  *
- * 치수: 검색 335 + 간격 12 + 셀렉트 102×3 = 677 (문서 목록 카드 폭과 일치).
- * 라벨과 셀렉트를 한 열로 묶고 items-end로 정렬해, 라벨 없는 검색창이 아래에 붙는다.
+ * filters: [{ label, value }] — 값은 아직 mock이라 선택 동작은 없다.
+ * right:  우측 슬롯 ("내 역할" 표시 등)
  */
-const FIELD = "rounded-md border-2 border-neutral-300 bg-neutral-50";
-
-export default function ListFilterBar({ filters, searchLabel }) {
+export default function ListFilterBar({
+  filters = [],
+  searchLabel,
+  searchPlaceholder = "검색",
+  right,
+  className = "",
+}) {
   return (
-    <div className="flex items-end gap-[12px]">
-      <label className={`flex h-[38px] w-[335px] items-center pl-[14px] ${FIELD}`}>
-        <IconSearch size={16} className="shrink-0 text-neutral-300" />
+    <div className={cx("flex flex-wrap items-center gap-[8px]", className)}>
+      <label className="flex h-[32px] min-w-[240px] flex-1 items-center gap-[8px] rounded-sm border border-line bg-neutral-0 px-[10px] transition-colors focus-within:border-main-500">
+        <IconSearch size={14} className="shrink-0 text-neutral-500" />
         <input
           type="search"
-          placeholder="검색"
+          placeholder={searchPlaceholder}
           aria-label={searchLabel}
-          className="ml-[10px] w-full bg-transparent text-base font-semibold leading-[19px] text-neutral-700 outline-none placeholder:text-neutral-300"
+          className="w-full bg-transparent text-[13px] font-medium text-neutral-900 outline-none placeholder:text-neutral-500"
         />
       </label>
 
       {filters.map((filter) => (
-        <div key={filter.label} className="w-[102px]">
-          <span className="block pl-[6px] text-base font-semibold leading-[19px] text-neutral-500">
-            {filter.label}
+        <button
+          key={filter.label}
+          type="button"
+          className="flex h-[32px] shrink-0 items-center gap-[6px] rounded-sm border border-line bg-neutral-0 px-[10px] text-[13px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
+        >
+          <span className="text-neutral-500">{filter.label}</span>
+          <span className="font-semibold">{filter.value}</span>
+          <span aria-hidden className="text-neutral-500">
+            ▾
           </span>
-          <button
-            type="button"
-            className={`mt-[7px] flex h-[38px] w-full items-center justify-between pl-[9px] pr-[8px] ${FIELD}`}
-          >
-            {/* 문서 목록의 '최근 수정순'이 102px 안에 겨우 들어간다 — 줄바꿈을 막아야 한 줄로 유지된다 */}
-            <span className="whitespace-nowrap text-sm font-semibold leading-[19px] text-neutral-700">
-              {filter.value}
-            </span>
-            <span
-              aria-hidden
-              className="shrink-0 rotate-90 text-base font-semibold leading-none text-neutral-500"
-            >
-              &gt;
-            </span>
-          </button>
-        </div>
+        </button>
       ))}
+
+      {right && <div className="ml-auto flex shrink-0 items-center gap-[8px]">{right}</div>}
     </div>
   );
 }

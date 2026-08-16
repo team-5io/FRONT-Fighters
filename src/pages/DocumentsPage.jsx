@@ -1,35 +1,27 @@
-import ListFilterBar from "../components/ui/ListFilterBar";
+import Page from "../components/layout/Page";
+import PageHeader from "../components/layout/PageHeader";
 import {
-  IconBook,
-  IconBrowser,
-  IconGaming,
-  IconPaper,
-  IconProcess,
-  IconShield,
-  IconTeam,
-} from "../components/icons";
+  Card,
+  CardHeader,
+  DataTable,
+  EmptyState,
+  ListFilterBar,
+  MyRoleBar,
+  RaciChip,
+  StatusBadge,
+} from "../components/ui";
+import { IconGlobe, IconPaper } from "../components/icons";
 
 /**
- * Figma 17:212 — 문서 목록
+ * 문서 목록 — `#/documents`
  *
- * 2단: 좌측 목록 677px + 간격 19 + 우측 상세 354px (348..1398).
- * 좌측 상단 컨트롤 폭도 335+12+102+12+102+12+102 = 677로 목록 카드와 맞아떨어진다.
- *
- * 세로 좌표 (프레임 1440×1024, 본문 시작 y=80):
- *   타이틀 126 · 설명 177 · 필터 라벨 228 · 컨트롤 254(38) · 목록 311(677×650)
- *   우측 상세 카드 228(354×735)
- *
- * 목록은 7행 + 2px 구분선. Figma 행 피치가 96/90/91/96/94/92로 들쭉날쭉해
- * 균등 분할(90.57px)했다 — 구분선 위치가 최대 7px 어긋난다.
+ * 정상화 지시서 5.C 적용:
+ *  - 상태값을 공용 `DOCUMENT_STATUS`(초안/리뷰중/공식)로 통일하고 StatusBadge로만 그린다.
+ *  - 본문이 전부 스켈레톤 막대이던 자리를 실제 데이터로 채웠다. 데이터가 없을 때는
+ *    `EmptyState`가 "왜 비었는지 + 다음 행동"을 안내한다(원칙 4).
+ *  - 번역본이 있는 문서에 번역 표기를 추가했다(지시서 5.G — 목록 화면 번역본 표기 정의).
+ *  - 노션 표 뷰 톤: 고정 헤더 · hover 강조 · 필터 바를 표 위에.
  */
-
-const CARD = "rounded-md border-2 border-neutral-300 bg-neutral-50";
-/** 상태 배지 — 배경/테두리/글자색이 상태마다 다르다 */
-const STATUS = {
-  공식: "bg-main-50 border-main-500/20 text-main-500",
-  초안: "bg-warning-tint border-warning/40 text-warning",
-  리뷰중: "bg-info-tint border-info/35 text-info",
-};
 
 const FILTERS = [
   { label: "상태", value: "전체" },
@@ -38,134 +30,240 @@ const FILTERS = [
 ];
 
 const DOCUMENTS = [
-  { icon: <IconPaper size={36} />, title: "API 설계 원칙", status: "공식", version: "v3.2" },
-  { icon: <IconBook size={31} />, title: "온보딩 가이드", status: "초안", version: "v1.0" },
-  { icon: <IconProcess size={31} />, title: "배포 운영 절차", status: "리뷰중", version: "v2.1" },
-  { icon: <IconShield size={32} />, title: "보안 정책 문서", status: "공식", version: "v1.4" },
-  { icon: <IconBrowser size={28} />, title: "스프린트 회고 템플릿", status: "초안", version: "v0.3" },
-  { icon: <IconTeam size={40} />, title: "팀 협업 규칙 v2", status: "공식", version: "v2.0" },
-  { icon: <IconGaming size={35} />, title: "장애 대응 플레이북", status: "리뷰중", version: "v1.1" },
+  {
+    id: "doc-1",
+    title: "API 설계 원칙",
+    type: "기술 명세",
+    status: "official",
+    version: "v3.2",
+    owner: { name: "김민섭", role: "R" },
+    updated: "12분 전",
+    translations: ["EN"],
+  },
+  {
+    id: "doc-2",
+    title: "온보딩 가이드",
+    type: "가이드라인",
+    status: "draft",
+    version: "v1.0",
+    owner: { name: "김준한", role: "R" },
+    updated: "1시간 전",
+    translations: [],
+  },
+  {
+    id: "doc-3",
+    title: "배포 운영 절차",
+    type: "운영 문서",
+    status: "inReview",
+    version: "v2.1",
+    owner: { name: "김재원", role: "R" },
+    updated: "3시간 전",
+    translations: ["EN", "JA"],
+  },
+  {
+    id: "doc-4",
+    title: "보안 정책 문서",
+    type: "정책",
+    status: "official",
+    version: "v1.4",
+    owner: { name: "고나영", role: "A" },
+    updated: "어제",
+    translations: [],
+  },
+  {
+    id: "doc-5",
+    title: "스프린트 회고 템플릿",
+    type: "템플릿",
+    status: "draft",
+    version: "v0.3",
+    owner: { name: "김성민", role: "R" },
+    updated: "2일 전",
+    translations: [],
+  },
+  {
+    id: "doc-6",
+    title: "팀 협업 규칙 v2",
+    type: "정책",
+    status: "official",
+    version: "v2.0",
+    owner: { name: "고나영", role: "A" },
+    updated: "3일 전",
+    translations: ["EN"],
+  },
+  {
+    id: "doc-7",
+    title: "장애 대응 플레이북",
+    type: "운영 문서",
+    status: "inReview",
+    version: "v1.1",
+    owner: { name: "김재원", role: "R" },
+    updated: "5일 전",
+    translations: [],
+  },
 ];
 
-/** 아직 내용이 정해지지 않은 자리를 채우는 회색 바 (Figma #D9D9D9, h12) */
-function SkeletonBar({ width, className = "" }) {
-  return (
-    <span
-      aria-hidden
-      className={`block h-[12px] rounded-full bg-neutral-100 ${className}`}
-      style={{ width }}
-    />
-  );
-}
+/** 선택된 문서 (mock — 실제 선택 상태 관리는 후속 단계 범위) */
+const SELECTED = DOCUMENTS[0];
 
-/** 배지 — 목록의 상태 배지와 상세의 회색 태그가 같은 모양을 쓴다 */
-function Pill({ children, className = "", width }) {
+const SELECTED_CHANGES = [
+  { at: "12분 전", by: "김민섭", text: "인증 헤더 규칙에 만료 시간 항목 추가" },
+  { at: "어제", by: "고나영", text: "오류 응답 코드 표를 표준 코드로 교체" },
+  { at: "3일 전", by: "김재원", text: "예제 요청/응답 블록 최신 버전으로 갱신" },
+];
+
+const SELECTED_PRS = [
+  { id: "PR #42", title: "인증 헤더 규칙 보강", status: "humanReview" },
+  { id: "PR #38", title: "오류 코드 표 정리", status: "merged" },
+];
+
+/** 번역본이 있으면 어떤 언어로 있는지 목록에서 바로 보이게 한다 */
+function TranslationTag({ languages }) {
+  if (!languages.length) return null;
   return (
     <span
-      className={`flex h-[28px] items-center justify-center rounded-full border-2 px-[14px] text-[15px] font-semibold leading-[18px] ${className}`}
-      style={width ? { width } : undefined}
+      className="inline-flex h-[22px] shrink-0 items-center gap-[4px] rounded-full border border-info/25 bg-info-tint px-[7px] font-mono text-[11px] font-bold text-info-text"
+      title={`AI 번역본 있음 — ${languages.join(", ")}`}
     >
-      {children}
+      <IconGlobe size={11} />
+      {languages.join("·")}
     </span>
   );
 }
 
+const COLUMNS = [
+  {
+    key: "title",
+    label: "문서명",
+    render: (row) => (
+      <div className="flex items-center gap-[8px]">
+        <span className="truncate font-semibold text-neutral-900">{row.title}</span>
+        <TranslationTag languages={row.translations} />
+      </div>
+    ),
+  },
+  { key: "type", label: "유형", width: 120 },
+  {
+    key: "status",
+    label: "상태",
+    width: 110,
+    render: (row) => <StatusBadge status={row.status} kind="document" size="sm" />,
+  },
+  {
+    key: "owner",
+    label: "담당",
+    width: 150,
+    render: (row) => <RaciChip role={row.owner.role} name={row.owner.name} size="sm" />,
+  },
+  {
+    key: "version",
+    label: "버전",
+    width: 80,
+    render: (row) => <span className="font-mono text-[13px] text-neutral-500">{row.version}</span>,
+  },
+  {
+    key: "updated",
+    label: "최근 수정",
+    width: 100,
+    align: "right",
+    render: (row) => <span className="text-[13px] text-neutral-500">{row.updated}</span>,
+  },
+];
+
 export default function DocumentsPage() {
   return (
-    <div className="pl-[54px] pt-[46px]">
-      <h1 className="text-[32px] font-semibold leading-[38px] text-main-500">
-        문서
-      </h1>
-      <p className="mt-[13px] text-base font-semibold leading-[19px] text-neutral-500">
-        조직의 모든 문서를 한눈에 확인하고 관리하세요.
-      </p>
+    <Page>
+      <PageHeader
+        breadcrumb={[{ label: "5IO주", href: "#/dashboard" }, { label: "문서" }]}
+        title="문서"
+        description="팀의 모든 문서를 한눈에 확인하고 관리하세요."
+      />
 
-      <div className="mt-[32px] flex gap-[19px]">
-        {/* ── 좌측: 검색·필터 + 문서 목록 ── */}
-        <div className="w-[677px]">
-          {/* 라벨 y=228 / 컨트롤 y=254 — Doc PR 목록과 공용 (ListFilterBar) */}
-          <ListFilterBar filters={FILTERS} searchLabel="문서 검색" />
+      <MyRoleBar className="mt-[20px]" scope="이 팀" />
 
-          <ul className={`mt-[19px] flex h-[650px] flex-col ${CARD}`}>
-            {DOCUMENTS.map((doc, i) => (
-              <li
-                key={doc.title}
-                className={`flex flex-1 items-center pl-[16px] pr-[26px] ${
-                  i > 0 ? "border-t-2 border-neutral-300" : ""
-                }`}
-              >
-                <span className="flex size-[58px] shrink-0 items-center justify-center rounded-md bg-main-50 text-main-500">
-                  {doc.icon}
-                </span>
-                <div className="ml-[18px] min-w-0 flex-1">
-                  <p className="truncate text-base font-semibold leading-[19px] text-neutral-700">
-                    {doc.title}
-                  </p>
-                  <SkeletonBar width="169px" className="mt-[9px]" />
-                </div>
-                {/* 배지는 폭이 달라도 가운데(x≈859)가 맞도록 고정폭 칸 안에서 중앙 정렬 */}
-                <span className="flex w-[80px] shrink-0 justify-center">
-                  <Pill className={STATUS[doc.status]}>{doc.status}</Pill>
-                </span>
-                <span className="ml-[24px] w-[31px] shrink-0 text-sm font-semibold leading-[19px] text-neutral-700">
-                  {doc.version}
-                </span>
-                <span
-                  aria-hidden
-                  className="ml-[30px] shrink-0 text-xl font-semibold leading-[23px] text-neutral-500"
-                >
-                  &gt;
-                </span>
-              </li>
-            ))}
-          </ul>
+      <div className="mt-[24px] flex gap-[24px]">
+        {/* ── 좌: 목록 ── */}
+        <div className="min-w-0 flex-1">
+          <ListFilterBar filters={FILTERS} searchLabel="문서 검색" searchPlaceholder="문서명·내용 검색" />
+          <DataTable
+            className="mt-[12px]"
+            columns={COLUMNS}
+            rows={DOCUMENTS}
+            onRowClick={() => {}}
+            empty={{
+              title: "아직 문서가 없습니다",
+              description:
+                "이 팀에 등록된 문서가 없습니다. 첫 문서를 작성하면 여기에서 상태와 버전을 함께 볼 수 있습니다.",
+              actionLabel: "문서 작성하기",
+              icon: <IconPaper size={20} />,
+              onAction: () => (window.location.hash = "#/write"),
+            }}
+          />
         </div>
 
-        {/* ── 우측: 선택 문서 상세 ── */}
-        <aside className={`h-[735px] w-[354px] px-[30px] pt-[27px] ${CARD}`}>
-          <h2 className="text-2xl font-semibold leading-[29px] text-neutral-700">
-            문서 요약
-          </h2>
-          <p className="mt-[21px] text-xl font-semibold leading-[24px] text-neutral-700">
-            API 설계 원칙
-          </p>
-          <div className="mt-[17px] flex gap-[8px]">
-            <Pill width="60px" className="border-neutral-300 bg-neutral-50 text-neutral-700">
-              공식
-            </Pill>
-            <Pill width="60px" className="border-neutral-300 bg-neutral-50 text-neutral-700">
-              v3.2
-            </Pill>
-          </div>
-          <SkeletonBar width="252px" className="mt-[18px]" />
-          <SkeletonBar width="163px" className="mt-[15px]" />
+        {/* ── 우: 선택 문서 요약 ── */}
+        <aside className="w-[320px] shrink-0">
+          <Card padding="md">
+            <CardHeader
+              title={SELECTED.title}
+              caption={`${SELECTED.type} · ${SELECTED.version}`}
+              right={<StatusBadge status={SELECTED.status} kind="document" size="sm" />}
+            />
+            <p className="mt-[14px] text-[13px] font-medium leading-[20px] text-neutral-700">
+              팀이 API를 설계할 때 지켜야 할 명명·인증·오류 응답 규칙을 정리한 문서입니다.
+              Doc PR로 변경 이력이 관리되며, 연결된 문서에 영향을 줍니다.
+            </p>
+            <div className="mt-[14px] flex flex-wrap items-center gap-[6px]">
+              <RaciChip role={SELECTED.owner.role} name={SELECTED.owner.name} size="sm" />
+              <TranslationTag languages={SELECTED.translations} />
+            </div>
+          </Card>
 
-          <h2 className="mt-[39px] text-2xl font-semibold leading-[29px] text-neutral-700">
-            최근 변경
-          </h2>
-          <SkeletonBar width="252px" className="mt-[24px]" />
-          <SkeletonBar width="252px" className="mt-[18px]" />
-          <SkeletonBar width="252px" className="mt-[18px]" />
+          <Card padding="md" className="mt-[12px]">
+            <CardHeader title="최근 변경" />
+            <ul className="mt-[12px] flex flex-col gap-[10px]">
+              {SELECTED_CHANGES.map((change) => (
+                <li key={change.at} className="text-[13px] leading-[19px]">
+                  <p className="font-medium text-neutral-700">{change.text}</p>
+                  <p className="mt-[2px] text-neutral-500">
+                    {change.by} · {change.at}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </Card>
 
-          <h2 className="mt-[41px] text-2xl font-semibold leading-[29px] text-neutral-700">
-            연결된 Doc PR
-          </h2>
-          <div className="mt-[27px] h-[61px] w-[296px] rounded-md border-2 border-neutral-300 bg-neutral-0" />
-          <div className="mt-[7px] h-[61px] w-[296px] rounded-md border-2 border-neutral-300 bg-neutral-0" />
-
-          <h2 className="mt-[28px] text-2xl font-semibold leading-[29px] text-neutral-700">
-            연결 문서
-          </h2>
-          <div className="mt-[16px] flex gap-[12px]">
-            <Pill width="136px" className="border-neutral-300 bg-neutral-50 text-neutral-700">
-              배포 운영 절차
-            </Pill>
-            <Pill width="136px" className="border-neutral-300 bg-neutral-50 text-neutral-700">
-              보안 정책 문서
-            </Pill>
-          </div>
+          <Card padding="md" className="mt-[12px]">
+            <CardHeader title="연결된 Doc PR" />
+            {SELECTED_PRS.length > 0 ? (
+              <ul className="mt-[12px] flex flex-col gap-[8px]">
+                {SELECTED_PRS.map((pr) => (
+                  <li key={pr.id}>
+                    <a
+                      href="#/doc-pr-detail"
+                      className="flex items-center gap-[8px] rounded-sm border border-line px-[10px] py-[8px] transition-colors hover:bg-neutral-50"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-[13px] font-semibold text-neutral-900">
+                          {pr.title}
+                        </span>
+                        <span className="block font-mono text-[12px] text-neutral-500">{pr.id}</span>
+                      </span>
+                      <StatusBadge status={pr.status} size="sm" className="ml-auto" />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <EmptyState
+                compact
+                title="연결된 Doc PR이 없습니다"
+                description="이 문서를 수정하려면 Doc PR을 만들어 리뷰를 거쳐야 합니다."
+                actionLabel="Doc PR 만들기"
+              />
+            )}
+          </Card>
         </aside>
       </div>
-    </div>
+    </Page>
   );
 }

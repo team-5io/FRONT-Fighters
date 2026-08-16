@@ -1,191 +1,178 @@
-import Button from "../components/ui/Button";
+import { useState } from "react";
+import Page, { Section } from "../components/layout/Page";
+import PageHeader from "../components/layout/PageHeader";
 import {
-  IconExclamationCircle,
-  IconSearch,
-  IconTeam,
-  IconUserCircle,
-} from "../components/icons";
+  Button,
+  Card,
+  CardHeader,
+  PermissionNotice,
+  RaciChip,
+  StatusBadge,
+} from "../components/ui";
+import { canManageTeam } from "../data/raci";
+import { IconExclamationCircle } from "../components/icons";
 
 /**
- * Figma 51:508 — 승인권자 지정
+ * 승인권자 지정 — `#/assign-approver`
  *
- * 본문 좌측 348, 폭 1033 (Figma 카드 x가 348/349/352로 흔들려 348에 맞췄다).
- *
- * 세로 좌표 (프레임 1440×1812, 본문 시작 y=80):
- *   타이틀 126 · 부재 상태 214(199) · 대체 지정 439(300) · 선택 765(566)
- *   적용 범위 1358(218) · 버튼 1597(192×44)
+ * 정상화 지시서 5.K 적용:
+ *  - `지정 조건 안내` 패널만 테두리가 `main-500` 실색이던 것을 다른 안내 패널과 같은
+ *    톤으로 맞췄다.
+ *  - **팀원 관리 화면과의 관계를 화면에 명시.** 기능이 겹쳐 보이지만 단위가 다르다 —
+ *    이 화면은 **Doc PR 하나**의 대체 승인권자를 지정하고(`PATCH /doc-prs/{prId}/approver`),
+ *    팀원 관리는 승인권자가 없는 Doc PR을 **팀 단위로 모아** 처리한다.
+ *    유저플로우도 n22(Doc PR 상세) → n25(승인권자 지정) → n44로 이 화면을 Doc PR 계열에 둔다.
+ *  - 팀 관리자 권한 표시 추가.
  */
 
-const CARD = "rounded-md border-2 border-neutral-300 bg-neutral-50";
-/** 흰 배경 입력 박스 — 테두리가 카드보다 연하다 (#D9D9D9) */
-const FIELD = "w-[990px] rounded-md border-2 border-neutral-100 bg-neutral-0";
-const PILL =
-  "flex h-[28px] shrink-0 items-center justify-center rounded-full border-2 border-main-500/20 bg-main-50 text-sm font-semibold leading-[17px] text-main-500";
+const TARGET_PR = {
+  id: "PR #142",
+  title: "온보딩 가이드 v2 검토 요청",
+  document: "온보딩 가이드 v2",
+  status: "needsReviewer",
+  previousApprover: "김성민",
+};
 
-const CONDITIONS = [
-  { label: "A 역할", width: 84 },
-  { label: "승인 권한 필수", width: 124 },
-  { label: "팀 관리자 전용", width: 124 },
+const CANDIDATES = [
+  { name: "고나영", role: "A", note: "현재 활성 · 담당 문서 4건" },
+  { name: "김성민", role: "A", note: "비활성 상태 (지정 불가)", disabled: true },
 ];
 
-/** 38px 연보라 타일 + 20px 제목 (제목은 타일보다 6px 아래) */
-function CardHead({ icon, title }) {
-  return (
-    <div className="flex h-[38px] items-start">
-      <span className="flex size-[38px] shrink-0 items-center justify-center rounded-md bg-main-50 text-main-500">
-        {icon}
-      </span>
-      <h2 className="ml-[15px] mt-[6px] text-xl font-semibold leading-[24px] text-neutral-700">
-        {title}
-      </h2>
-    </div>
-  );
-}
+const CONDITIONS = [
+  "대체 승인권자는 해당 문서에 대한 A 역할(승인 권한) 보유자여야 합니다.",
+  "팀 관리자만 이 작업을 수행할 수 있습니다.",
+  "지정은 현재 Doc PR에만 적용되고, 이후 생성되는 Doc PR의 기본 승인권자는 바뀌지 않습니다.",
+];
 
 export default function AssignApproverPage() {
+  const editable = canManageTeam();
+  const [approver, setApprover] = useState("고나영");
+  const [reason, setReason] = useState("");
+
   return (
-    <div className="pb-[171px] pl-[54px] pt-[46px]">
-      <div className="flex w-[1033px] items-start">
-        <h1 className="text-[32px] font-semibold leading-[38px] text-main-500">
-          승인권자 지정
-        </h1>
-        <Button className="ml-auto mt-[3px] h-[44px] w-[136px] justify-center rounded-md px-0 py-0 text-base">
-          Doc PR 상세로
-        </Button>
-      </div>
+    <Page>
+      <PageHeader
+        breadcrumb={[
+          { label: "5IO주", href: "#/dashboard" },
+          { label: "Doc PR", href: "#/doc-pr" },
+          { label: TARGET_PR.id, href: "#/doc-pr-detail" },
+          { label: "승인권자 지정" },
+        ]}
+        title="승인권자 지정"
+        description={`${TARGET_PR.id} · ${TARGET_PR.title} 하나에만 적용되는 대체 승인권자를 지정합니다.`}
+        properties={[
+          { label: "상태", value: <StatusBadge status={TARGET_PR.status} size="sm" /> },
+          { label: "대상 문서", value: TARGET_PR.document },
+          { label: "기존 승인권자", value: `${TARGET_PR.previousApprover} (비활성)` },
+        ]}
+        actions={
+          <Button
+            variant="secondary"
+            className="rounded-sm"
+            onClick={() => (window.location.hash = "#/doc-pr-detail")}
+          >
+            Doc PR 상세로
+          </Button>
+        }
+      />
 
-      {/* ── 승인권자 부재 상태 ── */}
-      <section className={`mt-[41px] flex h-[199px] w-[1033px] pl-[15px] pt-[15px] ${CARD}`}>
-        <div className="w-[488px] shrink-0">
-          <CardHead
-            icon={<IconExclamationCircle size={26} />}
-            title="승인권자 부재 상태"
-          />
-          {/* Figma는 두 문장 사이에 빈 줄이 있어 38px 간격이 된다 */}
-          <p className="ml-[19px] mt-[34px] text-base font-semibold leading-[19px] text-neutral-700">
-            지정된 승인권자(김성민)가 현재 팀에서 비활성 상태입니다.
-          </p>
-          <p className="ml-[19px] mt-[19px] text-base font-semibold leading-[19px] text-neutral-700">
-            최소 한 명의 A 역할 승인권자가 필요합니다.
-          </p>
-        </div>
-        <div className="ml-auto w-[231px] shrink-0 pt-[38px]">
-          <p className="ml-[17px] text-base font-semibold leading-[19px] text-neutral-700">
-            Doc PR 상태
-          </p>
-          <span className={`mt-[25px] w-[126px] ${PILL}`}>Merge 차단됨</span>
-        </div>
-        <div className="w-[297px] shrink-0 pt-[36px]">
-          <p className="ml-[40px] text-base font-semibold leading-[19px] text-neutral-700">
-            대상 문서
-          </p>
-          <span
-            aria-hidden
-            className="mt-[35px] block h-[12px] w-[140px] rounded-full bg-neutral-100"
-          />
-        </div>
-      </section>
+      <PermissionNotice className="mt-[20px]" allowed={editable} action="대체 승인권자 지정" />
 
-      {/* ── 대체 승인권자 지정 (조건 안내) ── */}
-      <section className={`mt-[26px] h-[300px] w-[1033px] pl-[15px] pt-[15px] ${CARD}`}>
-        <CardHead icon={<IconTeam size={24} />} title="대체 승인권자 지정" />
-        {/* 이 패널만 테두리가 main-500 실색이다 (다른 안내 패널은 main-500/20) */}
-        <div className="ml-[4px] mt-[17px] h-[208px] w-[992px] rounded-md border-2 border-main-500 bg-main-25 pl-[26px] pt-[21px]">
-          <p className="text-[18px] font-semibold leading-[21px] text-neutral-700">
-            지정 조건 안내
-          </p>
-          <p className="mt-[22px] text-base font-semibold leading-[30px] text-neutral-500">
-            대체 승인권자는 해당 문서에 대한 A 역할 (승인권한) 보유자여야 합니다.
-            <br />
-            팀 관리자만 이 작업을 수행할 수 있습니다.
-          </p>
-          <div className="mt-[25px] flex gap-[33px]">
-            {CONDITIONS.map((c) => (
-              <span key={c.label} className={PILL} style={{ width: c.width }}>
-                {c.label}
-              </span>
+      {/* 팀원 관리와 기능이 겹쳐 보여 단위를 명시한다 */}
+      <p className="mt-[8px] text-[13px] font-medium leading-[19px] text-neutral-500">
+        여러 Doc PR의 승인권자를 한 번에 정리하려면{" "}
+        <a href="#/team-members" className="font-semibold text-main-500">
+          팀원 관리
+        </a>
+        에서 팀 단위로 처리할 수 있습니다.
+      </p>
+
+      {/* ── 부재 상태 ── */}
+      <Section title="승인권자 부재 상태">
+        <Card padding="md" className="border-warning/25 bg-warning-tint/40">
+          <CardHeader
+            title={`지정된 승인권자(${TARGET_PR.previousApprover})가 현재 팀에서 비활성 상태입니다`}
+            caption="최소 한 명의 A 역할 승인권자가 필요합니다. 지정 전까지 Merge가 차단됩니다."
+            right={<IconExclamationCircle size={18} className="text-warning-text" />}
+          />
+        </Card>
+      </Section>
+
+      {/* ── 지정 조건 ── */}
+      <Section title="지정 조건">
+        <Card padding="md">
+          <ul className="flex flex-col gap-[8px]">
+            {CONDITIONS.map((condition) => (
+              <li
+                key={condition}
+                className="flex gap-[8px] text-[14px] font-medium leading-[21px] text-neutral-700"
+              >
+                <span aria-hidden className="mt-[8px] size-[4px] shrink-0 rounded-full bg-main-500" />
+                {condition}
+              </li>
             ))}
-          </div>
-        </div>
-      </section>
+          </ul>
+        </Card>
+      </Section>
 
       {/* ── 대체 승인권자 선택 ── */}
-      <section className={`mt-[26px] h-[566px] w-[1033px] pl-[23px] pt-[28px] ${CARD}`}>
-        <label className={`flex h-[48px] items-center pl-[15px] ${FIELD}`}>
-          <IconSearch size={22} className="shrink-0 text-neutral-300" />
-          <input
-            type="search"
-            placeholder="대체 승인권자 검색"
-            aria-label="대체 승인권자 검색"
-            className="ml-[15px] w-full bg-transparent text-xl font-medium leading-[26px] text-neutral-700 outline-none placeholder:text-neutral-300"
-          />
-        </label>
+      <Section title="대체 승인권자 선택">
+        <Card padding="md">
+          <ul className="flex flex-col gap-[8px]">
+            {CANDIDATES.map((candidate) => (
+              <li key={candidate.name}>
+                <label
+                  className={`flex items-center gap-[10px] rounded-sm border px-[12px] py-[10px] transition-colors ${
+                    candidate.disabled || !editable
+                      ? "cursor-not-allowed border-line bg-neutral-50 opacity-60"
+                      : approver === candidate.name
+                        ? "cursor-pointer border-main-500 bg-main-50"
+                        : "cursor-pointer border-line bg-neutral-0 hover:bg-neutral-50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="approver"
+                    value={candidate.name}
+                    checked={approver === candidate.name}
+                    disabled={candidate.disabled || !editable}
+                    onChange={() => setApprover(candidate.name)}
+                    className="size-[15px] accent-main-500"
+                  />
+                  <RaciChip role={candidate.role} name={candidate.name} size="sm" />
+                  <span className="text-[13px] font-medium text-neutral-500">{candidate.note}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
 
-        <p className="ml-[7px] mt-[16px] text-xl font-semibold leading-[24px] text-neutral-700">
-          대체 승인권자 선택
-        </p>
-        <button
-          type="button"
-          className={`mt-[18px] flex h-[48px] items-center justify-between pl-[19px] pr-[13px] ${FIELD}`}
-        >
-          <span className="text-[18px] font-semibold leading-[21px] text-neutral-700">
-            고나영 (A 역할)
-          </span>
-          <span
-            aria-hidden
-            className="rotate-90 text-xl font-medium leading-none text-neutral-300"
-          >
-            &gt;
-          </span>
-        </button>
+          <label className="mt-[16px] block">
+            <span className="mb-[6px] block text-[13px] font-semibold text-neutral-700">
+              지정 사유 (선택)
+            </span>
+            <textarea
+              value={reason}
+              onChange={(event) => setReason(event.target.value.slice(0, 1000))}
+              disabled={!editable}
+              rows={4}
+              placeholder="지정 사유를 입력하세요."
+              className="w-full resize-none rounded-sm border border-line bg-neutral-0 px-[12px] py-[10px] font-sans text-[14px] font-medium leading-[21px] text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500 disabled:cursor-not-allowed disabled:bg-neutral-50"
+            />
+            <span className="mt-[4px] block text-right text-[12px] font-medium text-neutral-500">
+              {reason.length}/1000
+            </span>
+          </label>
 
-        <p className="ml-[11px] mt-[16px] text-xl font-semibold leading-[24px] text-neutral-700">
-          역할 및 권한 확인
-        </p>
-        <div className="ml-[11px] mt-[18px] flex items-center">
-          <IconUserCircle size={39} className="shrink-0 text-main-500" />
-          <div className="ml-[25px]">
-            <p className="text-[18px] font-semibold leading-[21px] text-neutral-700">
-              고나영
-            </p>
-            <p className="mt-[8px] text-base font-semibold leading-[19px] text-neutral-500">
-              A 역할 · 현재 활성
-            </p>
+          <div className="mt-[16px] flex items-center gap-[10px]">
+            <Button className="rounded-sm" disabled={!editable}>
+              대체 승인권자 지정
+            </Button>
+            <span className="text-[13px] font-medium text-neutral-500">
+              이 지정은 {TARGET_PR.id}에만 적용됩니다.
+            </span>
           </div>
-        </div>
-
-        <p className="ml-[14px] mt-[23px] text-xl font-semibold leading-[24px] text-neutral-700">
-          지정 사유 (선택)
-        </p>
-        <div className={`relative mt-[22px] h-[175px] ${FIELD}`}>
-          <textarea
-            placeholder="지정 사유를 입력하세요 (선택)"
-            aria-label="지정 사유"
-            className="size-full resize-none rounded-md bg-transparent px-[15px] py-[15px] font-sans text-xl font-medium leading-[26px] text-neutral-700 outline-none placeholder:text-neutral-300"
-          />
-          <span className="absolute bottom-[12px] right-[20px] text-xl font-medium leading-[26px] text-neutral-300">
-            0/1000
-          </span>
-        </div>
-      </section>
-
-      {/* ── 적용 예정 범위 ── */}
-      <section className={`mt-[27px] h-[218px] w-[1033px] pl-[29px] pt-[24px] ${CARD}`}>
-        <h2 className="text-xl font-semibold leading-[24px] text-neutral-700">
-          적용 예정 범위
-        </h2>
-        <p className="ml-[6px] mt-[43px] text-xl font-semibold leading-[30px] text-neutral-700">
-          이 대체 승인권자 지정은 현재 Doc PR에만 적용됩니다.
-          <br />
-          추후 생성되는 Doc PR의 기본 승인권자 설정은 변경되지 않습니다.
-        </p>
-      </section>
-
-      <div className="mt-[21px] flex w-[1033px] justify-end">
-        <Button className="h-[44px] w-[192px] justify-center rounded-md px-0 py-0 text-base">
-          대체 승인권자 지정
-        </Button>
-      </div>
-    </div>
+        </Card>
+      </Section>
+    </Page>
   );
 }

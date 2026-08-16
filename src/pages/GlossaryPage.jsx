@@ -1,174 +1,223 @@
-import Button from "../components/ui/Button";
+import { useState } from "react";
+import Page, { Section } from "../components/layout/Page";
+import PageHeader from "../components/layout/PageHeader";
+import {
+  Button,
+  Card,
+  CardHeader,
+  DataTable,
+  PermissionNotice,
+} from "../components/ui";
+import { CURRENT_USER, canManageTeam } from "../data/raci";
+import { IconText } from "../components/icons";
 
 /**
- * Figma 30:106 — 팀 용어집 관리
+ * 팀 용어집 — `#/glossary`
  *
- * 이 프레임만 본문 폭이 좁다 — 카드가 좌측 352, 폭 959 (다른 화면은 348/1033).
- * 타이틀만 348이라 4px 어긋나는데, Figma 그대로 뒀다.
- *
- * 세로 좌표 (프레임 1440×1240, 본문 시작 y=80):
- *   타이틀 126 · 등록된 용어 204 · 표 251(299) · 페이지네이션 566(44)
- *   용어 추가 659 · 입력 카드 708(399)
+ * 정상화 지시서 5.O 적용:
+ *  - **빈 상태 안내 추가.** 1차 구현은 머리 행만 있고 5개 행이 전부 비어 있어
+ *    로딩인지 데이터 없음인지 구분되지 않았다. `EmptyState`가 왜 비었는지와
+ *    다음 행동(용어 추가)을 안내한다(원칙 4).
+ *  - 타이틀 오기 `팀 설정` → `팀 용어집`.
+ *  - 페이지네이션 정리 — 결과가 한 페이지뿐이면 표시하지 않는다.
+ *  - 용어집이 어디에 쓰이는지 화면에서 밝혔다. Dev-aware Translation이 번역할 때
+ *    보존·치환 기준으로 참조한다(`POST /documents/{documentId}/translations`).
  */
 
-const CARD = "rounded-md border-2 border-neutral-300 bg-neutral-50";
-/** 카드 안의 흰 입력 상자 */
-const FIELD = "rounded-md border-2 border-neutral-300 bg-neutral-0";
-/** 표만 테두리가 한 단계 연하다 (#D9D9D9) */
-const TABLE = "rounded-md border-2 border-neutral-100 bg-neutral-0";
+const CATEGORIES = ["일반", "기술 용어", "제품 고유명사", "약어"];
 
-/** left: 표 안쪽(354) 기준. 열 간격이 187/192/195/184로 제각각이라 절대 배치 */
-const TABLE_HEAD = [
-  { label: "원문 (Source)", left: 25 },
-  { label: "번역어", left: 212 },
-  { label: "설명", left: 404 },
-  { label: "등록자", left: 599 },
-  { label: "등록일", left: 783 },
-];
+/** 처음에는 등록된 용어가 없다 — 빈 상태가 기본 화면이다 */
+const INITIAL_TERMS = [];
 
-/** 본문이 비어 있는 표 — Figma 구분선 간격(348/399/457/507)을 그대로 옮긴 행 높이 */
-const EMPTY_ROWS = [52, 51, 58, 50, 41];
-
-/** labelTop·top 모두 카드 안쪽(354,710) 기준 */
-const TERM_FIELDS = [
-  {
-    label: "원문 (Source)",
-    labelTop: 18,
-    top: 44,
-    height: 42,
-    placeholder: "원문을 입력하세요.",
-  },
-  {
-    label: "번역어",
-    labelTop: 97,
-    top: 123,
-    height: 42,
-    placeholder: "번역어를 입력하세요.",
-  },
-  {
-    label: "설명 (선택)",
-    labelTop: 176,
-    top: 203,
-    height: 98,
-    placeholder: "설명을 입력하세요.",
-    multiline: true,
-  },
-];
+const PAGE_SIZE = 10;
 
 export default function GlossaryPage() {
+  const editable = canManageTeam();
+  const [terms, setTerms] = useState(INITIAL_TERMS);
+  const [form, setForm] = useState({ source: "", target: "", note: "", category: CATEGORIES[0] });
+
+  const canSubmit = editable && form.source.trim() && form.target.trim();
+  const pageCount = Math.max(1, Math.ceil(terms.length / PAGE_SIZE));
+
+  function addTerm(event) {
+    event.preventDefault();
+    if (!canSubmit) return;
+    setTerms((prev) => [
+      {
+        id: `term-${Date.now()}`,
+        ...form,
+        author: CURRENT_USER.name,
+        createdAt: new Date().toISOString().slice(0, 10),
+      },
+      ...prev,
+    ]);
+    setForm({ source: "", target: "", note: "", category: CATEGORIES[0] });
+  }
+
+  const columns = [
+    {
+      key: "source",
+      label: "원문 (Source)",
+      render: (row) => (
+        <span className="font-mono text-[13px] font-bold text-neutral-900">{row.source}</span>
+      ),
+    },
+    { key: "target", label: "번역어", width: 160 },
+    {
+      key: "note",
+      label: "설명",
+      render: (row) => (
+        <span className="text-[13px] text-neutral-500">{row.note || "—"}</span>
+      ),
+    },
+    {
+      key: "category",
+      label: "분류",
+      width: 120,
+      render: (row) => (
+        <span className="rounded-full border border-line bg-neutral-50 px-[8px] py-[2px] font-mono text-[12px] font-bold text-neutral-700">
+          {row.category}
+        </span>
+      ),
+    },
+    { key: "author", label: "등록자", width: 100 },
+    {
+      key: "createdAt",
+      label: "등록일",
+      width: 110,
+      align: "right",
+      render: (row) => <span className="text-[13px] text-neutral-500">{row.createdAt}</span>,
+    },
+  ];
+
   return (
-    <div className="pb-[133px] pl-[54px] pt-[46px]">
-      {/* Figma의 타이틀이 `팀 설정`이다 — 프레임 이름(팀 용어집 관리)과 다르지만 원문 유지 */}
-      <h1 className="text-[32px] font-semibold leading-[38px] text-main-500">
-        팀 설정
-      </h1>
+    <Page>
+      <PageHeader
+        breadcrumb={[
+          { label: "5IO주", href: "#/dashboard" },
+          { label: "설정", href: "#/settings" },
+          { label: "팀 용어집" },
+        ]}
+        title="팀 용어집"
+        description="문서 검토와 번역에서 일관성 기준이 되는 팀 전용 용어를 등록·관리합니다."
+        properties={[{ label: "등록된 용어", value: `${terms.length}개` }]}
+      />
+
+      <PermissionNotice className="mt-[20px]" allowed={editable} action="용어 등록·삭제" />
+
+      <p className="mt-[8px] text-[13px] font-medium leading-[19px] text-neutral-500">
+        여기 등록한 용어는{" "}
+        <a href="#/translation" className="font-semibold text-main-500">
+          번역 보기
+        </a>
+        에서 원문 보존·치환 기준으로 쓰입니다. 코드 블록·API명·변수명은 용어집과 무관하게
+        항상 원문 그대로 유지됩니다.
+      </p>
 
       {/* ── 등록된 용어 ── */}
-      <h2 className="ml-[4px] mt-[40px] text-xl font-semibold leading-[24px] text-neutral-700">
-        등록된 용어
-      </h2>
-      <div className={`ml-[4px] mt-[23px] h-[299px] w-[959px] overflow-hidden ${TABLE}`}>
-        <div className="relative h-[43px] bg-neutral-100">
-          {TABLE_HEAD.map((col) => (
-            <span
-              key={col.label}
-              className="absolute top-[12px] whitespace-nowrap text-base font-semibold leading-[19px] text-neutral-700"
-              style={{ left: col.left }}
-            >
-              {col.label}
-            </span>
-          ))}
-        </div>
-        {/* 행에 들어갈 용어가 아직 없다 — 빈 행만 그려져 있다 (2차 UX 패스 항목) */}
-        {EMPTY_ROWS.map((height, index) => (
-          <div
-            key={height + "-" + index}
-            className={index > 0 ? "border-t-2 border-neutral-100" : ""}
-            style={{ height }}
-          />
-        ))}
-      </div>
-
-      {/* ── 페이지네이션 + 용어 삭제 ── */}
-      <div className="relative ml-[4px] mt-[16px] h-[44px] w-[959px]">
-        <button
-          type="button"
-          aria-label="이전 페이지"
-          className="absolute left-[414px] top-1/2 -translate-x-1/2 -translate-y-1/2 rotate-180 text-base font-semibold leading-[19px] text-neutral-700"
-        >
-          &gt;
-        </button>
-        <button
-          type="button"
-          aria-current="page"
-          className="absolute left-[470px] top-1/2 flex size-[31px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-sm border-2 border-main-500 bg-neutral-0 text-base font-semibold leading-[19px] text-main-500"
-        >
-          1
-        </button>
-        <button
-          type="button"
-          aria-label="다음 페이지"
-          className="absolute left-[510px] top-1/2 -translate-x-1/2 -translate-y-1/2 text-base font-semibold leading-[19px] text-neutral-700"
-        >
-          &gt;
-        </button>
-        <Button className="absolute left-[830px] top-0 h-[44px] w-[128px] justify-center rounded-md px-0 py-0 text-base">
-          용어 삭제
-        </Button>
-      </div>
+      <Section title="등록된 용어">
+        <DataTable
+          columns={columns}
+          rows={terms}
+          empty={{
+            title: "아직 등록된 용어가 없습니다",
+            description:
+              "용어를 등록하면 번역할 때 팀이 정한 표기로 통일되고, 문서 검토에서도 같은 기준이 적용됩니다. 아래에서 첫 용어를 추가해 보세요.",
+            actionLabel: editable ? "첫 용어 추가하기" : undefined,
+            icon: <IconText size={20} />,
+            onAction: () => document.getElementById("glossary-source")?.focus(),
+          }}
+        />
+        {/* 결과가 한 페이지뿐이면 페이지네이션을 띄우지 않는다 */}
+        {pageCount > 1 && (
+          <nav className="mt-[12px] flex items-center justify-center gap-[6px]" aria-label="페이지">
+            {Array.from({ length: pageCount }, (_, index) => (
+              <button
+                key={index}
+                type="button"
+                aria-current={index === 0 ? "page" : undefined}
+                className="size-[28px] rounded-sm border border-line bg-neutral-0 font-mono text-[13px] font-bold text-neutral-700 aria-[current=page]:border-main-500 aria-[current=page]:text-main-500"
+              >
+                {index + 1}
+              </button>
+            ))}
+          </nav>
+        )}
+      </Section>
 
       {/* ── 용어 추가 ── */}
-      <h2 className="ml-[4px] mt-[49px] text-xl font-semibold leading-[24px] text-neutral-700">
-        용어 추가
-      </h2>
-      <section className={`relative ml-[4px] mt-[25px] h-[399px] w-[959px] ${CARD}`}>
-        {TERM_FIELDS.map((field) => (
-          <div key={field.label}>
-            <span
-              className="absolute left-[32px] whitespace-nowrap text-base font-semibold leading-[19px] text-neutral-700"
-              style={{ top: field.labelTop }}
-            >
-              {field.label}
-            </span>
-            {field.multiline ? (
-              <textarea
-                placeholder={field.placeholder}
-                aria-label={field.label}
-                className={`absolute left-[24px] w-[908px] resize-none px-[15px] py-[11px] font-sans text-base font-semibold leading-[19px] text-neutral-700 outline-none placeholder:text-neutral-300 ${FIELD}`}
-                style={{ top: field.top, height: field.height }}
+      <Section title="용어 추가">
+        <Card padding="md" as="form" onSubmit={addTerm}>
+          <CardHeader
+            title="새 용어"
+            caption="원문과 팀이 정한 번역어를 함께 등록합니다."
+          />
+          <div className="mt-[14px] grid grid-cols-2 gap-[12px]">
+            <label className="block">
+              <span className="mb-[6px] block text-[13px] font-semibold text-neutral-700">
+                원문 (Source)
+              </span>
+              <input
+                id="glossary-source"
+                type="text"
+                value={form.source}
+                disabled={!editable}
+                onChange={(event) => setForm({ ...form, source: event.target.value })}
+                placeholder="예) Doc PR"
+                className="h-[34px] w-full rounded-sm border border-line bg-neutral-0 px-[10px] text-[14px] font-medium text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500 disabled:cursor-not-allowed disabled:bg-neutral-50"
               />
-            ) : (
+            </label>
+            <label className="block">
+              <span className="mb-[6px] block text-[13px] font-semibold text-neutral-700">
+                번역어
+              </span>
               <input
                 type="text"
-                placeholder={field.placeholder}
-                aria-label={field.label}
-                className={`absolute left-[24px] w-[908px] px-[15px] text-base font-semibold leading-[19px] text-neutral-700 outline-none placeholder:text-neutral-300 ${FIELD}`}
-                style={{ top: field.top, height: field.height }}
+                value={form.target}
+                disabled={!editable}
+                onChange={(event) => setForm({ ...form, target: event.target.value })}
+                placeholder="예) 문서 PR (원문 유지)"
+                className="h-[34px] w-full rounded-sm border border-line bg-neutral-0 px-[10px] text-[14px] font-medium text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500 disabled:cursor-not-allowed disabled:bg-neutral-50"
               />
-            )}
+            </label>
           </div>
-        ))}
 
-        <span className="absolute left-[32px] top-[312px] text-base font-semibold leading-[19px] text-neutral-700">
-          카테고리
-        </span>
-        <button
-          type="button"
-          className={`absolute left-[24px] top-[336px] flex h-[42px] w-[103px] items-center justify-between pl-[15px] pr-[14px] ${FIELD}`}
-        >
-          <span className="text-base font-semibold leading-[19px] text-neutral-700">일반</span>
-          <span
-            aria-hidden
-            className="rotate-90 text-base font-semibold leading-none text-neutral-500"
-          >
-            &gt;
-          </span>
-        </button>
+          <label className="mt-[12px] block">
+            <span className="mb-[6px] block text-[13px] font-semibold text-neutral-700">
+              설명 (선택)
+            </span>
+            <textarea
+              rows={3}
+              value={form.note}
+              disabled={!editable}
+              onChange={(event) => setForm({ ...form, note: event.target.value })}
+              placeholder="언제 이 표기를 쓰는지, 헷갈리기 쉬운 표기가 무엇인지 적어주세요."
+              className="w-full resize-none rounded-sm border border-line bg-neutral-0 px-[12px] py-[10px] font-sans text-[14px] font-medium leading-[21px] text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500 disabled:cursor-not-allowed disabled:bg-neutral-50"
+            />
+          </label>
 
-        <Button className="absolute left-[819px] top-[335px] h-[44px] w-[115px] justify-center rounded-md px-0 py-0 text-base">
-          용어 추가
-        </Button>
-      </section>
-    </div>
+          <div className="mt-[12px] flex items-center gap-[10px]">
+            <label className="flex items-center gap-[8px]">
+              <span className="text-[13px] font-semibold text-neutral-700">분류</span>
+              <select
+                value={form.category}
+                disabled={!editable}
+                onChange={(event) => setForm({ ...form, category: event.target.value })}
+                className="h-[32px] rounded-sm border border-line bg-neutral-0 px-[10px] text-[13px] font-medium text-neutral-900 outline-none focus:border-main-500 disabled:cursor-not-allowed disabled:bg-neutral-50"
+              >
+                {CATEGORIES.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Button type="submit" className="ml-auto rounded-sm" disabled={!canSubmit}>
+              용어 추가
+            </Button>
+          </div>
+        </Card>
+      </Section>
+    </Page>
   );
 }

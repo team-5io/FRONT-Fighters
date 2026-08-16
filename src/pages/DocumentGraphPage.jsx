@@ -1,253 +1,288 @@
-import Button from "../components/ui/Button";
+import Page, { Section } from "../components/layout/Page";
+import PageHeader from "../components/layout/PageHeader";
 import {
-  IconBook,
-  IconExclamationCircle,
-  IconGlobe,
-  IconIntegration,
-  IconLink,
-  IconPaper,
-} from "../components/icons";
+  Card,
+  CardHeader,
+  CioMark,
+  MyRoleBar,
+  RaciChip,
+  StatusBadge,
+  cx,
+  tone,
+} from "../components/ui";
+import { IconLock } from "../components/icons";
 
 /**
- * Figma 17:356 — Document Graph
+ * Document Graph — `#/graph`
  *
- * 본문 좌측 346, 폭 1000 (다른 화면은 348/54 — 이 프레임만 2px 왼쪽이라 카드 기준인 346에 맞췄다).
- *
- * 세로 좌표 (프레임 1440×1996, 본문 시작 y=80):
- *   타이틀 126 · 그래프 카드 196(1000×432) · 영향 기록 666(1000×478)
- *   선택 문서 상세 1178(284×522) + 버전 이력 1178(676×522) · 권한 안내 1734(1000×166)
+ * 정상화 지시서 5.E 적용:
+ *  - 그래프가 **다른 기능의 기반 인프라**임을 화면에서 드러낸다. CIO의 문서 충돌·
+ *    정합성 검토와 작성 도우미의 맥락 인용이 이 관계 데이터를 참조한다는 것을
+ *    각 항목에 붙였다 (`GET /documents/{documentId}/graph`, `.../impact`,
+ *    `.../writing-assistant/context`).
+ *  - `[비공개 문서]`의 문구 불일치 정정. 1차는 "영향 권한이 없습니다"였는데
+ *    기능명세서 3장은 열람 권한 문제로 정의한다 → "열람 권한이 없습니다"로 통일하고,
+ *    무엇이 왜 숨겨지는지 함께 안내한다.
  */
 
-const CARD = "rounded-md border-2 border-neutral-300 bg-neutral-50";
-const PILL =
-  "flex h-[28px] shrink-0 items-center rounded-full border-2 px-[14px] text-[15px] font-semibold leading-[18px]";
+const CURRENT_DOC = {
+  title: "API 설계 원칙",
+  status: "official",
+  version: "v2.1",
+  approvedAt: "2026-06-12",
+  author: { name: "김성민", role: "R" },
+  approver: { name: "고나영", role: "A" },
+  reviewers: [
+    { name: "김재원", role: "C" },
+    { name: "김준한", role: "C" },
+  ],
+};
 
-/** 영향 유형 배지 — Figma의 '반려'처럼 error 계열은 테두리를 다른 배지와 같은 규칙으로 맞췄다 */
-const IMPACT = {
-  "직접 영향": "bg-error-tint border-error/40 text-error",
-  "간접 영향": "bg-info-tint border-info/35 text-info",
+const IMPACT_TONE = {
+  direct: { tone: "error", label: "직접 영향" },
+  indirect: { tone: "info", label: "간접 영향" },
 };
 
 const IMPACTED_DOCS = [
   {
-    icon: <IconLink size={28} />,
     title: "API 연동 가이드",
-    meta: "하위 문서 · 3일 전 업데이트",
-    impact: "직접 영향",
+    relation: "하위 문서",
+    updated: "3일 전",
+    impact: "direct",
+    reason: "인증 헤더 규칙을 그대로 인용합니다.",
   },
   {
-    icon: <IconBook size={27} />,
     title: "온보딩 체크리스트",
-    meta: "연결 문서 · 1주일 전 업데이트",
-    impact: "간접 영향",
+    relation: "연결 문서",
+    updated: "1주일 전",
+    impact: "indirect",
+    reason: "설정 절차에서 이 문서를 참조합니다.",
   },
   {
-    icon: <IconGlobe size={30} />,
-    title: "릴리즈 노트 2024-Q2",
-    meta: "연결 문서 · 2주일 전 업데이트",
-    impact: "직접 영향",
+    title: "릴리즈 노트 2026-Q2",
+    relation: "연결 문서",
+    updated: "2주일 전",
+    impact: "direct",
+    reason: "오류 코드 표를 복사해 두었습니다.",
   },
   {
-    icon: <IconPaper size={30} />,
-    title: "[비공개 문서]",
-    meta: "영향 권한이 없습니다.",
-    impact: "간접 영향",
+    locked: true,
+    relation: "연결 문서",
+    impact: "indirect",
   },
-];
-
-/** 선택 문서 상세의 라벨/값 쌍 */
-const DETAIL_FIELDS = [
-  { label: "상태", gap: "mt-[26px]", values: ["공식 문서"] },
-  { label: "최종 승인", gap: "mt-[21px]", values: ["2024-06-12 · 김성민 승인"] },
-  // Figma에서 이 묶음만 위 간격이 17px (앞 둘은 26/21)
-  { label: "작성자", gap: "mt-[17px]", values: ["김성민", "리뷰어: 김재원, 김준한"] },
 ];
 
 const VERSIONS = [
+  { version: "v2.1", at: "2026-06-12", by: "고나영", status: "merged", current: true },
+  { version: "v2.0", at: "2026-05-02", by: "고나영", status: "merged" },
+  { version: "v1.4", at: "2026-03-18", by: "고나영", status: "merged" },
+];
+
+/** 그래프 데이터를 참조하는 기능들 — 인프라라는 점을 드러내는 자리 */
+const CONSUMERS = [
   {
-    version: "v2.1",
-    meta: "2024.06.12 · 김재원 승인",
-    current: true,
-    status: "Merge",
-    statusClass: "bg-main-50 border-main-500/20 text-main-500",
+    name: "CIO 문서 충돌 검토",
+    detail: "연결 문서와 상충하는 내용이 있는지 이 관계를 따라 확인합니다.",
+    href: "#/ai-review",
+    ai: true,
   },
   {
-    version: "v2.0",
-    meta: "2024.05.30 · 김준한 리뷰",
-    status: "확정",
-    statusClass: "bg-success-tint border-success/50 text-success",
+    name: "CIO 작성 도우미",
+    detail: "연결 문서의 맥락을 인용해 누락 항목을 제안합니다.",
+    href: "#/write",
+    ai: true,
   },
   {
-    version: "v1.3",
-    meta: "2024.05.10 · 김민섭 제출",
-    status: "반려",
-    statusClass: "bg-error-tint border-error/40 text-error",
-  },
-  {
-    version: "v1.0",
-    meta: "2024.04.22 · 김민섭 생성",
-    status: "초안",
-    statusClass: "bg-neutral-100 border-neutral-300 text-neutral-700",
+    name: "영향 분석",
+    detail: "이 문서를 고칠 때 함께 봐야 할 문서를 계산합니다.",
+    href: "#/graph",
   },
 ];
 
-/** 카드 제목 (18px) — 다섯 카드가 모두 같은 스타일 */
-function CardTitle({ children, className = "" }) {
-  return (
-    <h2
-      className={`text-[18px] font-semibold leading-[21px] text-neutral-700 ${className}`}
-    >
-      {children}
-    </h2>
-  );
-}
-
 export default function DocumentGraphPage() {
   return (
-    <div className="pb-[96px] pl-[52px] pt-[46px]">
-      <h1 className="text-[32px] font-semibold leading-[38px] text-main-500">
-        Document Graph
-      </h1>
+    <Page>
+      <PageHeader
+        breadcrumb={[
+          { label: "5IO주", href: "#/dashboard" },
+          { label: "그래프" },
+        ]}
+        title="Document Graph"
+        description="문서 사이의 관계와 변경 영향을 보여 줍니다. 이 관계 데이터는 CIO의 검토와 작성 보조가 함께 사용합니다."
+      />
 
-      {/* ── 그래프 자리표시 ── */}
-      <section className={`mt-[32px] h-[432px] w-[1000px] pl-[27px] pr-[33px] pt-[25px] ${CARD}`}>
-        <CardTitle>문서 관련 그래프</CardTitle>
-        <div className="mt-[21px] flex h-[277px] flex-col items-center rounded-md border-2 border-main-500/20 bg-main-25 pt-[63px]">
-          <IconIntegration size={55} className="text-main-500" />
-          <p className="mt-[47px] text-base font-semibold leading-[19px] text-neutral-700">
-            Document Graph 시작점 - 노드, 문서, 엣지, 상위-하위-연결 관계
-          </p>
-          <p className="mt-[24px] text-base font-semibold leading-[19px] text-neutral-700">
-            문서를 선택하면 관계를 시각화할 수 있습니다.
-          </p>
-        </div>
-        <div className="mt-[17px] flex justify-end gap-[17px]">
-          {/* 디자인 시스템에 없는 변형: 회색 채움 + 2px 테두리 (DS secondary는 흰 배경 + 1.5px) */}
-          <Button
-            variant="secondary"
-            className="h-[44px] w-[164px] justify-center rounded-md border-2 bg-neutral-50 px-0 py-0 text-base text-neutral-700"
-          >
-            그래프 초기화
-          </Button>
-          <Button className="h-[44px] w-[164px] justify-center rounded-md px-0 py-0 text-base">
-            전체 보기
-          </Button>
-        </div>
-      </section>
+      <MyRoleBar className="mt-[20px]" scope="이 문서" />
 
-      {/* ── 영향 문서 기록 ── */}
-      <section className={`mt-[38px] h-[478px] w-[1000px] pl-[27px] pt-[25px] ${CARD}`}>
-        <div className="flex items-center">
-          <CardTitle>영향 문서 기록</CardTitle>
-          <span className="ml-[28px] text-[15px] font-semibold leading-[18px] text-neutral-500">
-            현재 선택: 서비스 기획서 v2.1
-          </span>
-        </div>
-        <ul className="mt-[21px] flex flex-col gap-[19px]">
-          {IMPACTED_DOCS.map((doc) => (
-            <li
-              key={doc.title}
-              className="flex h-[82px] w-[954px] items-center rounded-md border-2 border-neutral-300 bg-neutral-0 pl-[15px] pr-[23px]"
-            >
-              <span className="flex size-[43px] shrink-0 items-center justify-center rounded-md bg-main-50 text-main-500">
-                {doc.icon}
-              </span>
-              <div className="ml-[18px] min-w-0 flex-1">
-                <p className="truncate text-base font-semibold leading-[19px] text-neutral-700">
-                  {doc.title}
-                </p>
-                <p className="mt-[6px] truncate text-[15px] font-semibold leading-[18px] text-neutral-500">
-                  {doc.meta}
-                </p>
-              </div>
-              <span className={`${PILL} ${IMPACT[doc.impact]}`}>{doc.impact}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {/* ── 선택 문서 상세 + 버전 변경 이력 ── */}
-      <div className="mt-[34px] flex gap-[40px]">
-        {/* pb는 mt-auto로 밀린 버튼이 카드 바닥에 붙지 않게 잡아준다 (Figma 버튼 y=1625) */}
-        <section className={`flex h-[522px] w-[284px] flex-col px-[27px] pb-[29px] pt-[26px] ${CARD}`}>
-          <CardTitle>선택 문서 상세</CardTitle>
-          <p className="mt-[31px] text-base font-semibold leading-[19px] text-neutral-700">
-            서비스 기획서 v2.1
-          </p>
-          {DETAIL_FIELDS.map((field) => (
-            <div key={field.label} className={field.gap}>
-              <p className="text-base font-semibold leading-[19px] text-neutral-700">
-                {field.label}
-              </p>
-              {field.values.map((value) => (
-                <p
-                  key={value}
-                  className="mt-[15px] text-[15px] font-semibold leading-[18px] text-neutral-500"
-                >
-                  {value}
-                </p>
-              ))}
-            </div>
-          ))}
-          <div className="mt-auto flex justify-end">
-            <Button className="h-[44px] w-[164px] justify-center rounded-md px-0 py-0 text-base">
-              Doc pr 보기
-            </Button>
-          </div>
-        </section>
-
-        <section className={`h-[522px] w-[676px] pl-[40px] pt-[26px] ${CARD}`}>
-          <CardTitle>버전 변경 이력</CardTitle>
-          {/* 타임라인: 점(25px) 중심을 잇는 세로선이 첫 점~마지막 점 사이에만 그려진다 */}
-          <ol className="relative ml-[-3px] mt-[23px] flex flex-col gap-[36px]">
-            <span
-              aria-hidden
-              className="absolute bottom-[41px] left-[11px] top-[41px] w-[3px] bg-main-100"
-            />
-            {VERSIONS.map((v) => (
-              <li key={v.version} className="relative flex items-center gap-[30px]">
-                <span className="flex size-[25px] shrink-0 items-center justify-center rounded-full bg-main-100">
-                  <span
-                    className={`size-[15px] rounded-full ${v.current ? "bg-main-500" : "bg-neutral-0"}`}
-                  />
-                </span>
-                <div className="flex h-[82px] w-[563px] items-center rounded-md border-2 border-neutral-300 bg-neutral-0 pl-[24px] pr-[26px]">
-                  <div className="min-w-0 flex-1">
-                    <p className="flex items-center text-base font-semibold leading-[19px] text-neutral-700">
-                      {v.version}
-                      {v.current && (
-                        <span className="ml-[15px] flex h-[23px] items-center rounded-full border-2 border-main-500/20 bg-main-50 px-[12px] text-sm font-semibold leading-[17px] text-main-500">
-                          현재
+      <div className="mt-[24px] flex gap-[24px]">
+        <div className="min-w-0 flex-1">
+          {/* ── 영향 문서 ── */}
+          <Section title="변경 시 영향받는 문서" className="mt-0">
+            <Card padding="none">
+              <ul>
+                {IMPACTED_DOCS.map((doc, index) => {
+                  const impact = IMPACT_TONE[doc.impact];
+                  if (doc.locked) {
+                    return (
+                      <li
+                        key={`locked-${index}`}
+                        className="flex items-center gap-[12px] border-b border-line bg-neutral-50 px-[16px] py-[12px] last:border-b-0"
+                      >
+                        <IconLock height={16} className="shrink-0 text-neutral-500" />
+                        <div className="min-w-0">
+                          <p className="text-[14px] font-semibold text-neutral-500">
+                            열람 권한이 없는 문서 1건
+                          </p>
+                          {/* 기능명세서 3장: 권한 없는 문서는 제목·관계·이력이 모두 숨겨진다 */}
+                          <p className="mt-[2px] text-[13px] text-neutral-500">
+                            제목과 관계는 표시되지 않습니다. 열람이 필요하면 팀 관리자에게
+                            RACI 참여자 지정을 요청하세요.
+                          </p>
+                        </div>
+                        <span
+                          className={cx(
+                            "ml-auto flex h-[24px] shrink-0 items-center rounded-full border px-[9px] font-mono text-[12px] font-bold",
+                            tone("neutral").chip,
+                          )}
+                        >
+                          숨김
                         </span>
-                      )}
-                    </p>
-                    <p className="mt-[6px] truncate text-[15px] font-semibold leading-[18px] text-neutral-500">
-                      {v.meta}
-                    </p>
-                  </div>
-                  <span className={`${PILL} ${v.statusClass}`}>{v.status}</span>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </section>
-      </div>
+                      </li>
+                    );
+                  }
+                  return (
+                    <li
+                      key={doc.title}
+                      className="flex items-center gap-[12px] border-b border-line px-[16px] py-[12px] last:border-b-0"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-[14px] font-semibold text-neutral-900">
+                          {doc.title}
+                        </p>
+                        <p className="truncate text-[13px] text-neutral-500">
+                          {doc.relation} · {doc.updated} 업데이트 · {doc.reason}
+                        </p>
+                      </div>
+                      <span
+                        className={cx(
+                          "ml-auto flex h-[24px] shrink-0 items-center rounded-full border px-[9px] font-mono text-[12px] font-bold",
+                          tone(impact.tone).chip,
+                        )}
+                      >
+                        {impact.label}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </Card>
+          </Section>
 
-      {/* ── 권한 안내 ── */}
-      <section className="mt-[34px] h-[166px] w-[1000px] rounded-md border-2 border-main-500/20 bg-main-25 pl-[27px] pt-[30px]">
-        <h2 className="flex h-[28px] items-center text-xl font-semibold leading-[24px] text-main-500">
-          <IconExclamationCircle size={28} className="shrink-0" />
-          <span className="ml-[8px]">권한 안내</span>
-        </h2>
-        <div className="ml-[14px]">
-          <p className="mt-[17px] text-base font-semibold leading-[19px] text-neutral-700">
-            지정 참여자 전용 문서는 제목 · 관계 · 이력이 표시되지 않습니다.
-          </p>
-          <p className="mt-[17px] text-base font-semibold leading-[19px] text-neutral-700">
-            팀 관리자에게 열람 권한을 요청하세요.
-          </p>
+          {/* ── 이 데이터를 쓰는 기능들 ── */}
+          <Section
+            title="이 관계 데이터를 쓰는 곳"
+            caption="Document Graph는 화면 하나가 아니라 다른 기능의 판단 근거입니다."
+          >
+            <Card padding="none">
+              <ul>
+                {CONSUMERS.map((consumer) => (
+                  <li key={consumer.name} className="border-b border-line last:border-b-0">
+                    <a
+                      href={consumer.href}
+                      className="flex items-center gap-[12px] px-[16px] py-[12px] transition-colors hover:bg-neutral-50"
+                    >
+                      {consumer.ai && <CioMark size={14} className="shrink-0 text-info" />}
+                      <div className="min-w-0">
+                        <p className="truncate text-[14px] font-semibold text-neutral-900">
+                          {consumer.name}
+                        </p>
+                        <p className="truncate text-[13px] text-neutral-500">{consumer.detail}</p>
+                      </div>
+                      <span aria-hidden className="ml-auto shrink-0 text-neutral-300">
+                        →
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          </Section>
         </div>
-      </section>
-    </div>
+
+        {/* ── 우: 선택 문서 ── */}
+        <aside className="w-[340px] shrink-0">
+          <Card padding="md">
+            <CardHeader
+              title={CURRENT_DOC.title}
+              caption={`${CURRENT_DOC.version} · ${CURRENT_DOC.approvedAt} 승인`}
+              right={<StatusBadge status={CURRENT_DOC.status} kind="document" size="sm" />}
+            />
+            <dl className="mt-[14px] flex flex-col gap-[10px]">
+              <div className="flex items-center gap-[10px]">
+                <dt className="w-[64px] shrink-0 text-[13px] font-medium text-neutral-500">
+                  작성자
+                </dt>
+                <dd>
+                  <RaciChip
+                    role={CURRENT_DOC.author.role}
+                    name={CURRENT_DOC.author.name}
+                    size="sm"
+                  />
+                </dd>
+              </div>
+              <div className="flex items-center gap-[10px]">
+                <dt className="w-[64px] shrink-0 text-[13px] font-medium text-neutral-500">
+                  승인자
+                </dt>
+                <dd>
+                  <RaciChip
+                    role={CURRENT_DOC.approver.role}
+                    name={CURRENT_DOC.approver.name}
+                    size="sm"
+                  />
+                </dd>
+              </div>
+              <div className="flex items-start gap-[10px]">
+                <dt className="w-[64px] shrink-0 text-[13px] font-medium text-neutral-500">
+                  리뷰어
+                </dt>
+                <dd className="flex flex-wrap gap-[6px]">
+                  {CURRENT_DOC.reviewers.map((reviewer) => (
+                    <RaciChip
+                      key={reviewer.name}
+                      role={reviewer.role}
+                      name={reviewer.name}
+                      size="sm"
+                    />
+                  ))}
+                </dd>
+              </div>
+            </dl>
+          </Card>
+
+          <Card padding="md" className="mt-[16px]">
+            <CardHeader title="버전 이력" caption="확정된 Doc PR이 버전을 만듭니다." />
+            <ul className="mt-[12px] flex flex-col gap-[8px]">
+              {VERSIONS.map((version) => (
+                <li
+                  key={version.version}
+                  className={cx(
+                    "flex items-center gap-[8px] rounded-sm border px-[10px] py-[8px]",
+                    version.current ? "border-main-500/25 bg-main-50" : "border-line bg-neutral-0",
+                  )}
+                >
+                  <span className="font-mono text-[13px] font-bold text-neutral-900">
+                    {version.version}
+                  </span>
+                  <span className="truncate text-[12px] text-neutral-500">
+                    {version.at} · {version.by} 승인
+                  </span>
+                  <StatusBadge status={version.status} size="sm" className="ml-auto" />
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </aside>
+      </div>
+    </Page>
   );
 }
