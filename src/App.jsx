@@ -29,7 +29,8 @@ import TeamResetPage from "./pages/TeamResetPage";
 const ROUTES = {
   "#/login": { page: LoginPage, bare: true },
   "#/team-invite": { page: TeamInvitePage, bare: true },
-  "#/team-reset": { page: TeamResetPage, bare: true },
+  // 팀 설정 초기화는 팀에 소속된 뒤 설정에서 들어가는 화면이라 셸을 띄운다
+  "#/team-reset": { page: TeamResetPage, activeNav: "설정" },
   "#/dashboard": { page: DashboardPage, activeNav: "대시보드" },
   "#/documents": { page: DocumentsPage, activeNav: "문서" },
   "#/doc-pr": { page: DocPrListPage, activeNav: "Doc PR" },
