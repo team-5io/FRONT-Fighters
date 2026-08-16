@@ -1,0 +1,55 @@
+﻿API 명칭,EPIC,SUB-EPIC,구현,노트,메서드,사용 계층,설명,엔드포인트,연동,우선순위,테스트
+문서 목록 조회,Doc PR 기반 문서 관리,문서 관리,시작 전,,GET,전체,열람 권한이 있는 문서 목록을 조회한다.,GET /documents,시작 전,1,미진행
+문서 삭제·보관,Doc PR 기반 문서 관리,문서 관리,시작 전,,DELETE,"R, 팀 관리자",문서를 삭제하거나 보관 처리한다.,DELETE /documents/{documentId},시작 전,2,미진행
+문서 검색,Doc PR 기반 문서 관리,문서 관리,시작 전,,GET,전체,제목·내용 기준으로 문서를 검색한다.,GET /documents/search,시작 전,2,미진행
+문서 생성,Doc PR 기반 문서 관리,문서 관리,시작 전,,POST,R,새 문서를 초안 상태로 생성한다.,POST /documents,시작 전,1,미진행
+문서 편집,Doc PR 기반 문서 관리,문서 관리,시작 전,,PATCH,R,초안 상태 문서 내용을 수정한다.,PATCH /documents/{documentId},시작 전,1,미진행
+Doc PR 반려,Doc PR 기반 문서 관리,사람 리뷰,시작 전,,POST,"A, C",Doc PR을 반려하고 사유를 기록한다.,POST /doc-prs/{prId}/reject,시작 전,1,미진행
+리뷰어 의견 등록,Doc PR 기반 문서 관리,사람 리뷰,시작 전,,POST,"A, C",지정된 리뷰어가 Doc PR에 리뷰 의견을 남긴다.,POST /doc-prs/{prId}/human-reviews,시작 전,1,미진행
+예외 Merge,Doc PR 기반 문서 관리,사람 리뷰,시작 전,,POST,A,차단 조건에도 불구하고 A가 예외적으로 Merge하며 사유를 기록한다.,POST /doc-prs/{prId}/merge/exception,시작 전,1,미진행
+Doc PR 승인,Doc PR 기반 문서 관리,사람 리뷰,시작 전,,POST,A,A 역할이 Doc PR을 승인 처리한다.,POST /doc-prs/{prId}/approve,시작 전,1,미진행
+재제출,Doc PR 기반 문서 관리,사람 리뷰,시작 전,,POST,R,반려된 Doc PR을 수정 후 재제출한다.,POST /doc-prs/{prId}/resubmit,시작 전,1,미진행
+협업 규칙 초안 생성 요청,문화 보더 해소,Team Collaboration Charter,시작 전,,POST,AI(CIO),"팀 생성 초기 1회, 팀원 협업 방식을 분석해 규칙 초안을 생성한다.",POST /teams/{teamId}/charter/draft,시작 전,4,미진행
+Merge 확정,Doc PR 기반 문서 관리,사람 리뷰,시작 전,,POST,A,승인된 Doc PR을 공식 문서로 병합 확정한다.,POST /doc-prs/{prId}/merge,시작 전,1,미진행
+다음 작업자 정보 조회,지리 보더 해소,Follow-the-Sun 워크플로우,시작 전,,GET,전체,다음 작업자가 필요한 상태와 인수인계 정보 위치를 조회한다.,GET /doc-prs/{prId}/next-assignee,시작 전,4,미진행
+다음 작업자 지정 알림 생성,Doc PR 기반 문서 관리,알림,시작 전,,,시스템(자동),Follow-the-Sun 다음 작업자 지정 시 알림을 생성한다.,내부 이벤트 (엔드포인트 없음),시작 전,2,
+내 접근 권한 조회,조직 보더 해소,RACI 역할 추천,시작 전,,GET,전체,현재 사용자의 RACI 역할별 열람 범위·허용 행동을 조회한다. 이 결과를 모든 API가 공통으로 적용한다.,GET /documents/{documentId}/my-permissions,시작 전,2,미진행
+상태 변경 알림 생성,Doc PR 기반 문서 관리,알림,시작 전,,,시스템(자동),반려/승인/Merge 등 상태 변경 시 알림을 생성한다. 상태 변경 로직 내부에서 트리거됨.,내부 이벤트 (엔드포인트 없음),시작 전,2,
+RACI 역할 지정/변경,조직 보더 해소,RACI 역할 추천,시작 전,,PUT,팀 관리자,문서 또는 Doc PR마다 R/A/C/I 역할과 지정 참여자를 지정·변경한다.,PUT /documents/{documentId}/raci,시작 전,2,미진행
+리뷰 요청 알림 생성,Doc PR 기반 문서 관리,알림,시작 전,,,시스템(자동),Doc PR 생성 시 리뷰어·승인권자에게 알림을 생성한다. Doc PR 생성 로직 내부에서 트리거됨.,내부 이벤트 (엔드포인트 없음),시작 전,2,
+로그인,계정 및 팀 관리,계정 관리,완료,,POST,전체,계정 정보로 인증하여 액세스 토큰을 발급받는다.,POST /auth/login,시작 전,1,미진행
+알림 목록 조회,Doc PR 기반 문서 관리,알림,시작 전,,GET,전체,사용자에게 온 알림을 조회한다.,GET /notifications,시작 전,2,미진행
+개인 프로필 설정,계정 및 팀 관리,계정 관리,완료,,PATCH,전체,이름·시간대·선호 언어 등 개인 정보를 수정한다.,PATCH /users/me,시작 전,3,미진행
+AI 제안 결과 2차 검토(CIO),Doc PR 기반 문서 관리,AI CIO 오케스트레이션,시작 전,,,AI(CIO),AI 제안 결과가 팀 프로젝트 맥락·컨벤션에 맞는지 CIO가 2차 검토하는 내부 파이프라인 단계. 결과는 각 AI 기능 응답에 포함되어 반환된다. Doc PR 승인/Merge와는 무관.,내부 로직 (프론트엔드 미노출),시작 전,3,
+로그아웃,계정 및 팀 관리,계정 관리,완료,,POST,전체,현재 세션(토큰)을 무효화한다.,POST /auth/logout,시작 전,1,미진행
+AI 기능 실행 명령 전달,Doc PR 기반 문서 관리,AI CIO 오케스트레이션,시작 전,,,AI(CIO),AI Writing Assistant·DocumentLion·Dev-aware Translation에 작업 실행을 명령하는 내부 오케스트레이션 호출. 각 기능의 POST 요청 처리 내부에서 트리거된다.,내부 로직 (프론트엔드 미노출),시작 전,3,
+회원가입,계정 및 팀 관리,계정 관리,완료,,POST,전체,이메일/비밀번호(또는 SSO)로 새 계정을 생성한다.,POST /auth/signup,시작 전,1,미진행
+문서 구조 가이드 제안 요청,Doc PR 기반 문서 관리,AI Writing Assistant,시작 전,,POST,"AI(CIO), R",작성 중인 문서에 목차·필수 섹션 구조를 추천받는다.,POST /documents/{documentId}/writing-assistant/structure,시작 전,3,미진행
+팀원 추방/탈퇴,계정 및 팀 관리,팀 관리,완료,,DELETE,"전체, 팀 관리자",팀 관리자가 팀원을 제거하거나 본인이 탈퇴한다.,DELETE /teams/{teamId}/members/{memberId},시작 전,2,미진행
+AI 제안 수용/거부 처리,Doc PR 기반 문서 관리,AI Writing Assistant,시작 전,,PATCH,R,AI 제안을 초안에 반영할지 여부를 기록한다.,PATCH /documents/{documentId}/writing-assistant/suggestions/{suggestionId},시작 전,3,미진행
+팀원 목록 및 역할 조회,계정 및 팀 관리,팀 관리,완료,,GET,전체,팀원과 RACI 역할을 조회한다.,GET /teams/{teamId}/members,시작 전,2,미진행
+관련 문서 맥락 인용 조회,Doc PR 기반 문서 관리,AI Writing Assistant,시작 전,,GET,"AI(CIO), R",Document Graph 기반 연결 문서 맥락 인용 정보를 조회한다.,GET /documents/{documentId}/writing-assistant/context,시작 전,3,미진행
+팀 생성,계정 및 팀 관리,팀 관리,완료,,POST,전체,새로운 협업 팀 공간을 생성한다.,POST /teams,시작 전,1,미진행
+대체 승인권자 지정,Doc PR 기반 문서 관리,Doc PR 워크플로우,시작 전,,PATCH,팀 관리자,승인권자 부재 시 팀 관리자가 대체 승인권자를 지정한다.,PATCH /doc-prs/{prId}/approver,시작 전,1,미진행
+팀원 초대,계정 및 팀 관리,팀 관리,완료,,POST,팀 관리자,이메일로 팀원을 초대한다.,POST /teams/{teamId}/invitations,시작 전,2,미진행
+Merge 가능 여부 확인,Doc PR 기반 문서 관리,Doc PR 워크플로우,시작 전,,GET,A,DocumentLion반려·리뷰미완료·승인권자부재·충돌미해결 등 Merge 차단 조건을 확인한다.,GET /doc-prs/{prId}/merge-check,시작 전,1,미진행
+동시 사용자 처리 기준,비기능요구사항,성능,시작 전,,,전체,팀 규모 수준의 동시 접속에서 안정적으로 동작하는 성능 기준.,전역 성능 기준 (특정 엔드포인트 없음),시작 전,5,
+초안 → Doc PR 전환,Doc PR 기반 문서 관리,Doc PR 워크플로우,시작 전,,POST,R,문서 초안을 Doc PR로 전환하고 승인권자(A)를 지정한다.,POST /documents/{documentId}/doc-prs,시작 전,1,미진행
+주요 조회 API 응답시간 기준,비기능요구사항,성능,시작 전,,,전체,"Document Graph, Doc PR 목록 등 주요 GET 엔드포인트는 평균 2초 이내 응답 (해커톤 기준 초안치).",전역 성능 기준 (특정 엔드포인트 없음),시작 전,5,
+Doc PR 이력 조회,Doc PR 기반 문서 관리,Doc PR 워크플로우,시작 전,,GET,"A, C, I, R",상태 전이별 수행자·시각·사유·리뷰근거 이력을 조회한다.,GET /doc-prs/{prId}/history,시작 전,2,미진행
+감사 로그 조회,비기능요구사항,인증·보안,시작 전,,GET,팀 관리자,지정 참여자 전용 문서 접근 시도(성공/거부) 로그를 조회한다.,GET /teams/{teamId}/audit-logs,시작 전,3,미진행
+Doc PR 상세/상태 조회,Doc PR 기반 문서 관리,Doc PR 워크플로우,시작 전,,GET,"A, C, I, R",Doc PR의 현재 상태(생성/AI리뷰/사람리뷰/반려/재제출/확정/리뷰어지정필요)를 조회한다.,GET /doc-prs/{prId},시작 전,1,미진행
+인증/인가 미들웨어,비기능요구사항,인증·보안,시작 전,,,전체,"모든 요청은 인증된 사용자만 수행 가능하며, RACI 권한에 따라 인가된 동작만 허용하는 공통 미들웨어.",전체 API 공통 적용 (특정 엔드포인트 없음),시작 전,1,
+Impact Analysis 조회,Doc PR 기반 문서 관리,Document Graph,시작 전,,GET,전체,문서 수정 시 영향받는 연결 문서 목록을 조회한다.,GET /documents/{documentId}/impact,시작 전,2,미진행
+UI 다국어 리소스 조회,비기능요구사항,UI 다국어화,시작 전,,GET,전체,서비스 UI(메뉴·버튼 등) 다국어 문자열 리소스를 제공한다. 프론트엔드 정적 리소스로 대체 가능.,GET /i18n/messages,시작 전,4,미진행
+문서 관계 그래프 조회,Doc PR 기반 문서 관리,Document Graph,시작 전,,GET,전체,상위·하위·연결 문서 관계를 그래프로 조회한다.,GET /documents/{documentId}/graph,시작 전,2,미진행
+버전별 변경 이력 조회,Doc PR 기반 문서 관리,Document Graph,시작 전,,GET,전체,공식 문서의 버전별 변경 내용과 연결 Doc PR 이력을 조회한다.,GET /documents/{documentId}/versions,시작 전,2,미진행
+문서 충돌 검토 요청,Doc PR 기반 문서 관리,DocumentLion,시작 전,,POST,AI(CIO),연결 문서와의 상충 여부를 검토한다.,POST /doc-prs/{prId}/review/conflict,시작 전,2,미진행
+정합성 검토 요청,Doc PR 기반 문서 관리,DocumentLion,시작 전,,POST,AI(CIO),기존 Merge 결정과의 모순 여부를 검토한다.,POST /doc-prs/{prId}/review/consistency,시작 전,2,미진행
+협업 규칙 위반 검토 요청,Doc PR 기반 문서 관리,DocumentLion,시작 전,,POST,AI(CIO),Team Collaboration Charter 위반 여부를 검토한다.,POST /doc-prs/{prId}/review/charter-violation,시작 전,2,미진행
+리뷰 코멘트 등록,Doc PR 기반 문서 관리,DocumentLion,시작 전,,POST,"AI(CIO), C",검토 근거를 Doc PR에 리뷰 코멘트로 등록한다.,POST /doc-prs/{prId}/review/comments,시작 전,2,미진행
+검토 근거 조회,Doc PR 기반 문서 관리,DocumentLion,시작 전,,GET,"AI(CIO), C",DocumentLion의 검토 결과·판단 근거를 조회한다.,GET /doc-prs/{prId}/review/evidence,시작 전,2,미진행
+번역 결과 원문 대조 조회,언어 보더 해소,Dev-aware Translation,시작 전,,GET,전체,번역 결과와 원문을 대조하여 조회한다.,GET /documents/{documentId}/translations/{translationId},시작 전,3,미진행
+개발 요소 보존 번역 요청,언어 보더 해소,Dev-aware Translation,시작 전,,POST,AI(CIO),코드블록·API명·변수명은 보존하고 나머지만 번역한다.,POST /documents/{documentId}/translations,시작 전,3,미진행
+협업 규칙 수정·채택,문화 보더 해소,Team Collaboration Charter,시작 전,,PUT,"전체, 팀 관리자",초안을 수정해 프로젝트 공식 규칙으로 확정한다.,PUT /teams/{teamId}/charter,시작 전,4,미진행
+내부 양식!!!!!,,,시작 전,,,,,,시작 전,,

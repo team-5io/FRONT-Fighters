@@ -18,12 +18,18 @@ export default {
         neutral: {
           0: "#FFFFFF",
           50: "#F7F7F8",
+          // 75는 DESIGN.md 램프에 없는 보강 단계. 50(#F7F7F8)과 100(#D9D9D9)
+          // 사이가 비어 있어 회색 칩(#EDEDED)이 카드 배경(#FBFBFB)에 묻히거나
+          // 100으로 스냅되어 원본보다 진해지는 문제가 있었다.
+          75: "#EDEDED",
           100: "#D9D9D9",
           300: "#C5C5C5",
           500: "#9C9C9C",
           700: "#3C3C3C",
           900: "#17171A",
         },
+        // 노션 톤의 옅은 1px 경계선. 카드/표/구분선의 기본값 (지시서 3장)
+        line: "rgba(0,0,0,0.1)",
         success: { DEFAULT: "#00C853", tint: "#E1F9E7", text: "#0A7A38" },
         warning: { DEFAULT: "#FF9D00", tint: "#FFF4E5", text: "#B36A00" },
         error: { DEFAULT: "#FB3742", tint: "#FFE1E0", text: "#C4232C" },
