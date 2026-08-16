@@ -1,244 +1,225 @@
-import Button from "../components/ui/Button";
+import { useState } from "react";
+import Page, { Section } from "../components/layout/Page";
+import PageHeader from "../components/layout/PageHeader";
 import {
-  IconExclamationCircle,
-  IconLock,
-  IconPaper,
-  IconSearch,
-} from "../components/icons";
+  Button,
+  Card,
+  CardHeader,
+  EmptyState,
+  ListFilterBar,
+  StatusBadge,
+  cx,
+} from "../components/ui";
+import { IconLock } from "../components/icons";
 
 /**
- * Figma 23:629 — 관련 문서 연결
+ * 관련 문서 연결 — `#/link-documents`
  *
- * 2단: 좌측 419 + 간격 13 + 우측 618 (348..1398).
- *   좌측은 카드 2장(연결 문서 선택 182 / 연결 미리보기 378), 우측은 검색 카드 1장(573).
- *   하단은 권한 안내(646) + 우측 정렬 버튼.
- *
- * 세로 좌표 (프레임 1440×1024, 본문 시작 y=80):
- *   타이틀 126 · 설명 177 · 카드 231 · 하단 821
+ * 정상화 지시서 5.F 적용:
+ *  - 연결 미리보기를 실제 관계 문장으로 바꿨다. 1차 구현은 화살표가 1행·4행에만
+ *    붙어 있어 무엇이 무엇의 상위인지 읽히지 않았다.
+ *  - 권한 안내를 기능명세서 3장 문구와 맞췄다 — 권한 없는 문서는 검색에도 안 나온다.
+ *  - 연결 결과가 Document Graph와 Impact Analysis의 입력이라는 점을 화면에 밝혔다
+ *    (`GET /documents/{documentId}/graph`, `.../impact`).
  */
 
-const CARD = "rounded-md border-2 border-neutral-300 bg-neutral-50";
-const OUTLINE_BTN =
-  "shrink-0 rounded-md border-2 border-neutral-300 bg-neutral-0 font-semibold text-neutral-700";
-
-/** 연결 유형 — 선택된 하나만 보라 배경 */
-const LINK_TYPES = [
-  { label: "상위 문서", selected: true },
-  { label: "하위 문서" },
-  { label: "참조 문서" },
+const RELATIONS = [
+  { value: "parent", label: "상위 문서", describe: (a, b) => `${b}가 ${a}의 상위 문서입니다.` },
+  { value: "child", label: "하위 문서", describe: (a, b) => `${b}가 ${a}의 하위 문서입니다.` },
+  { value: "reference", label: "참조 문서", describe: (a, b) => `${a}가 ${b}를 참조합니다.` },
 ];
 
-/**
- * 미리보기 4줄. Figma는 1행(문서명)과 4행(관계명)에만 화살표가 붙어 있다 —
- * 화살표 위치가 행마다 다른 건 원본 그대로.
- */
-const PREVIEW_ROWS = [
-  { arrow: "up", text: "API 설계 원칙" },
-  { text: "상위 문서" },
-  { text: "온보딩 가이드라인" },
-  { arrow: "right", text: "참조 문서" },
-];
+const CURRENT_DOC = "API 설계 원칙";
 
 const SEARCH_RESULTS = [
-  {
-    title: "글로벌 협업 가이드라인 초안",
-    meta: "팀 공개 · 2일 전 업데이트",
-    action: "상위로 연결",
-  },
-  {
-    title: "온보딩 가이드라인",
-    meta: "팀 공개 · 5일 전 업데이트",
-    action: "참조로 연결",
-  },
-  {
-    title: "배포 체크리스트",
-    meta: "팀 공개 · 1일 전 업데이트",
-    action: "하위로 연결",
-  },
+  { id: "d1", title: "글로벌 협업 가이드라인 초안", meta: "팀 공개 · 2일 전 업데이트", status: "draft" },
+  { id: "d2", title: "온보딩 가이드라인", meta: "팀 공개 · 5일 전 업데이트", status: "official" },
+  { id: "d3", title: "배포 체크리스트", meta: "팀 공개 · 1일 전 업데이트", status: "inReview" },
 ];
 
 const PERMISSION_NOTES = [
   "팀 공개 문서는 팀원 누구나 연결 대상으로 지정할 수 있습니다.",
-  "지정 참여자 전용 문서는 해당 문서의 RACI 참여자 또는 관리자만 연결할 수 있습니다.",
-  "권한이 없는 문서는 제목 · 관계 · 이력이 모두 숨겨지며 검색결과에도 나타나지 않습니다.",
+  "지정 참여자 전용 문서는 해당 문서의 RACI 참여자 또는 팀 관리자만 연결할 수 있습니다.",
+  "권한이 없는 문서는 제목·관계·이력이 모두 숨겨지며 검색 결과에도 나타나지 않습니다.",
 ];
 
-function SkeletonBar({ width, className = "" }) {
-  return (
-    <span
-      aria-hidden
-      className={`block h-[12px] rounded-full bg-neutral-100 ${className}`}
-      style={{ width }}
-    />
-  );
-}
-
 export default function LinkDocumentsPage() {
+  const [relation, setRelation] = useState("parent");
+  const [links, setLinks] = useState([{ id: "d2", title: "온보딩 가이드라인", relation: "child" }]);
+
+  const relationMeta = RELATIONS.find((item) => item.value === relation);
+
+  function addLink(doc) {
+    if (links.some((link) => link.id === doc.id)) return;
+    setLinks((prev) => [...prev, { id: doc.id, title: doc.title, relation }]);
+  }
+
+  function removeLink(id) {
+    setLinks((prev) => prev.filter((link) => link.id !== id));
+  }
+
   return (
-    <div className="pl-[54px] pt-[46px]">
-      <h1 className="text-[32px] font-semibold leading-[38px] text-main-500">
-        관련 문서 연결
-      </h1>
-      <p className="mt-[13px] text-base font-semibold leading-[19px] text-neutral-500">
-        현재 문서와 연결할 문서를 지정합니다. 열람 권한이 있는 문서만 표시됩니다.
-      </p>
+    <Page>
+      <PageHeader
+        breadcrumb={[
+          { label: "5IO주", href: "#/dashboard" },
+          { label: "문서", href: "#/documents" },
+          { label: CURRENT_DOC, href: "#/write" },
+          { label: "관련 문서 연결" },
+        ]}
+        title="관련 문서 연결"
+        description="연결한 관계는 Document Graph에 반영되고, 이 문서를 고칠 때 영향 분석의 근거가 됩니다."
+        properties={[{ label: "연결된 문서", value: `${links.length}개` }]}
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              className="rounded-sm"
+              onClick={() => (window.location.hash = "#/write")}
+            >
+              돌아가기
+            </Button>
+            <Button className="rounded-sm">연결 저장</Button>
+          </>
+        }
+      />
 
-      <div className="mt-[35px] flex gap-[13px]">
-        <div className="w-[419px]">
-          {/* ── 연결 문서 선택 ── */}
-          <section className={`h-[182px] pl-[29px] pt-[22px] ${CARD}`}>
-            <h2 className="text-xl font-semibold leading-[24px] text-neutral-700">
-              연결 문서 선택
-            </h2>
-            <p className="mt-[22px] text-base font-semibold leading-[19px] text-neutral-500">
-              연결 유형에 따라 문서 그래프에서 관계 방향이 결정됩니다.
-            </p>
-            <div className="ml-[7px] mt-[25px] flex gap-[19px]">
-              {LINK_TYPES.map((type) => (
-                <button
-                  key={type.label}
-                  type="button"
-                  className={`h-[37px] w-[100px] shrink-0 rounded-md border-2 text-base font-semibold ${
-                    type.selected
-                      ? "border-main-500/20 bg-main-50 text-main-500"
-                      : "border-neutral-300 bg-neutral-0 text-neutral-700"
-                  }`}
-                >
-                  {type.label}
-                </button>
-              ))}
-            </div>
-          </section>
-
-          {/* ── 연결 미리보기 ── */}
-          <section className={`mt-[13px] h-[378px] pl-[30px] pt-[18px] ${CARD}`}>
-            <h2 className="text-xl font-semibold leading-[24px] text-neutral-700">
-              연결 미리보기
-            </h2>
-
-            <p className="ml-[7px] mt-[17px] text-base font-semibold leading-[19px] text-neutral-500">
-              현재 문서
-            </p>
-            <div className="ml-[11px] mt-[13px] flex h-[61px] w-[192px] items-center rounded-md border-2 border-neutral-300 bg-neutral-0 pl-[13px]">
-              <IconPaper size={24} className="shrink-0 text-neutral-300" />
-              <div className="ml-[13px]">
-                <SkeletonBar width="122px" />
-                <SkeletonBar width="71px" className="mt-[10px]" />
+      <div className="mt-[24px] flex gap-[24px]">
+        {/* ── 좌: 검색 ── */}
+        <div className="min-w-0 flex-1">
+          <Section title="연결할 문서 찾기" className="mt-0">
+            <div className="mb-[12px] flex flex-wrap items-center gap-[8px]">
+              <span className="text-[13px] font-medium text-neutral-500">관계</span>
+              <div className="flex rounded-sm border border-line bg-neutral-50 p-[2px]">
+                {RELATIONS.map((item) => (
+                  <button
+                    key={item.value}
+                    type="button"
+                    onClick={() => setRelation(item.value)}
+                    aria-pressed={relation === item.value}
+                    className={cx(
+                      "h-[26px] rounded-xs px-[10px] text-[13px] font-semibold transition-colors",
+                      relation === item.value
+                        ? "bg-neutral-0 text-main-700 shadow-[0_0_0_1px_rgba(0,0,0,0.06)]"
+                        : "text-neutral-500 hover:text-neutral-700",
+                    )}
+                  >
+                    {item.label}
+                  </button>
+                ))}
               </div>
             </div>
 
-            <p className="ml-[7px] mt-[19px] text-base font-semibold leading-[19px] text-neutral-500">
-              연결된 문서
-            </p>
-            <ul className="ml-[7px] mt-[12px]">
-              {PREVIEW_ROWS.map((row, i) => (
-                <li
-                  key={row.text}
-                  className={`flex text-base font-semibold leading-[19px] text-neutral-500 ${
-                    i > 0 ? "mt-[13px]" : ""
-                  }`}
-                >
-                  <span aria-hidden className="w-[32px] shrink-0">
-                    {row.arrow && (
-                      <span
-                        className={`inline-block ${row.arrow === "up" ? "-rotate-90" : ""}`}
+            <ListFilterBar searchLabel="문서 검색" searchPlaceholder="연결할 문서명 검색" />
+
+            <Card padding="none" className="mt-[12px]">
+              <ul>
+                {SEARCH_RESULTS.map((doc) => {
+                  const linked = links.some((link) => link.id === doc.id);
+                  return (
+                    <li
+                      key={doc.id}
+                      className="flex items-center gap-[12px] border-b border-line px-[16px] py-[12px] last:border-b-0"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-[14px] font-semibold text-neutral-900">
+                          {doc.title}
+                        </p>
+                        <p className="truncate text-[13px] text-neutral-500">{doc.meta}</p>
+                      </div>
+                      <StatusBadge
+                        status={doc.status}
+                        kind="document"
+                        size="sm"
+                        className="ml-auto"
+                      />
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={linked}
+                        onClick={() => addLink(doc)}
+                        className="shrink-0 rounded-sm"
                       >
-                        →
-                      </span>
-                    )}
-                  </span>
-                  {row.text}
+                        {linked ? "연결됨" : `${relationMeta.label}로 연결`}
+                      </Button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </Card>
+          </Section>
+        </div>
+
+        {/* ── 우: 연결 미리보기 · 권한 ── */}
+        <aside className="w-[340px] shrink-0">
+          <Card padding="md">
+            <CardHeader
+              title="연결 미리보기"
+              caption="저장하면 이 관계가 Document Graph에 반영됩니다."
+            />
+            {links.length > 0 ? (
+              <ul className="mt-[12px] flex flex-col gap-[8px]">
+                {links.map((link) => {
+                  const meta = RELATIONS.find((item) => item.value === link.relation);
+                  return (
+                    <li
+                      key={link.id}
+                      className="rounded-sm border border-line bg-neutral-50 px-[12px] py-[10px]"
+                    >
+                      <div className="flex items-center gap-[8px]">
+                        <span className="rounded-full border border-main-500/25 bg-main-50 px-[7px] py-[2px] font-mono text-[11px] font-bold text-main-700">
+                          {meta.label}
+                        </span>
+                        <span className="truncate text-[13px] font-semibold text-neutral-900">
+                          {link.title}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeLink(link.id)}
+                          className="ml-auto shrink-0 text-[12px] font-semibold text-neutral-500 hover:text-error-text"
+                        >
+                          해제
+                        </button>
+                      </div>
+                      {/* 화살표 대신 관계를 문장으로 — 1차는 방향이 읽히지 않았다 */}
+                      <p className="mt-[6px] text-[12px] font-medium leading-[17px] text-neutral-500">
+                        {meta.describe(CURRENT_DOC, link.title)}
+                      </p>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <EmptyState
+                compact
+                title="아직 연결한 문서가 없습니다"
+                description="왼쪽에서 문서를 찾아 관계를 지정하면 여기에 미리보기가 나타납니다."
+              />
+            )}
+          </Card>
+
+          <Card padding="md" className="mt-[16px]">
+            <CardHeader
+              title="연결 권한"
+              right={<IconLock height={16} className="text-neutral-500" />}
+            />
+            <ul className="mt-[12px] flex flex-col gap-[8px]">
+              {PERMISSION_NOTES.map((note) => (
+                <li
+                  key={note}
+                  className="flex gap-[8px] text-[13px] font-medium leading-[19px] text-neutral-500"
+                >
+                  <span
+                    aria-hidden
+                    className="mt-[7px] size-[4px] shrink-0 rounded-full bg-neutral-300"
+                  />
+                  {note}
                 </li>
               ))}
             </ul>
-
-            <p className="ml-[11px] mt-[19px] text-base font-semibold leading-[19px] text-neutral-500">
-              연결을 저장하면 문서 그래프에 즉시 반영됩니다.
-            </p>
-          </section>
-        </div>
-
-        {/* ── 문서 검색 ── */}
-        <section className={`h-[573px] w-[618px] pl-[32px] pt-[22px] ${CARD}`}>
-          <h2 className="text-xl font-semibold leading-[24px] text-neutral-700">
-            문서 검색
-          </h2>
-          <label className="ml-[6px] mt-[29px] flex h-[46px] w-[408px] items-center rounded-md border-2 border-neutral-300 bg-neutral-0 pl-[15px]">
-            <IconSearch size={19} className="shrink-0 text-neutral-300" />
-            <input
-              type="search"
-              placeholder="문서 제목 또는 ID로 검색"
-              aria-label="연결할 문서 검색"
-              className="ml-[11px] w-full bg-transparent text-base font-medium leading-[19px] text-neutral-700 outline-none placeholder:text-neutral-300"
-            />
-          </label>
-
-          <ul className="ml-[6px] mt-[15px] flex flex-col gap-[25px]">
-            {SEARCH_RESULTS.map((doc) => (
-              <li
-                key={doc.title}
-                className="flex h-[96px] w-[539px] items-center rounded-md border-2 border-neutral-300 bg-neutral-0 pl-[34px] pr-[24px]"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-base font-semibold leading-[19px] text-neutral-700">
-                    {doc.title}
-                  </p>
-                  <p className="mt-[13px] truncate text-[15px] font-semibold leading-[18px] text-neutral-500">
-                    {doc.meta}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className={`h-[37px] w-[100px] text-[15px] ${OUTLINE_BTN}`}
-                >
-                  {doc.action}
-                </button>
-              </li>
-            ))}
-          </ul>
-
-          <div className="ml-[6px] mt-[32px] flex items-center">
-            <IconLock height={25} className="ml-[17px] shrink-0 text-neutral-700" />
-            <span className="ml-[15px] text-base font-semibold leading-[19px] text-neutral-700">
-              접근 권한이 없는 문서는 문서 검색 결과에 표시되지 않습니다.
-            </span>
-          </div>
-        </section>
+          </Card>
+        </aside>
       </div>
-
-      {/* ── 권한 안내 + 저장 ── */}
-      <div className="mt-[17px] flex w-[1050px] items-start justify-between">
-        <section className="h-[180px] w-[646px] rounded-md border-2 border-main-500/20 bg-main-25 pl-[32px] pt-[21px]">
-          <h2 className="ml-[4px] flex h-[24px] items-center text-xl font-semibold leading-[24px] text-main-500">
-            <IconExclamationCircle size={24} className="shrink-0" />
-            <span className="ml-[12px]">권한 안내</span>
-          </h2>
-          <ul className="mt-[21px] list-disc pl-[24px]">
-            {PERMISSION_NOTES.map((note, i) => (
-              <li
-                key={note}
-                className={`text-base font-semibold leading-[19px] text-neutral-700 ${
-                  i > 0 ? "mt-[13px]" : ""
-                }`}
-              >
-                {note}
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <div className="mt-[2px] flex gap-[17px]">
-          <Button
-            variant="secondary"
-            className="h-[44px] w-[86px] justify-center rounded-md border-2 px-0 py-0 text-base text-neutral-700"
-          >
-            취소
-          </Button>
-          <Button className="h-[44px] w-[136px] justify-center rounded-md px-0 py-0 text-base">
-            연결 저장
-          </Button>
-        </div>
-      </div>
-    </div>
+    </Page>
   );
 }
