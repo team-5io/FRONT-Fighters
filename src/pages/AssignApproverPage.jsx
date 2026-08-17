@@ -63,7 +63,7 @@ export default function AssignApproverPage() {
         title="승인권자 지정"
         description={`${TARGET_PR.id} · ${TARGET_PR.title} 하나에만 적용되는 대체 승인권자를 지정합니다.`}
         properties={[
-          { label: "상태", value: <StatusBadge status={TARGET_PR.status} size="sm" /> },
+          { label: "상태", value: <StatusBadge variant="solid" status={TARGET_PR.status} size="sm" /> },
           { label: "대상 문서", value: TARGET_PR.document },
           { label: "기존 승인권자", value: `${TARGET_PR.previousApprover} (비활성)` },
         ]}
@@ -156,7 +156,7 @@ export default function AssignApproverPage() {
               disabled={!editable}
               rows={4}
               placeholder="지정 사유를 입력하세요."
-              className="w-full resize-none rounded-sm border border-line bg-neutral-0 px-[12px] py-[10px] font-sans text-[14px] font-medium leading-[21px] text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500 disabled:cursor-not-allowed disabled:bg-neutral-50"
+              className="w-full resize-none rounded-sm border-0 border-b border-line bg-neutral-50/60 px-[12px] py-[10px] font-sans text-[14px] font-medium leading-[21px] text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500 disabled:cursor-not-allowed disabled:text-neutral-500"
             />
             <span className="mt-[4px] block text-right text-[12px] font-medium text-neutral-500">
               {reason.length}/1000

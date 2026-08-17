@@ -224,7 +224,7 @@ export default function CharterPage() {
                         disabled={!editable}
                         onChange={(event) => updateRule(rule.id, { title: event.target.value })}
                         placeholder="예) 초안 공유 시점"
-                        className="h-[34px] w-full rounded-sm border border-line bg-neutral-0 px-[10px] text-[14px] font-medium text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500 disabled:cursor-not-allowed disabled:bg-neutral-50"
+                        className="h-[34px] w-full border-0 border-b border-line bg-transparent rounded-none px-[10px] text-[14px] font-medium text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500 disabled:cursor-not-allowed disabled:text-neutral-500"
                       />
                     </label>
                   </div>
@@ -249,7 +249,7 @@ export default function CharterPage() {
                     disabled={!editable}
                     onChange={(event) => updateRule(rule.id, { body: event.target.value })}
                     placeholder="어떤 상황에서 무엇을 하기로 했는지 한두 문장으로 적어주세요."
-                    className="w-full resize-none rounded-sm border border-line bg-neutral-0 px-[12px] py-[10px] font-sans text-[14px] font-medium leading-[21px] text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500 disabled:cursor-not-allowed disabled:bg-neutral-50"
+                    className="w-full resize-none rounded-sm border-0 border-b border-line bg-neutral-50/60 px-[12px] py-[10px] font-sans text-[14px] font-medium leading-[21px] text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500 disabled:cursor-not-allowed disabled:text-neutral-500"
                   />
                 </label>
 
@@ -259,7 +259,7 @@ export default function CharterPage() {
                     value={rule.linkedTo}
                     disabled={!editable}
                     onChange={(event) => updateRule(rule.id, { linkedTo: event.target.value })}
-                    className="h-[32px] rounded-sm border border-line bg-neutral-0 px-[10px] text-[13px] font-medium text-neutral-900 outline-none focus:border-main-500 disabled:cursor-not-allowed disabled:bg-neutral-50"
+                    className="h-[32px] border-0 border-b border-line bg-transparent rounded-none px-[10px] text-[13px] font-medium text-neutral-900 outline-none focus:border-main-500 disabled:cursor-not-allowed disabled:text-neutral-500"
                   >
                     {LINK_TARGETS.map((target) => (
                       <option key={target.value} value={target.value}>

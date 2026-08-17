@@ -107,7 +107,7 @@ export default function DocPrDetailPage() {
         ]}
         title={`${DOC_PR.id} · ${DOC_PR.title}`}
         properties={[
-          { label: "상태", value: <StatusBadge status={DOC_PR.status} size="sm" /> },
+          { label: "상태", value: <StatusBadge variant="solid" status={DOC_PR.status} size="sm" /> },
           {
             label: "작성자",
             value: <RaciChip role={DOC_PR.author.role} name={DOC_PR.author.name} size="sm" />,
@@ -123,7 +123,7 @@ export default function DocPrDetailPage() {
       />
 
       {/* ── 주인공: 지금 무엇이 막고 있고, 내가 뭘 하면 되는가 ── */}
-      <section className="mt-[24px] rounded-md border border-line px-[20px] py-[18px]">
+      <section className="mt-[24px] rounded-md bg-neutral-50/70 px-[20px] py-[18px]">
         <div className="flex flex-wrap items-start gap-[16px]">
           <div className="min-w-0 flex-1">
             <h2 className="text-[18px] font-bold leading-[26px] text-neutral-900">
@@ -216,7 +216,7 @@ export default function DocPrDetailPage() {
                 return (
                   <li
                     key={finding.label}
-                    className="rounded-sm border border-line bg-neutral-50 px-[12px] py-[10px]"
+                    className="border-b border-line pb-[10px] last:border-b-0"
                   >
                     <div className="flex items-center gap-[8px]">
                       <span
@@ -317,7 +317,7 @@ export default function DocPrDetailPage() {
             rows={3}
             placeholder="다음 작업자가 이어서 작업할 수 있도록 남길 내용을 적어주세요."
             aria-label="인수인계 메모"
-            className="mt-[12px] w-full resize-none rounded-sm border border-line bg-neutral-0 px-[12px] py-[10px] font-sans text-[14px] font-medium leading-[21px] text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500"
+            className="mt-[12px] w-full resize-none rounded-sm border-0 border-b border-line bg-neutral-50/60 px-[12px] py-[10px] font-sans text-[14px] font-medium leading-[21px] text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500"
           />
         </Disclosure>
       </div>

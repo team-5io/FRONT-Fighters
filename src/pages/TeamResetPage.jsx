@@ -104,7 +104,7 @@ export default function TeamResetPage() {
             onChange={(event) => setConfirm(event.target.value)}
             placeholder={CONFIRM_PHRASE}
             aria-label="초기화 확인 문구"
-            className="mt-[12px] h-[38px] w-full max-w-[320px] rounded-sm border border-line bg-neutral-0 px-[12px] text-[14px] font-medium text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500 disabled:cursor-not-allowed disabled:bg-neutral-50"
+            className="mt-[12px] h-[38px] w-full max-w-[320px] border-0 border-b border-line bg-transparent rounded-none px-[12px] text-[14px] font-medium text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500 disabled:cursor-not-allowed disabled:text-neutral-500"
           />
           <div className="mt-[16px] flex items-center gap-[10px]">
             <Button variant="danger" className="rounded-sm" disabled={!ready}>

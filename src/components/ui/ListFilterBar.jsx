@@ -7,6 +7,9 @@ import { cx } from "./cx";
  *
  * filters: [{ label, value }] — 값은 아직 mock이라 선택 동작은 없다.
  * right:  우측 슬롯 ("내 역할" 표시 등)
+ *
+ * 4차 지시서 2장: 검색·필터를 감싸던 상자를 없앴다. 검색은 밑줄 인풋,
+ * 필터는 테두리 없는 텍스트 버튼이다.
  */
 export default function ListFilterBar({
   filters = [],
@@ -17,7 +20,7 @@ export default function ListFilterBar({
 }) {
   return (
     <div className={cx("flex flex-wrap items-center gap-[8px]", className)}>
-      <label className="flex h-[32px] min-w-[240px] flex-1 items-center gap-[8px] rounded-sm border border-line bg-neutral-0 px-[10px] transition-colors focus-within:border-main-500">
+      <label className="flex h-[32px] min-w-[240px] flex-1 items-center gap-[8px] border-b border-line transition-colors focus-within:border-main-500">
         <IconSearch size={14} className="shrink-0 text-neutral-500" />
         <input
           type="search"
@@ -31,7 +34,7 @@ export default function ListFilterBar({
         <button
           key={filter.label}
           type="button"
-          className="flex h-[32px] shrink-0 items-center gap-[6px] rounded-sm border border-line bg-neutral-0 px-[10px] text-[13px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
+          className="flex h-[32px] shrink-0 items-center gap-[6px] rounded-sm px-[8px] text-[13px] font-medium text-neutral-700 transition-colors hover:bg-neutral-75/70"
         >
           <span className="text-neutral-500">{filter.label}</span>
           <span className="font-semibold">{filter.value}</span>

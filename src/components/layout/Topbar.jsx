@@ -21,13 +21,17 @@ export default function Topbar() {
         />
       </label>
 
-      <button
-        type="button"
+      {/* 마이페이지 진입점 (4차 3.2) — 아바타 + 이름 */}
+      <a
+        href="#/me"
         aria-label={`내 계정 — ${CURRENT_USER.name}`}
-        className="ml-auto flex size-[28px] shrink-0 items-center justify-center rounded-full bg-main-500 font-mono text-[12px] font-bold text-neutral-0"
+        className="ml-auto flex shrink-0 items-center gap-[8px] rounded-sm py-[3px] pl-[3px] pr-[8px] transition-colors hover:bg-neutral-75/70"
       >
-        {CURRENT_USER.name.slice(0, 1)}
-      </button>
+        <span className="flex size-[24px] shrink-0 items-center justify-center rounded-full bg-main-500 font-mono text-[11px] font-bold text-neutral-0">
+          {CURRENT_USER.name.slice(0, 1)}
+        </span>
+        <span className="text-[13px] font-medium text-neutral-700">{CURRENT_USER.name}</span>
+      </a>
     </header>
   );
 }

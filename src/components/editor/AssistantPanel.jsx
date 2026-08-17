@@ -89,7 +89,7 @@ export default function AssistantPanel({
               {suggestions.map((item) => (
                 <li
                   key={item.id}
-                  className="rounded-sm border border-line bg-neutral-50 px-[12px] py-[10px]"
+                  className="border-b border-line pb-[12px] last:border-b-0"
                 >
                   <span className="rounded-full border border-info/25 bg-info-tint px-[7px] py-[2px] font-mono text-[11px] font-bold text-info-text">
                     {KIND_LABEL[item.kind] ?? item.kind}
@@ -147,7 +147,7 @@ export default function AssistantPanel({
               {quotes.map((quote) => {
                 const node = nodeById(quote.nodeId);
                 return (
-                  <li key={quote.nodeId} className="rounded-sm border border-line px-[12px] py-[10px]">
+                  <li key={quote.nodeId} className="border-b border-line pb-[10px] last:border-b-0">
                     <div className="flex items-center gap-[6px]">
                       <a
                         href="#/graph"
@@ -192,7 +192,7 @@ export default function AssistantPanel({
             onChange={(event) => setQuestion(event.target.value)}
             placeholder="이 문서에 대해 물어보기 (보조)"
             aria-label="CIO에게 질문"
-            className="h-[30px] min-w-0 flex-1 rounded-sm border border-line bg-neutral-0 px-[10px] text-[12px] font-medium text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500"
+            className="h-[30px] min-w-0 flex-1 border-0 border-b border-line bg-transparent rounded-none px-[10px] text-[12px] font-medium text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500"
           />
           <Button
             type="submit"

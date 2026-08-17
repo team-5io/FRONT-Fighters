@@ -106,7 +106,7 @@ export default function TranslationPage() {
         title="API 설계 원칙"
         description="원문을 보존하며 번역한 결과입니다. 번역문은 CIO가 생성한 참고 자료입니다."
         properties={[
-          { label: "상태", value: <StatusBadge status="official" kind="document" size="sm" /> },
+          { label: "상태", value: <StatusBadge variant="solid" status="official" kind="document" size="sm" /> },
           { label: "원문", value: "한국어" },
           { label: "번역", value: <AiTranslationLabel size="sm" /> },
         ]}
@@ -129,7 +129,7 @@ export default function TranslationPage() {
             onChange={(event) =>
               setLanguage(LANGUAGES.find((item) => item.code === event.target.value))
             }
-            className="h-[32px] rounded-sm border border-line bg-neutral-0 px-[10px] text-[13px] font-semibold text-neutral-900 outline-none focus:border-main-500"
+            className="h-[32px] border-0 border-b border-line bg-transparent rounded-none px-[10px] text-[13px] font-semibold text-neutral-900 outline-none focus:border-main-500"
           >
             {LANGUAGES.map((item) => (
               <option key={item.code} value={item.code}>
@@ -141,7 +141,7 @@ export default function TranslationPage() {
 
         <div className="flex items-center gap-[8px]">
           <span className="text-[13px] font-medium text-neutral-500">보기</span>
-          <div className="flex rounded-sm border border-line bg-neutral-50 p-[2px]">
+          <div className="flex gap-[2px]">
             {VIEWS.map((item) => (
               <button
                 key={item.key}

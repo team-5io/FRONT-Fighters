@@ -87,7 +87,7 @@ export default function HumanReviewPage() {
         ]}
         title={`${DOC_PR.id} · ${DOC_PR.title}`}
         properties={[
-          { label: "상태", value: <StatusBadge status={DOC_PR.status} size="sm" /> },
+          { label: "상태", value: <StatusBadge variant="solid" status={DOC_PR.status} size="sm" /> },
           { label: "문서", value: DOC_PR.document },
           {
             label: "작성자",
@@ -230,7 +230,7 @@ export default function HumanReviewPage() {
             disabled={!canComment}
             rows={4}
             placeholder="어떤 점을 확인했는지, 무엇을 고쳐야 하는지 적어주세요."
-            className="mt-[16px] w-full resize-none rounded-sm border border-line bg-neutral-0 px-[12px] py-[10px] font-sans text-[14px] font-medium leading-[21px] text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500 disabled:cursor-not-allowed disabled:bg-neutral-50"
+            className="mt-[16px] w-full resize-none rounded-sm border-0 border-b border-line bg-neutral-50/60 px-[12px] py-[10px] font-sans text-[14px] font-medium leading-[21px] text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500 disabled:cursor-not-allowed disabled:text-neutral-500"
           />
           <div className="mt-[10px] flex justify-end">
             <Button

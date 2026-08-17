@@ -136,7 +136,7 @@ export default function GlossaryPage() {
                 key={index}
                 type="button"
                 aria-current={index === 0 ? "page" : undefined}
-                className="size-[28px] rounded-sm border border-line bg-neutral-0 font-mono text-[13px] font-bold text-neutral-700 aria-[current=page]:border-main-500 aria-[current=page]:text-main-500"
+                className="size-[28px] border-0 border-b border-line bg-transparent rounded-none font-mono text-[13px] font-bold text-neutral-700 aria-[current=page]:border-main-500 aria-[current=page]:text-main-500"
               >
                 {index + 1}
               </button>
@@ -164,7 +164,7 @@ export default function GlossaryPage() {
                 disabled={!editable}
                 onChange={(event) => setForm({ ...form, source: event.target.value })}
                 placeholder="예) Doc PR"
-                className="h-[34px] w-full rounded-sm border border-line bg-neutral-0 px-[10px] text-[14px] font-medium text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500 disabled:cursor-not-allowed disabled:bg-neutral-50"
+                className="h-[34px] w-full border-0 border-b border-line bg-transparent rounded-none px-[10px] text-[14px] font-medium text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500 disabled:cursor-not-allowed disabled:text-neutral-500"
               />
             </label>
             <label className="block">
@@ -177,7 +177,7 @@ export default function GlossaryPage() {
                 disabled={!editable}
                 onChange={(event) => setForm({ ...form, target: event.target.value })}
                 placeholder="예) 문서 PR (원문 유지)"
-                className="h-[34px] w-full rounded-sm border border-line bg-neutral-0 px-[10px] text-[14px] font-medium text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500 disabled:cursor-not-allowed disabled:bg-neutral-50"
+                className="h-[34px] w-full border-0 border-b border-line bg-transparent rounded-none px-[10px] text-[14px] font-medium text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500 disabled:cursor-not-allowed disabled:text-neutral-500"
               />
             </label>
           </div>
@@ -192,7 +192,7 @@ export default function GlossaryPage() {
               disabled={!editable}
               onChange={(event) => setForm({ ...form, note: event.target.value })}
               placeholder="언제 이 표기를 쓰는지, 헷갈리기 쉬운 표기가 무엇인지 적어주세요."
-              className="w-full resize-none rounded-sm border border-line bg-neutral-0 px-[12px] py-[10px] font-sans text-[14px] font-medium leading-[21px] text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500 disabled:cursor-not-allowed disabled:bg-neutral-50"
+              className="w-full resize-none rounded-sm border-0 border-b border-line bg-neutral-50/60 px-[12px] py-[10px] font-sans text-[14px] font-medium leading-[21px] text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500 disabled:cursor-not-allowed disabled:text-neutral-500"
             />
           </label>
 
@@ -203,7 +203,7 @@ export default function GlossaryPage() {
                 value={form.category}
                 disabled={!editable}
                 onChange={(event) => setForm({ ...form, category: event.target.value })}
-                className="h-[32px] rounded-sm border border-line bg-neutral-0 px-[10px] text-[13px] font-medium text-neutral-900 outline-none focus:border-main-500 disabled:cursor-not-allowed disabled:bg-neutral-50"
+                className="h-[32px] border-0 border-b border-line bg-transparent rounded-none px-[10px] text-[13px] font-medium text-neutral-900 outline-none focus:border-main-500 disabled:cursor-not-allowed disabled:text-neutral-500"
               >
                 {CATEGORIES.map((category) => (
                   <option key={category} value={category}>

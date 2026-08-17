@@ -10,6 +10,10 @@ import { tone } from "./tone";
  * 있었고, 그마저 DESIGN.md와 R/A가 뒤바뀌어 있었다.
  *
  * DESIGN.md 5장: "RACI Chip: role letter in colored circle + name".
+ *
+ * 4차 지시서 2장 — StatusBadge와 같은 규칙으로 variant를 나눈다.
+ *   inline(기본) : 색 원 + 이름. 테두리·배경 없음. 표·목록용.
+ *   solid        : 알약 채움. 헤더 속성 줄처럼 단독 강조가 필요한 자리.
  */
 const SIZES = {
   sm: { chip: "h-[24px] text-[12px]", circle: "size-[16px] text-[10px]", gap: "gap-[6px]", pad: "pl-[4px] pr-[9px]" },
@@ -21,6 +25,7 @@ export default function RaciChip({
   name,
   showLabel = false,
   size = "md",
+  variant = "inline",
   className = "",
 }) {
   const meta = RACI_ROLES[role];
@@ -29,6 +34,29 @@ export default function RaciChip({
   const t = tone(meta.tone);
   const s = SIZES[size];
   const caption = name ?? (showLabel ? meta.label : null);
+
+  if (variant === "inline") {
+    return (
+      <span
+        className={cx("inline-flex shrink-0 items-center font-semibold", s.chip, s.gap, className)}
+        title={`${meta.key} · ${meta.label} — ${meta.can.join(" · ")}`}
+      >
+        <span
+          aria-hidden
+          className={cx(
+            "flex shrink-0 items-center justify-center rounded-full font-mono font-bold text-neutral-0",
+            s.circle,
+            t.solid,
+          )}
+        >
+          {meta.key}
+        </span>
+        {caption && (
+          <span className="whitespace-nowrap text-neutral-700">{caption}</span>
+        )}
+      </span>
+    );
+  }
 
   return (
     <span

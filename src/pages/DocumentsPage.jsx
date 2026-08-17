@@ -242,7 +242,7 @@ export default function DocumentsPage() {
                   <li key={pr.id}>
                     <a
                       href="#/doc-pr-detail"
-                      className="flex items-center gap-[8px] rounded-sm px-[8px] py-[6px] transition-colors hover:bg-neutral-50"
+                      className="flex items-center gap-[8px] rounded-sm py-[6px] transition-colors hover:bg-neutral-50/70"
                     >
                       <span className="min-w-0">
                         <span className="block truncate text-[13px] font-medium text-neutral-700">
