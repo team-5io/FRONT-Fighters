@@ -90,7 +90,7 @@ export default function TeamMembersPage() {
   const [reason, setReason] = useState("");
 
   const selectClass =
-    "h-[36px] w-full rounded-sm border border-line bg-neutral-0 px-[10px] text-[14px] font-medium text-neutral-900 outline-none focus:border-main-500 disabled:cursor-not-allowed disabled:bg-neutral-50";
+    "h-[36px] w-full border-0 border-b border-line bg-transparent rounded-none px-[10px] text-[14px] font-medium text-neutral-900 outline-none focus:border-main-500 disabled:cursor-not-allowed disabled:text-neutral-500";
 
   return (
     <Page>
@@ -199,7 +199,7 @@ export default function TeamMembersPage() {
               disabled={!editable}
               rows={3}
               placeholder="지정 사유를 입력하세요."
-              className="w-full resize-none rounded-sm border border-line bg-neutral-0 px-[12px] py-[10px] font-sans text-[14px] font-medium leading-[21px] text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500 disabled:cursor-not-allowed disabled:bg-neutral-50"
+              className="w-full resize-none rounded-sm border-0 border-b border-line bg-neutral-50/60 px-[12px] py-[10px] font-sans text-[14px] font-medium leading-[21px] text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500 disabled:cursor-not-allowed disabled:text-neutral-500"
             />
           </label>
 

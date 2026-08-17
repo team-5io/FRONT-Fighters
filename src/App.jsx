@@ -13,6 +13,7 @@ import GlossaryPage from "./pages/GlossaryPage";
 import HumanReviewPage from "./pages/HumanReviewPage";
 import LinkDocumentsPage from "./pages/LinkDocumentsPage";
 import LoginPage from "./pages/LoginPage";
+import MyPage from "./pages/MyPage";
 import RaciRolesPage from "./pages/RaciRolesPage";
 import TeamInvitePage from "./pages/TeamInvitePage";
 import TeamMembersPage from "./pages/TeamMembersPage";
@@ -31,6 +32,8 @@ const ROUTES = {
   // 팀 설정 초기화는 팀에 소속된 뒤 설정에서 들어가는 화면이라 셸을 띄운다
   "#/team-reset": { page: TeamResetPage, activeNav: "설정" },
   "#/dashboard": { page: DashboardPage, activeNav: "대시보드" },
+  // 마이페이지는 사이드바 항목이 아니라 상단바 아바타로 들어간다 (4차 3.2)
+  "#/me": { page: MyPage },
   "#/documents": { page: DocumentsPage, activeNav: "문서" },
   "#/doc-pr": { page: DocPrListPage, activeNav: "Doc PR" },
   "#/doc-pr-detail": { page: DocPrDetailPage, activeNav: "Doc PR" },

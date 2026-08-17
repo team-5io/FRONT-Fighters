@@ -87,6 +87,15 @@ export default function DocumentWritePage() {
       <div className="flex gap-[32px]">
         {/* ── 본문: 노션 페이지 ── */}
         <article className="min-w-0 flex-1">
+          {/* 이 화면은 노션 페이지 레이아웃이라 PageHeader를 쓰지 않는다 —
+              뒤로가기를 여기 직접 둔다 (4차 4.2) */}
+          <a
+            href="#/documents"
+            className="mb-[10px] inline-flex items-center gap-[6px] rounded-xs text-[13px] font-medium text-neutral-500 transition-colors hover:text-main-500"
+          >
+            <span aria-hidden>←</span> 문서 목록
+          </a>
+
           <nav aria-label="현재 위치" className="mb-[10px]">
             <ol className="flex flex-wrap items-center gap-[6px] text-[13px] font-medium text-neutral-500">
               <li>
@@ -120,7 +129,7 @@ export default function DocumentWritePage() {
           <PropertyRow
             className="mt-[12px]"
             items={[
-              { label: "상태", value: <StatusBadge status="draft" kind="document" size="sm" /> },
+              { label: "상태", value: <StatusBadge variant="solid" status="draft" kind="document" size="sm" /> },
               { label: "작성자", value: <RaciChip role="R" name="김민섭" size="sm" /> },
               { label: "버전", value: <span className="font-mono text-[12px]">v3.3 (작성중)</span> },
               { label: "최근 저장", value: savedAt },

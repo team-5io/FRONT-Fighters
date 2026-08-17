@@ -177,7 +177,7 @@ export default function AiReviewPage() {
                     >
                       {level.label}
                     </span>
-                    <span className="rounded-full border border-line bg-neutral-50 px-[9px] py-[3px] font-mono text-[12px] font-bold text-neutral-700">
+                    <span className="font-mono text-[12px] font-bold text-neutral-500">
                       {finding.kind}
                     </span>
                     <h3 className="text-[15px] font-semibold text-neutral-900">{finding.title}</h3>

@@ -90,7 +90,7 @@ export default function LinkDocumentsPage() {
           <Section title="연결할 문서 찾기" className="mt-0">
             <div className="mb-[12px] flex flex-wrap items-center gap-[8px]">
               <span className="text-[13px] font-medium text-neutral-500">관계</span>
-              <div className="flex rounded-sm border border-line bg-neutral-50 p-[2px]">
+              <div className="flex gap-[2px]">
                 {RELATIONS.map((item) => (
                   <button
                     key={item.value}
@@ -98,10 +98,10 @@ export default function LinkDocumentsPage() {
                     onClick={() => setRelation(item.value)}
                     aria-pressed={relation === item.value}
                     className={cx(
-                      "h-[26px] rounded-xs px-[10px] text-[13px] font-semibold transition-colors",
+                      "h-[26px] border-b-2 px-[8px] text-[13px] font-semibold transition-colors",
                       relation === item.value
-                        ? "bg-neutral-0 text-main-700 shadow-[0_0_0_1px_rgba(0,0,0,0.06)]"
-                        : "text-neutral-500 hover:text-neutral-700",
+                        ? "border-main-500 text-main-700"
+                        : "border-transparent text-neutral-500 hover:text-neutral-700",
                     )}
                   >
                     {item.label}

@@ -285,7 +285,7 @@ export default function GraphCanvas({ focusId, onSelect, selectedId }) {
       <button
         type="button"
         onClick={() => setTransform({ x: 0, y: 0, k: 1 })}
-        className="absolute bottom-[12px] right-[12px] rounded-sm border border-line bg-neutral-0 px-[8px] py-[4px] text-[11px] font-semibold text-neutral-700 transition-colors hover:bg-neutral-50"
+        className="absolute bottom-[12px] right-[12px] border-0 border-b border-line bg-transparent rounded-none px-[8px] py-[4px] text-[11px] font-semibold text-neutral-700 transition-colors hover:bg-neutral-50"
       >
         보기 초기화
       </button>
@@ -297,7 +297,7 @@ function HoverCard({ node }) {
   if (!node) return null;
   const meta = DOCUMENT_STATUS[node.status];
   return (
-    <div className="pointer-events-none absolute left-[12px] top-[12px] max-w-[260px] rounded-sm border border-line bg-neutral-0 px-[10px] py-[8px] shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
+    <div className="pointer-events-none absolute left-[12px] top-[12px] max-w-[260px] border-0 border-b border-line bg-transparent rounded-none px-[10px] py-[8px] shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
       <p className="text-[13px] font-semibold text-neutral-900">
         {node.locked ? "열람 권한이 없는 문서" : node.title}
       </p>
