@@ -1,12 +1,12 @@
-import Page, { Section } from "../components/layout/Page";
+import Page from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
 import {
   AiDisclaimer,
   Button,
   Card,
-  CardHeader,
   CioBadge,
   CioMark,
+  Disclosure,
   MyRoleBar,
   RaciChip,
   StatusBadge,
@@ -24,6 +24,9 @@ import { IconSun } from "../components/icons";
  *    화면 전체를 CIO(DocumentLion) 산출물로 표시하고 "참고용" 안내를 붙인다.
  *  - 검토 결과에 근거를 함께 보여 준다 (기능명세서 5.2 · `GET /doc-prs/{prId}/review/evidence`).
  *  - `리뷰 상태` 목록에서 CIO 항목과 사람 항목을 주체별로 구분했다.
+ *
+ * 2차 지시서 4장: 검토 항목 카드만 남기고(개별 근거는 독립 단위라 카드가 맞다)
+ * 진행 상태·이력·다음 작업자는 접기로 내렸다.
  */
 
 const TARGET = {
@@ -150,11 +153,14 @@ export default function AiReviewPage() {
       </Card>
 
       {/* ── 검토 근거 ── */}
-      <Section
-        title="검토 항목과 근거"
-        caption="문서 충돌 · 정합성 · 협업 규칙 위반 세 가지를 검토했습니다."
-      >
-        <div className="flex flex-col gap-[12px]">
+      <section className="mt-[28px]">
+        <h2 className="text-[16px] font-semibold leading-[24px] text-neutral-900">
+          검토 항목과 근거
+        </h2>
+        <p className="mt-[4px] text-[13px] font-medium text-neutral-500">
+          문서 충돌 · 정합성 · 협업 규칙 위반 세 가지를 검토했습니다.
+        </p>
+        <div className="mt-[12px] flex flex-col gap-[12px]">
           {FINDINGS.map((finding) => {
             const level = VERDICT[finding.level];
             return (
@@ -190,17 +196,17 @@ export default function AiReviewPage() {
             );
           })}
         </div>
-      </Section>
+      </section>
 
-      {/* ── 리뷰 상태 / 이력 ── */}
-      <div className="flex gap-[24px]">
-        <Section title="리뷰 진행 상태" className="min-w-0 flex-1">
-          <Card padding="none">
+      {/* ── 나머지는 접기 (2차 지시서 4.1 점진적 노출) ── */}
+      <div className="mt-[28px]">
+        <Disclosure title="리뷰 진행 상태" caption="CIO 완료 · 사람 리뷰 대기중" defaultOpen>
+          <div>
             <ul>
               {REVIEW_STATUS.map((row) => (
                 <li
                   key={row.label}
-                  className="flex items-center gap-[12px] border-b border-line px-[16px] py-[12px] last:border-b-0"
+                  className="flex items-center gap-[12px] py-[8px]"
                 >
                   {row.actor === "ai" ? (
                     <CioMark size={14} className="shrink-0 text-info" />
@@ -219,16 +225,16 @@ export default function AiReviewPage() {
                 </li>
               ))}
             </ul>
-          </Card>
-        </Section>
+          </div>
+        </Disclosure>
 
-        <Section title="CIO 검토 이력" className="min-w-0 flex-1">
-          <Card padding="none">
+        <Disclosure title="CIO 검토 이력" count={HISTORY.length}>
+          <div>
             <ul>
               {HISTORY.map((item) => (
                 <li
                   key={item.at}
-                  className="flex items-center gap-[12px] border-b border-line px-[16px] py-[12px] last:border-b-0"
+                  className="flex items-center gap-[12px] py-[8px]"
                 >
                   <StatusBadge status="aiReview" size="sm" />
                   <span className="min-w-0">
@@ -243,18 +249,15 @@ export default function AiReviewPage() {
                 </li>
               ))}
             </ul>
-          </Card>
-        </Section>
-      </div>
+          </div>
+        </Disclosure>
 
-      {/* ── 다음 작업자 ── */}
-      <Section
-        title="다음 작업자"
-        caption="시차가 다른 팀원에게 넘길 때 참고할 정보입니다. 자동 추천은 후속 단계 범위입니다."
-      >
-        <Card padding="md">
-          <CardHeader title="Follow-the-Sun" right={<IconSun size={18} className="text-warning" />} />
-          <ul className="mt-[14px] flex flex-col gap-[8px]">
+        <Disclosure
+          title="다음 작업자"
+          caption="Follow-the-Sun · 자동 추천은 후속 단계 범위"
+          right={<IconSun size={16} className="text-warning" />}
+        >
+          <ul className="flex flex-col gap-[8px]">
             {HANDOVER.map((person) => (
               <li
                 key={person.name}
@@ -265,8 +268,8 @@ export default function AiReviewPage() {
               </li>
             ))}
           </ul>
-        </Card>
-      </Section>
+        </Disclosure>
+      </div>
     </Page>
   );
 }

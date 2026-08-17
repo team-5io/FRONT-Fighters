@@ -3,6 +3,7 @@ export { default as Button } from "./Button";
 export { default as Card, CardHeader, PropertyRow } from "./Card";
 export { default as CioBadge, CioMark, AiDisclaimer } from "./CioBadge";
 export { default as DataTable } from "./DataTable";
+export { default as Disclosure } from "./Disclosure";
 export { default as EmptyState } from "./EmptyState";
 export { default as Field } from "./Field";
 export { default as ListFilterBar } from "./ListFilterBar";

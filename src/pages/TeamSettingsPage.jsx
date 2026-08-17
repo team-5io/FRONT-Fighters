@@ -1,17 +1,24 @@
-import Page, { Section } from "../components/layout/Page";
+import { useState } from "react";
+import Page from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
-import { Button, Card, MyRoleBar, RaciChip, StatusBadge } from "../components/ui";
-import { CURRENT_USER } from "../data/raci";
+import {
+  Button,
+  Disclosure,
+  RaciChip,
+  StatusBadge,
+  cx,
+  tone,
+} from "../components/ui";
+import { CURRENT_USER, canManageTeam } from "../data/raci";
 import { IconPaper, IconShield, IconTeam, IconText } from "../components/icons";
 
 /**
  * 팀 설정 — `#/settings`
  *
- * 정상화 지시서 5.L 적용:
- *  - 팀 정보 카드 위 섹션 라벨이 `문서 제목`으로 오기되어 있던 것을 `팀 정보`로 정정.
- *    카드 내용이 팀 이름/코드/생성일/구성원이라 명백한 라벨 복붙 오류다.
- *  - 비어 있던 팀 코드·생성일·구성원 값을 채웠다(원칙 4 — 자리표시 막대 제거).
- *  - 설정 항목마다 현재 상태를 함께 보여 준다(협업 규칙 채택 여부 등).
+ * 1차 정상화(지시서 5.L): 섹션 라벨 오기 `문서 제목` → `팀 정보`, 자리표시 막대 제거.
+ *
+ * 2차 지시서 4.2: 설정 카드 그리드를 **노션 설정 페이지처럼 좌측 메뉴 + 우측 단일 패널**
+ * 구조로 재편했다. 카드를 층층이 쌓지 않고 한 번에 한 항목만 보여 준다.
  */
 
 const TEAM = {
@@ -21,135 +28,164 @@ const TEAM = {
   memberCount: 5,
 };
 
-const SETTINGS = [
+const SECTIONS = [
   {
-    icon: <IconShield size={18} />,
-    title: "RACI 역할 관리",
-    desc: "문서 검토·승인에 사용되는 역할(R·A·C·I)과 권한을 정의합니다.",
+    key: "team",
+    icon: <IconTeam size={15} />,
+    label: "팀 정보",
+    summary: "이름 · 코드 · 생성일 · 구성원",
+  },
+  {
+    key: "raci",
+    icon: <IconShield size={14} />,
+    label: "RACI 역할",
+    summary: "역할과 권한 정의",
     href: "#/raci-roles",
-    status: "A 미지정 문서 1건",
-    tone: "warning",
+    status: { label: "A 미지정 1건", tone: "warning" },
   },
   {
-    icon: <IconPaper size={18} />,
-    title: "협업 규칙 (Charter)",
-    desc: "CIO가 Doc PR을 검토할 때 근거로 삼는 팀 협업 규칙입니다.",
+    key: "charter",
+    icon: <IconPaper size={14} />,
+    label: "협업 규칙 (Charter)",
+    summary: "CIO 검토의 근거",
     href: "#/charter",
-    status: "초안 · 미채택",
-    tone: "warning",
+    status: { label: "초안 · 미채택", tone: "warning" },
   },
   {
-    icon: <IconText size={18} />,
-    title: "팀 용어집",
-    desc: "문서 검토와 번역에서 일관성 기준이 되는 팀 전용 용어를 관리합니다.",
+    key: "glossary",
+    icon: <IconText size={14} />,
+    label: "팀 용어집",
+    summary: "검토·번역의 표기 기준",
     href: "#/glossary",
-    status: "등록된 용어 없음",
-    tone: "neutral",
+    status: { label: "0개", tone: "neutral" },
   },
   {
-    icon: <IconTeam size={20} />,
-    title: "팀원 관리",
-    desc: "팀 구성원 초대, 역할 배정, 대체 승인권자 지정을 처리합니다.",
+    key: "members",
+    icon: <IconTeam size={15} />,
+    label: "팀원 관리",
+    summary: "초대 · 역할 배정 · 대체 승인권자",
     href: "#/team-members",
-    status: `구성원 ${TEAM.memberCount}명`,
-    tone: "neutral",
+    status: { label: `${TEAM.memberCount}명`, tone: "neutral" },
   },
 ];
 
 export default function TeamSettingsPage() {
+  const [active, setActive] = useState("team");
+  const editable = canManageTeam();
+  const current = SECTIONS.find((section) => section.key === active);
+
   return (
     <Page>
       <PageHeader
         breadcrumb={[{ label: TEAM.name, href: "#/dashboard" }, { label: "설정" }]}
         title="팀 설정"
-        description="팀 정보를 확인하고 설정 항목을 관리하세요."
-        actions={
-          <Button
-            variant="secondary"
-            className="rounded-sm"
-            onClick={() => (window.location.hash = "#/team-reset")}
-          >
-            팀 설정 초기화
-          </Button>
-        }
+        properties={[
+          { label: "팀", value: TEAM.name },
+          { label: "구성원", value: `${TEAM.memberCount}명` },
+          { label: "내 역할", value: <RaciChip role={CURRENT_USER.role} showLabel size="sm" /> },
+        ]}
       />
 
-      <MyRoleBar className="mt-[20px]" scope="이 팀" />
+      <div className="mt-[24px] flex gap-[32px]">
+        {/* ── 좌: 설정 메뉴 ── */}
+        <nav aria-label="설정 항목" className="w-[200px] shrink-0">
+          <ul className="flex flex-col gap-[2px]">
+            {SECTIONS.map((section) => (
+              <li key={section.key}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    section.href
+                      ? (window.location.hash = section.href)
+                      : setActive(section.key)
+                  }
+                  aria-current={active === section.key ? "true" : undefined}
+                  className={cx(
+                    "flex w-full items-center gap-[8px] rounded-sm px-[10px] py-[7px] text-left text-[14px] transition-colors",
+                    active === section.key
+                      ? "bg-main-50 font-semibold text-main-700"
+                      : "text-neutral-700 hover:bg-neutral-75",
+                  )}
+                >
+                  <span className="flex w-[16px] shrink-0 items-center justify-center text-neutral-500">
+                    {section.icon}
+                  </span>
+                  <span className="truncate">{section.label}</span>
+                  {section.status && (
+                    <span
+                      className={cx(
+                        "ml-auto shrink-0 rounded-full border px-[6px] py-[1px] font-mono text-[10px] font-bold",
+                        tone(section.status.tone).chip,
+                      )}
+                    >
+                      {section.status.label}
+                    </span>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
 
-      {/* 1차 구현에서 `문서 제목`으로 잘못 붙어 있던 섹션 라벨 */}
-      <Section title="팀 정보">
-        <Card padding="md">
-          <dl className="grid grid-cols-4 gap-[16px]">
-            <div>
-              <dt className="text-[13px] font-medium text-neutral-500">팀 이름</dt>
-              <dd className="mt-[4px] text-[15px] font-semibold text-neutral-900">{TEAM.name}</dd>
-            </div>
-            <div>
-              <dt className="text-[13px] font-medium text-neutral-500">팀 코드</dt>
-              <dd className="mt-[4px] font-mono text-[14px] font-bold text-neutral-700">
-                {TEAM.code}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-[13px] font-medium text-neutral-500">생성일</dt>
-              <dd className="mt-[4px] text-[14px] font-medium text-neutral-700">
-                {TEAM.createdAt}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-[13px] font-medium text-neutral-500">구성원</dt>
-              <dd className="mt-[4px] flex items-center gap-[6px]">
-                <span className="text-[14px] font-medium text-neutral-700">
-                  {TEAM.memberCount}명
-                </span>
-                <RaciChip role={CURRENT_USER.role} name="나" size="sm" />
-              </dd>
-            </div>
-          </dl>
-        </Card>
-      </Section>
+          <button
+            type="button"
+            onClick={() => (window.location.hash = "#/team-reset")}
+            className="mt-[16px] w-full rounded-sm border-t border-line px-[10px] pt-[12px] text-left text-[13px] font-medium text-neutral-500 hover:text-error-text"
+          >
+            팀 설정 초기화
+          </button>
+        </nav>
 
-      <Section title="설정 항목">
-        <ul className="flex flex-col gap-[8px]">
-          {SETTINGS.map((item) => (
-            <li key={item.title}>
-              <a
-                href={item.href}
-                className="flex items-center gap-[14px] rounded-md border border-line bg-neutral-0 px-[16px] py-[14px] transition-colors hover:bg-neutral-50"
+        {/* ── 우: 단일 패널 ── */}
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[16px] font-semibold leading-[24px] text-neutral-900">
+            {current.label}
+          </h2>
+          <p className="mt-[4px] text-[13px] font-medium text-neutral-500">{current.summary}</p>
+
+          <dl className="mt-[16px] flex flex-col gap-[2px]">
+            {[
+              { label: "팀 이름", value: TEAM.name },
+              {
+                label: "팀 코드",
+                value: <code className="font-mono text-[13px] font-bold">{TEAM.code}</code>,
+              },
+              { label: "생성일", value: TEAM.createdAt },
+              { label: "구성원", value: `${TEAM.memberCount}명` },
+            ].map((row) => (
+              <div
+                key={row.label}
+                className="flex items-center gap-[16px] border-b border-line py-[10px] last:border-b-0"
               >
-                <span className="flex size-[34px] shrink-0 items-center justify-center rounded-sm bg-main-50 text-main-500">
-                  {item.icon}
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-[14px] font-semibold text-neutral-900">
-                    {item.title}
-                  </span>
-                  <span className="block text-[13px] font-medium text-neutral-500">
-                    {item.desc}
-                  </span>
-                </span>
-                <span className="ml-auto shrink-0 rounded-full border border-line bg-neutral-50 px-[9px] py-[3px] font-mono text-[12px] font-bold text-neutral-700">
-                  {item.status}
-                </span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      </Section>
+                <dt className="w-[100px] shrink-0 text-[13px] font-medium text-neutral-500">
+                  {row.label}
+                </dt>
+                <dd className="text-[14px] font-medium text-neutral-700">{row.value}</dd>
+              </div>
+            ))}
+          </dl>
 
-      <Section title="공개 범위" caption="지정 참여자 전용 문서는 RACI 참여자와 팀 관리자만 열람할 수 있습니다.">
-        <Card padding="md">
-          <div className="flex items-center gap-[10px]">
-            <StatusBadge status="official" kind="document" size="sm" />
-            <span className="text-[13px] font-medium text-neutral-700">
-              현재 팀 문서는 팀 구성원 전체에게 공개되어 있습니다.
-            </span>
+          {editable && (
+            <Button variant="secondary" size="sm" className="mt-[16px] rounded-sm">
+              팀 정보 수정
+            </Button>
+          )}
+
+          <div className="mt-[28px]">
+            <Disclosure title="공개 범위" caption="팀 구성원 전체 공개">
+              <div className="flex items-center gap-[10px]">
+                <StatusBadge status="official" kind="document" size="sm" />
+                <span className="text-[13px] font-medium text-neutral-700">
+                  현재 팀 문서는 팀 구성원 전체에게 공개되어 있습니다.
+                </span>
+              </div>
+              <p className="mt-[8px] text-[13px] font-medium leading-[19px] text-neutral-500">
+                지정 참여자 전용 문서는 RACI 참여자와 팀 관리자만 열람할 수 있습니다.
+                문서별 공개 범위와 자동 권한 조정은 후속 단계 범위입니다.
+              </p>
+            </Disclosure>
           </div>
-          <p className="mt-[8px] text-[13px] font-medium leading-[19px] text-neutral-500">
-            문서별 공개 범위와 자동 권한 조정은 후속 단계 범위입니다.
-          </p>
-        </Card>
-      </Section>
+        </div>
+      </div>
     </Page>
   );
 }

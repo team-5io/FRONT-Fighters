@@ -1,70 +1,90 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Page from "../components/layout/Page";
+import AssistantPanel from "../components/editor/AssistantPanel";
+import BlockEditor from "../components/editor/BlockEditor";
 import {
-  AiDisclaimer,
   Button,
-  Card,
-  CardHeader,
-  CioBadge,
-  EmptyState,
   MyRoleBar,
   PropertyRow,
   RaciChip,
   StatusBadge,
+  cx,
 } from "../components/ui";
+import { INITIAL_DOCUMENT, createBlock } from "../data/blocks";
+import { relatedDocuments } from "../data/graph";
 import { IconGlobe, IconLink, IconSparkle } from "../components/icons";
 
 /**
- * 문서 작성/편집 — `#/write`
+ * 문서 작성/편집 — `#/write` (딥링크 `#/ai-structure`도 이 화면으로 온다)
  *
- * 정상화 지시서 5.F 적용. **노션 페이지 톤의 핵심 적용 지점**(지시서 3장):
- *  - 넓은 단일 컬럼 캔버스, 제목은 크고 인라인 편집 가능, 메타데이터는 제목 바로 아래
- *    얇은 속성 줄, 크롬은 최소화.
- *  - AI 제안은 본문과 구별되는 우측 패널에 두고 CIO 배지 + "참고용" 안내를 붙였다
- *    (기능명세서 5.1 표시 규칙: "제안은 본문과 구별되는 패널/인라인 형태로 표시된다").
- *  - 제안은 수락해야만 반영된다 (5.1 비즈니스 규칙: AI는 자동 저장·자동 완성하지 않는다).
+ * 2차 지시서 1·2장:
+ *  - 본문을 자유 텍스트 입력창에서 **계층형 블록 에디터**로 교체했다.
+ *  - AI 구조 추천을 별도 페이지에서 떼어 와 **우측 하단 플로팅 패널**로 흡수했다.
+ *    `#/ai-structure`로 들어오면 이 화면을 열고 패널을 펼친 상태로 보여 준다.
+ *  - 관련 문서 연결은 이번 단계에서 화면을 합치지 않고 진입 버튼만 자연스럽게 뒀다
+ *    (지시서 1.3 — 화면 통폐합은 범위 밖).
  */
+
+const DOCUMENT_ID = "api-design";
 
 const INITIAL_SUGGESTIONS = [
   {
     id: "s1",
-    kind: "구조",
+    kind: "missing",
     title: "`오류 처리` 섹션이 비어 있습니다",
     detail: "같은 유형의 문서 3건은 모두 오류 코드 표를 두고 있습니다.",
+    apply: () => [createBlock("heading2", "오류 처리"), createBlock("paragraph", "")],
   },
   {
     id: "s2",
-    kind: "누락",
-    title: "인증 방식에 만료 시간이 적혀 있지 않습니다",
+    kind: "structure",
+    title: "인증 방식에 만료 시간이 빠져 있습니다",
     detail: "연결 문서 `보안 정책 문서`가 토큰 만료 정책을 정의하고 있습니다.",
+    preview: "액세스 토큰은 발급 후 30분간 유효하다.",
+    apply: () => [createBlock("paragraph", "액세스 토큰은 발급 후 30분간 유효하다.")],
   },
   {
     id: "s3",
-    kind: "다음 내용",
+    kind: "next",
     title: "예제 요청/응답 블록을 덧붙일 수 있습니다",
     detail: "코드 블록은 번역할 때도 원문 그대로 보존됩니다.",
+    preview: 'GET /documents?cursor=… → { "data": [...], "cursor": "…" }',
+    apply: () => [
+      createBlock("code", 'GET /documents?cursor=abc\n\n{ "data": [], "cursor": null }', {
+        language: "http",
+      }),
+    ],
   },
-];
-
-const LINKED_DOCS = [
-  { title: "보안 정책 문서", relation: "참조" },
-  { title: "결제 정책 문서", relation: "영향 받음" },
 ];
 
 export default function DocumentWritePage() {
   const [title, setTitle] = useState("API 설계 원칙");
-  const [body, setBody] = useState(
-    "모든 API 요청은 Authorization 헤더에 Bearer 토큰을 포함해야 한다.\n\n응답 본문은 항상 JSON이며, 오류일 때는 code와 message 필드를 포함한다.",
-  );
+  const [blocks, setBlocks] = useState(INITIAL_DOCUMENT);
   const [suggestions, setSuggestions] = useState(INITIAL_SUGGESTIONS);
+  const [savedAt, setSavedAt] = useState("방금 전");
+  // `#/ai-structure` 딥링크로 들어오면 패널을 펼친 상태로 시작한다
+  const [panelOpen, setPanelOpen] = useState(
+    () => window.location.hash === "#/ai-structure",
+  );
 
-  function resolve(id) {
-    setSuggestions((prev) => prev.filter((item) => item.id !== id));
+  useEffect(() => {
+    const onHash = () => {
+      if (window.location.hash === "#/ai-structure") setPanelOpen(true);
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
+  const related = relatedDocuments(DOCUMENT_ID);
+
+  function acceptSuggestion(item) {
+    setBlocks((prev) => [...prev, ...item.apply()]);
+    setSuggestions((prev) => prev.filter((row) => row.id !== item.id));
   }
 
   return (
     <Page wide>
-      <div className="mx-auto flex w-full max-w-[1180px] gap-[32px]">
+      <div className="mx-auto flex w-full max-w-[1120px] gap-[32px]">
         {/* ── 본문: 노션 페이지 ── */}
         <article className="min-w-0 flex-1">
           <nav aria-label="현재 위치" className="mb-[10px]">
@@ -89,7 +109,6 @@ export default function DocumentWritePage() {
             </ol>
           </nav>
 
-          {/* 제목 = 인라인 편집 */}
           <input
             value={title}
             onChange={(event) => setTitle(event.target.value)}
@@ -98,18 +117,17 @@ export default function DocumentWritePage() {
             className="w-full border-0 bg-transparent p-0 text-[32px] font-bold leading-[42px] tracking-[-0.01em] text-neutral-900 outline-none placeholder:text-neutral-300"
           />
 
-          {/* 속성 줄 */}
           <PropertyRow
             className="mt-[12px]"
             items={[
               { label: "상태", value: <StatusBadge status="draft" kind="document" size="sm" /> },
               { label: "작성자", value: <RaciChip role="R" name="김민섭" size="sm" /> },
               { label: "버전", value: <span className="font-mono text-[12px]">v3.3 (작성중)</span> },
-              { label: "최근 저장", value: "방금 전" },
+              { label: "최근 저장", value: savedAt },
             ]}
           />
 
-          <div className="mt-[16px] flex flex-wrap items-center gap-[8px] border-y border-line py-[10px]">
+          <div className="mt-[16px] flex flex-wrap items-center gap-[6px] border-y border-line py-[8px]">
             <Button
               variant="ghost"
               size="sm"
@@ -117,6 +135,9 @@ export default function DocumentWritePage() {
               onClick={() => (window.location.hash = "#/link-documents")}
             >
               <IconLink size={14} /> 관련 문서 연결
+              {related.length > 0 && (
+                <span className="font-mono text-[11px] text-neutral-500">{related.length}</span>
+              )}
             </Button>
             <Button
               variant="ghost"
@@ -129,13 +150,18 @@ export default function DocumentWritePage() {
             <Button
               variant="ghost"
               size="sm"
-              className="rounded-sm"
-              onClick={() => (window.location.hash = "#/ai-structure")}
+              className={cx("rounded-sm", panelOpen && "text-main-500")}
+              onClick={() => setPanelOpen((prev) => !prev)}
             >
-              <IconSparkle size={14} /> 구조 추천
+              <IconSparkle size={14} /> 작성 도우미
             </Button>
-            <div className="ml-auto flex items-center gap-[8px]">
-              <Button variant="secondary" size="sm" className="rounded-sm">
+            <div className="ml-auto flex items-center gap-[6px]">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="rounded-sm"
+                onClick={() => setSavedAt("방금 전")}
+              >
                 초안 저장
               </Button>
               <Button size="sm" className="rounded-sm">
@@ -144,108 +170,67 @@ export default function DocumentWritePage() {
             </div>
           </div>
 
-          <textarea
-            value={body}
-            onChange={(event) => setBody(event.target.value)}
-            aria-label="본문"
-            placeholder="내용을 입력하세요. 코드 블록과 기술 용어는 번역 시 원문 그대로 보존됩니다."
-            className="mt-[20px] min-h-[420px] w-full resize-none border-0 bg-transparent p-0 font-sans text-[16px] font-medium leading-[28px] text-neutral-900 outline-none placeholder:text-neutral-300"
-          />
+          {/* 블록 에디터 */}
+          <BlockEditor className="mt-[16px]" blocks={blocks} onChange={setBlocks} />
+
+          <p className="mt-[24px] border-t border-line pt-[12px] text-[12px] font-medium leading-[18px] text-neutral-500">
+            팁 — 블록 맨 앞에서 <code className="font-mono text-neutral-700">#</code>{" "}
+            <code className="font-mono text-neutral-700">-</code>{" "}
+            <code className="font-mono text-neutral-700">1.</code>{" "}
+            <code className="font-mono text-neutral-700">&gt;</code>{" "}
+            <code className="font-mono text-neutral-700">[]</code> 뒤에 스페이스,{" "}
+            <code className="font-mono text-neutral-700">```</code>{" "}
+            <code className="font-mono text-neutral-700">---</code> 뒤에 Enter.{" "}
+            <code className="font-mono text-neutral-700">/</code> 로 블록 고르기,{" "}
+            <code className="font-mono text-neutral-700">Tab</code> /{" "}
+            <code className="font-mono text-neutral-700">Shift+Tab</code> 으로 들여쓰기.
+          </p>
         </article>
 
-        {/* ── 우측: AI 제안 · 연결 문서 (본문과 구별되는 패널) ── */}
-        <aside className="w-[320px] shrink-0">
-          <Card padding="none" className="overflow-hidden">
-            <div className="h-[3px] w-full bg-info" />
-            <div className="p-[16px]">
-              {/* 폭이 좁은 패널이라 배지를 제목 위 줄로 뺀다 */}
-              <CioBadge feature="Writing Assistant" size="sm" />
-              <CardHeader
-                className="mt-[10px]"
-                title="작성 도우미"
-                caption="수락해야 본문에 반영됩니다."
-              />
-              {suggestions.length > 0 ? (
-                <ul className="mt-[14px] flex flex-col gap-[10px]">
-                  {suggestions.map((item) => (
-                    <li
-                      key={item.id}
-                      className="rounded-sm border border-line bg-neutral-50 px-[12px] py-[10px]"
-                    >
-                      <span className="rounded-full border border-info/25 bg-info-tint px-[7px] py-[2px] font-mono text-[11px] font-bold text-info-text">
-                        {item.kind}
-                      </span>
-                      <p className="mt-[8px] text-[13px] font-semibold leading-[19px] text-neutral-900">
-                        {item.title}
-                      </p>
-                      <p className="mt-[4px] text-[12px] font-medium leading-[17px] text-neutral-500">
-                        {item.detail}
-                      </p>
-                      <div className="mt-[10px] flex gap-[6px]">
-                        <Button
-                          size="sm"
-                          className="flex-1 justify-center rounded-sm"
-                          onClick={() => resolve(item.id)}
-                        >
-                          수락
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          className="flex-1 justify-center rounded-sm"
-                          onClick={() => resolve(item.id)}
-                        >
-                          거부
-                        </Button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <EmptyState
-                  compact
-                  title="지금은 제안할 내용이 없습니다"
-                  description="내용을 더 쓰면 CIO가 구조와 누락 항목을 다시 살펴봅니다."
-                />
-              )}
-            </div>
-            <div className="border-t border-line bg-neutral-50 px-[16px] py-[12px]">
-              <AiDisclaimer />
-            </div>
-          </Card>
+        {/* ── 우측: 문서 속성 (AI는 플로팅 패널로 빠졌다) ── */}
+        <aside className="w-[260px] shrink-0">
+          <MyRoleBar scope="이 문서" />
 
-          <Card padding="md" className="mt-[16px]">
-            <CardHeader title="연결된 문서" caption="변경 시 영향을 받는 문서입니다." />
-            {LINKED_DOCS.length > 0 ? (
-              <ul className="mt-[12px] flex flex-col gap-[8px]">
-                {LINKED_DOCS.map((doc) => (
-                  <li
-                    key={doc.title}
-                    className="flex items-center gap-[8px] rounded-sm border border-line px-[10px] py-[8px]"
+          <section className="mt-[16px]">
+            <h2 className="text-[13px] font-semibold text-neutral-900">연결된 문서</h2>
+            <p className="mt-[2px] text-[12px] font-medium text-neutral-500">
+              변경 시 영향을 받는 문서입니다.
+            </p>
+            <ul className="mt-[10px] flex flex-col gap-[2px]">
+              {related.map((item) => (
+                <li key={item.node.id}>
+                  <a
+                    href="#/graph"
+                    className="flex items-center gap-[8px] rounded-sm px-[8px] py-[6px] transition-colors hover:bg-neutral-50"
                   >
-                    <span className="truncate text-[13px] font-semibold text-neutral-900">
-                      {doc.title}
+                    <span className="truncate text-[13px] font-medium text-neutral-700">
+                      {item.node.locked ? "열람 권한 없음" : item.node.title}
                     </span>
-                    <span className="ml-auto shrink-0 rounded-full border border-line bg-neutral-50 px-[7px] py-[2px] font-mono text-[11px] font-bold text-neutral-700">
-                      {doc.relation}
+                    <span className="ml-auto shrink-0 font-mono text-[11px] text-neutral-500">
+                      {item.direction === "in" ? "←" : "→"}
                     </span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <EmptyState
-                compact
-                title="연결된 문서가 없습니다"
-                description="관련 문서를 연결하면 변경 영향을 미리 확인할 수 있습니다."
-                actionLabel="문서 연결하기"
-                onAction={() => (window.location.hash = "#/link-documents")}
-              />
-            )}
-          </Card>
-
-          <MyRoleBar className="mt-[16px]" scope="이 문서" />
+                  </a>
+                </li>
+              ))}
+            </ul>
+            <a
+              href="#/graph"
+              className="mt-[8px] block px-[8px] text-[12px] font-semibold text-main-500"
+            >
+              그래프에서 보기 →
+            </a>
+          </section>
         </aside>
       </div>
+
+      <AssistantPanel
+        open={panelOpen}
+        onOpenChange={setPanelOpen}
+        documentId={DOCUMENT_ID}
+        suggestions={suggestions}
+        onAccept={acceptSuggestion}
+        onReject={(item) => setSuggestions((prev) => prev.filter((row) => row.id !== item.id))}
+      />
     </Page>
   );
 }
