@@ -112,7 +112,12 @@ export default function DashboardPage() {
           })),
         ]}
         actions={
-          <Button className="rounded-sm" onClick={() => (window.location.hash = "#/write")}>
+          /* 강조 버튼은 화면당 하나 — 주 액션은 아래 '오늘 처리할 일'의 승인 버튼이다 (3차 2.6) */
+          <Button
+            variant="secondary"
+            className="rounded-sm"
+            onClick={() => (window.location.hash = "#/write")}
+          >
             문서 작성하기
           </Button>
         }

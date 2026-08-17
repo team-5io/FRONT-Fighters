@@ -69,11 +69,11 @@ export default function Sidebar({ active }) {
     SETTINGS_ITEM.children.some((child) => child.label === active);
 
   return (
-    <aside className="flex w-[248px] shrink-0 flex-col border-r border-line bg-neutral-50">
+    <aside className="flex w-[240px] shrink-0 flex-col border-r border-line bg-neutral-50">
       {/* 워크스페이스 */}
       <a
         href="#/dashboard"
-        className="mx-[12px] mt-[12px] flex items-center gap-[10px] rounded-sm px-[8px] py-[8px] transition-colors hover:bg-neutral-75"
+        className="mx-[12px] mt-[12px] flex items-center gap-[10px] rounded-sm px-[8px] py-[8px] transition-colors hover:bg-neutral-75/60"
       >
         <span className="flex size-[28px] shrink-0 items-center justify-center rounded-sm bg-main-500">
           <IconTalkBubbles size={18} className="text-neutral-0" />

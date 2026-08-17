@@ -1,8 +1,6 @@
 import Page from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
 import {
-  Card,
-  CardHeader,
   DataTable,
   EmptyState,
   ListFilterBar,
@@ -21,6 +19,9 @@ import { IconGlobe, IconPaper } from "../components/icons";
  *    `EmptyState`가 "왜 비었는지 + 다음 행동"을 안내한다(원칙 4).
  *  - 번역본이 있는 문서에 번역 표기를 추가했다(지시서 5.G — 목록 화면 번역본 표기 정의).
  *  - 노션 표 뷰 톤: 고정 헤더 · hover 강조 · 필터 바를 표 위에.
+ *
+ * 3차 지시서 2.1: 우측 요약은 **선택한 문서 하나의 속성**이라 독립 단위가 아니다.
+ * 카드 3장을 걷어내고 구분선 + 타이포 위계로만 나눴다 (카드 5 → 1, 표만 남음).
  */
 
 const FILTERS = [
@@ -200,27 +201,28 @@ export default function DocumentsPage() {
           />
         </div>
 
-        {/* ── 우: 선택 문서 요약 ── */}
-        <aside className="w-[320px] shrink-0">
-          <Card padding="md">
-            <CardHeader
-              title={SELECTED.title}
-              caption={`${SELECTED.type} · ${SELECTED.version}`}
-              right={<StatusBadge status={SELECTED.status} kind="document" size="sm" />}
-            />
-            <p className="mt-[14px] text-[13px] font-medium leading-[20px] text-neutral-700">
-              팀이 API를 설계할 때 지켜야 할 명명·인증·오류 응답 규칙을 정리한 문서입니다.
-              Doc PR로 변경 이력이 관리되며, 연결된 문서에 영향을 줍니다.
-            </p>
-            <div className="mt-[14px] flex flex-wrap items-center gap-[6px]">
-              <RaciChip role={SELECTED.owner.role} name={SELECTED.owner.name} size="sm" />
-              <TranslationTag languages={SELECTED.translations} />
-            </div>
-          </Card>
+        {/* ── 우: 선택 문서 요약 (박스 없이 구분선과 위계로만) ── */}
+        <aside className="w-[280px] shrink-0">
+          <div className="flex items-start gap-[8px]">
+            <h2 className="min-w-0 flex-1 text-[15px] font-bold leading-[22px] text-neutral-900">
+              {SELECTED.title}
+            </h2>
+            <StatusBadge status={SELECTED.status} kind="document" size="sm" />
+          </div>
+          <p className="mt-[4px] text-[13px] font-medium text-neutral-500">
+            {SELECTED.type} · {SELECTED.version}
+          </p>
+          <p className="mt-[10px] text-[13px] font-medium leading-[20px] text-neutral-700">
+            팀이 API를 설계할 때 지켜야 할 명명·인증·오류 응답 규칙을 정리한 문서입니다.
+          </p>
+          <div className="mt-[10px] flex flex-wrap items-center gap-[6px]">
+            <RaciChip role={SELECTED.owner.role} name={SELECTED.owner.name} size="sm" />
+            <TranslationTag languages={SELECTED.translations} />
+          </div>
 
-          <Card padding="md" className="mt-[12px]">
-            <CardHeader title="최근 변경" />
-            <ul className="mt-[12px] flex flex-col gap-[10px]">
+          <section className="mt-[20px] border-t border-line pt-[14px]">
+            <h3 className="text-[13px] font-semibold text-neutral-900">최근 변경</h3>
+            <ul className="mt-[10px] flex flex-col gap-[10px]">
               {SELECTED_CHANGES.map((change) => (
                 <li key={change.at} className="text-[13px] leading-[19px]">
                   <p className="font-medium text-neutral-700">{change.text}</p>
@@ -230,23 +232,23 @@ export default function DocumentsPage() {
                 </li>
               ))}
             </ul>
-          </Card>
+          </section>
 
-          <Card padding="md" className="mt-[12px]">
-            <CardHeader title="연결된 Doc PR" />
+          <section className="mt-[20px] border-t border-line pt-[14px]">
+            <h3 className="text-[13px] font-semibold text-neutral-900">연결된 Doc PR</h3>
             {SELECTED_PRS.length > 0 ? (
-              <ul className="mt-[12px] flex flex-col gap-[8px]">
+              <ul className="mt-[10px] flex flex-col gap-[2px]">
                 {SELECTED_PRS.map((pr) => (
                   <li key={pr.id}>
                     <a
                       href="#/doc-pr-detail"
-                      className="flex items-center gap-[8px] rounded-sm border border-line px-[10px] py-[8px] transition-colors hover:bg-neutral-50"
+                      className="flex items-center gap-[8px] rounded-sm px-[8px] py-[6px] transition-colors hover:bg-neutral-50"
                     >
                       <span className="min-w-0">
-                        <span className="block truncate text-[13px] font-semibold text-neutral-900">
+                        <span className="block truncate text-[13px] font-medium text-neutral-700">
                           {pr.title}
                         </span>
-                        <span className="block font-mono text-[12px] text-neutral-500">{pr.id}</span>
+                        <span className="block font-mono text-[11px] text-neutral-500">{pr.id}</span>
                       </span>
                       <StatusBadge status={pr.status} size="sm" className="ml-auto" />
                     </a>
@@ -258,10 +260,9 @@ export default function DocumentsPage() {
                 compact
                 title="연결된 Doc PR이 없습니다"
                 description="이 문서를 수정하려면 Doc PR을 만들어 리뷰를 거쳐야 합니다."
-                actionLabel="Doc PR 만들기"
               />
             )}
-          </Card>
+          </section>
         </aside>
       </div>
     </Page>

@@ -4,13 +4,11 @@ import PageHeader from "../components/layout/PageHeader";
 import {
   Button,
   Card,
-  CardHeader,
   PermissionNotice,
   RaciChip,
   StatusBadge,
 } from "../components/ui";
 import { canManageTeam } from "../data/raci";
-import { IconExclamationCircle } from "../components/icons";
 
 /**
  * 승인권자 지정 — `#/assign-approver`
@@ -23,6 +21,10 @@ import { IconExclamationCircle } from "../components/icons";
  *    팀원 관리는 승인권자가 없는 Doc PR을 **팀 단위로 모아** 처리한다.
  *    유저플로우도 n22(Doc PR 상세) → n25(승인권자 지정) → n44로 이 화면을 Doc PR 계열에 둔다.
  *  - 팀 관리자 권한 표시 추가.
+ *
+ * 3차 지시서 2.1: 부재 상태 안내와 지정 조건은 같은 대상의 설명이라 독립 단위가
+ * 아니다. Card를 걷어내고 타이포 위계로만 나눴다 (카드 4 → 1, 선택 폼만 남음).
+ * 상태색 틴트 배경도 제거했다(2.2).
  */
 
 const TARGET_PR = {
@@ -87,32 +89,30 @@ export default function AssignApproverPage() {
         에서 팀 단위로 처리할 수 있습니다.
       </p>
 
-      {/* ── 부재 상태 ── */}
-      <Section title="승인권자 부재 상태">
-        <Card padding="md" className="border-warning/25 bg-warning-tint/40">
-          <CardHeader
-            title={`지정된 승인권자(${TARGET_PR.previousApprover})가 현재 팀에서 비활성 상태입니다`}
-            caption="최소 한 명의 A 역할 승인권자가 필요합니다. 지정 전까지 Merge가 차단됩니다."
-            right={<IconExclamationCircle size={18} className="text-warning-text" />}
-          />
-        </Card>
-      </Section>
+      {/* ── 주인공: 왜 지금 지정해야 하는가 (박스 없이 타이포로) ── */}
+      <section className="mt-[28px]">
+        <h2 className="text-[18px] font-bold leading-[26px] text-neutral-900">
+          지정된 승인권자({TARGET_PR.previousApprover})가 비활성 상태입니다
+        </h2>
+        <p className="mt-[6px] text-[14px] font-medium leading-[21px] text-neutral-700">
+          최소 한 명의 A 역할 승인권자가 필요합니다. 지정 전까지 이 Doc PR의 Merge가
+          차단됩니다.
+        </p>
+      </section>
 
-      {/* ── 지정 조건 ── */}
+      {/* ── 지정 조건도 설명이라 Card가 아니다 ── */}
       <Section title="지정 조건">
-        <Card padding="md">
-          <ul className="flex flex-col gap-[8px]">
-            {CONDITIONS.map((condition) => (
-              <li
-                key={condition}
-                className="flex gap-[8px] text-[14px] font-medium leading-[21px] text-neutral-700"
-              >
-                <span aria-hidden className="mt-[8px] size-[4px] shrink-0 rounded-full bg-main-500" />
-                {condition}
-              </li>
-            ))}
-          </ul>
-        </Card>
+        <ul className="flex flex-col gap-[8px]">
+          {CONDITIONS.map((condition) => (
+            <li
+              key={condition}
+              className="flex gap-[8px] text-[14px] font-medium leading-[21px] text-neutral-700"
+            >
+              <span aria-hidden className="mt-[8px] size-[4px] shrink-0 rounded-full bg-neutral-300" />
+              {condition}
+            </li>
+          ))}
+        </ul>
       </Section>
 
       {/* ── 대체 승인권자 선택 ── */}

@@ -83,8 +83,8 @@ export default function DocumentWritePage() {
   }
 
   return (
-    <Page wide>
-      <div className="mx-auto flex w-full max-w-[1120px] gap-[32px]">
+    <Page>
+      <div className="flex gap-[32px]">
         {/* ── 본문: 노션 페이지 ── */}
         <article className="min-w-0 flex-1">
           <nav aria-label="현재 위치" className="mb-[10px]">

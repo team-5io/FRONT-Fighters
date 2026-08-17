@@ -5,7 +5,6 @@ import {
   AiDisclaimer,
   Button,
   Card,
-  CardHeader,
   CioBadge,
   EmptyState,
   PermissionNotice,
@@ -26,6 +25,10 @@ import { canManageTeam } from "../data/raci";
  *  - 규칙 3장이 전부 빈 초안이던 것을 CIO가 생성한 실제 초안 문구로 채웠다(원칙 4).
  *    규칙이 하나도 없을 때는 `EmptyState`가 다음 행동을 안내한다.
  *  - 초안은 CIO 산출물이므로 CIO 배지와 "참고용" 안내를 붙였다.
+ *
+ * 3차 지시서 3.1: 규칙 3장은 각각 독립적으로 수정·채택되는 단위라 Card를 유지한다.
+ * 대신 카드 **내부**의 라벨/설명/셀렉트를 여백으로 다시 정리했고, 규칙이 아닌
+ * 정보(현재 상태·연동 안내)는 2.1 기준에 따라 Card에서 Section으로 내렸다.
  */
 
 const LINK_TARGETS = [
@@ -154,45 +157,41 @@ export default function CharterPage() {
         action="협업 규칙 수정·채택"
       />
 
-      {/* ── 현재 상태 ── */}
-      <Section title="현재 상태">
-        <Card padding="md">
-          <CardHeader
-            title={
-              isDraft
-                ? "아직 공식 채택되지 않았습니다"
-                : needsReadopt
-                  ? "채택 이후 수정된 내용이 있습니다"
-                  : "공식 규칙으로 채택되어 있습니다"
-            }
-            caption={
-              isDraft
-                ? "CIO가 팀의 협업 방식을 분석해 만든 초안입니다. 내용을 검토하고 수정한 뒤 공식 채택하세요."
-                : needsReadopt
-                  ? "재채택해야 이후 생성되는 Doc PR부터 새 기준이 적용됩니다. 지금까지 생성된 Doc PR은 이전 기준을 따릅니다."
-                  : `${adopted}에 채택되었습니다. 이후 생성된 Doc PR은 이 기준으로 검토됩니다.`
-            }
-            right={<CioBadge feature="Charter 초안" size="sm" />}
-          />
-          {isDraft && <AiDisclaimer className="mt-[14px]" />}
-        </Card>
-      </Section>
+      {/* ── 주인공: 지금 채택 상태가 어떤가 (박스 없이 타이포로) ── */}
+      <section className="mt-[28px]">
+        <h2 className="text-[18px] font-bold leading-[26px] text-neutral-900">
+          {isDraft
+            ? "아직 공식 채택되지 않았습니다"
+            : needsReadopt
+              ? "채택 이후 수정된 내용이 있습니다"
+              : "공식 규칙으로 채택되어 있습니다"}
+        </h2>
+        <p className="mt-[6px] max-w-[640px] text-[14px] font-medium leading-[21px] text-neutral-700">
+          {isDraft
+            ? "CIO가 팀의 협업 방식을 분석해 만든 초안입니다. 내용을 검토하고 수정한 뒤 공식 채택하세요."
+            : needsReadopt
+              ? "재채택해야 이후 생성되는 Doc PR부터 새 기준이 적용됩니다. 지금까지 생성된 Doc PR은 이전 기준을 따릅니다."
+              : `${adopted}에 채택되었습니다. 이후 생성된 Doc PR은 이 기준으로 검토됩니다.`}
+        </p>
+        <div className="mt-[12px] flex items-center gap-[10px]">
+          <CioBadge feature="Charter 초안" size="sm" />
+          {isDraft && <AiDisclaimer />}
+        </div>
+      </section>
 
-      {/* ── 리뷰 기준 연동 ── */}
+      {/* ── 연동 안내는 같은 대상의 설명이라 Card가 아니다 (2.1) ── */}
       <Section title="Doc PR 리뷰 기준 연동">
-        <Card padding="md">
-          <ul className="flex flex-col gap-[8px]">
-            {LINKED_EFFECTS.map((text) => (
-              <li
-                key={text}
-                className="flex gap-[8px] text-[14px] font-medium leading-[21px] text-neutral-700"
-              >
-                <span aria-hidden className="mt-[8px] size-[4px] shrink-0 rounded-full bg-main-500" />
-                {text}
-              </li>
-            ))}
-          </ul>
-        </Card>
+        <ul className="flex flex-col gap-[8px]">
+          {LINKED_EFFECTS.map((text) => (
+            <li
+              key={text}
+              className="flex gap-[8px] text-[14px] font-medium leading-[21px] text-neutral-700"
+            >
+              <span aria-hidden className="mt-[8px] size-[4px] shrink-0 rounded-full bg-neutral-300" />
+              {text}
+            </li>
+          ))}
+        </ul>
       </Section>
 
       {/* ── 규칙 편집 ── */}
@@ -230,11 +229,11 @@ export default function CharterPage() {
                     </label>
                   </div>
                   <Button
-                    variant="secondary"
+                    variant="ghost"
                     size="sm"
                     disabled={!editable}
                     onClick={() => removeRule(rule.id)}
-                    className="mt-[24px] shrink-0 rounded-sm"
+                    className="mt-[22px] shrink-0 rounded-sm text-neutral-500"
                   >
                     삭제
                   </Button>
