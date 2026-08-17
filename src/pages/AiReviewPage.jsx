@@ -143,14 +143,15 @@ export default function AiReviewPage() {
 
       <MyRoleBar className="mt-[20px]" scope="이 Doc PR" />
 
-      {/* 화면 전체가 AI 산출물이므로 안내를 맨 위에 한 번 더 못박는다 */}
-      <Card padding="md" className="mt-[16px] border-info/25 bg-info-tint/40">
+      {/* 화면 전체가 AI 산출물이므로 안내를 맨 위에 한 번 더 못박는다.
+          안내는 독립 단위가 아니라 Card가 아니고, 상태색 면 배경도 쓰지 않는다 (3차 2.1·2.2) */}
+      <div className="mt-[16px] border-l-[3px] border-info pl-[12px]">
         <AiDisclaimer />
-        <p className="mt-[8px] text-[13px] font-medium leading-[19px] text-neutral-500">
+        <p className="mt-[6px] text-[13px] font-medium leading-[19px] text-neutral-500">
           이 화면의 모든 판단은 CIO가 만든 1차 검토입니다. 승인·반려는 Doc PR 상세에서 A 역할이
           결정합니다.
         </p>
-      </Card>
+      </div>
 
       {/* ── 검토 근거 ── */}
       <section className="mt-[28px]">

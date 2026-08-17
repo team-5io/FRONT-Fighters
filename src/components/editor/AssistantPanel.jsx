@@ -106,17 +106,19 @@ export default function AssistantPanel({
                     </p>
                   )}
                   <div className="mt-[10px] flex gap-[6px]">
+                    {/* 제안이 여러 개라 채운 버튼을 쓰면 패널이 색으로 뒤덮인다 (3차 2.6) */}
                     <Button
+                      variant="secondary"
                       size="sm"
-                      className="flex-1 justify-center rounded-sm"
+                      className="flex-1 justify-center rounded-sm border-main-500/40 text-main-700"
                       onClick={() => onAccept(item)}
                     >
                       수락
                     </Button>
                     <Button
-                      variant="secondary"
+                      variant="ghost"
                       size="sm"
-                      className="flex-1 justify-center rounded-sm"
+                      className="flex-1 justify-center rounded-sm text-neutral-500"
                       onClick={() => onReject(item)}
                     >
                       거부

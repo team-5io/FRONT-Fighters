@@ -23,7 +23,7 @@ const TEAM = {
 export default function TeamInvitePage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-neutral-50 px-[24px] py-[48px]">
-      <div className="w-full max-w-[420px]">
+      <div className="w-full max-w-[400px]">
         <div className="flex flex-col items-center">
           <span className="flex size-[44px] items-center justify-center rounded-md bg-main-500">
             <IconTalkBubbles size={26} className="text-neutral-0" />

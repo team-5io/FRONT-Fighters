@@ -5,12 +5,11 @@ import {
   AiDisclaimer,
   Button,
   Card,
-  CardHeader,
   CioBadge,
   StatusBadge,
   cx,
 } from "../components/ui";
-import { IconGlobe, IconExclamationCircle } from "../components/icons";
+import { IconGlobe } from "../components/icons";
 
 /**
  * 번역 보기 — `#/translation`
@@ -23,6 +22,9 @@ import { IconGlobe, IconExclamationCircle } from "../components/icons";
  *  - 저장 버튼 라벨 `연결 저장`(관련 문서 연결 화면에서 복붙된 오류) → `번역본 저장`.
  *  - 원문 유지 영역을 실제 보존 항목으로 채웠다 —
  *    `POST /documents/{documentId}/translations` 설명(코드블록·API명·변수명 보존)이 근거.
+ *
+ * 3차 지시서 2.1: 원문/번역 패널 2장은 **독립 대조 단위**라 Card를 유지한다.
+ * 번역 설정과 원문 유지 안내는 같은 대상의 속성이라 Section으로 내렸다 (카드 4 → 2).
  */
 
 const LANGUAGES = [
@@ -118,66 +120,63 @@ export default function TranslationPage() {
         }
       />
 
-      {/* ── 번역 설정 ── */}
-      <Card padding="md" className="mt-[20px]">
-        <div className="flex flex-wrap items-center gap-x-[20px] gap-y-[12px]">
-          <div className="flex items-center gap-[8px]">
-            <span className="text-[13px] font-medium text-neutral-500">번역 언어</span>
-            <select
-              value={language.code}
-              onChange={(event) =>
-                setLanguage(LANGUAGES.find((item) => item.code === event.target.value))
-              }
-              className="h-[32px] rounded-sm border border-line bg-neutral-0 px-[10px] text-[13px] font-semibold text-neutral-900 outline-none focus:border-main-500"
-            >
-              {LANGUAGES.map((item) => (
-                <option key={item.code} value={item.code}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* 원문 ⇄ 번역 전환 — 1차 구현에 없던 동작 */}
-          <div className="flex items-center gap-[8px]">
-            <span className="text-[13px] font-medium text-neutral-500">보기</span>
-            <div className="flex rounded-sm border border-line bg-neutral-50 p-[2px]">
-              {VIEWS.map((item) => (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => setView(item.key)}
-                  aria-pressed={view === item.key}
-                  className={cx(
-                    "h-[26px] rounded-xs px-[10px] text-[13px] font-semibold transition-colors",
-                    view === item.key
-                      ? "bg-neutral-0 text-main-700 shadow-[0_0_0_1px_rgba(0,0,0,0.06)]"
-                      : "text-neutral-500 hover:text-neutral-700",
-                  )}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <label className="flex cursor-pointer items-center gap-[8px] text-[13px] font-medium text-neutral-700">
-            <input
-              type="checkbox"
-              checked={useGlossary}
-              onChange={(event) => setUseGlossary(event.target.checked)}
-              className="size-[15px] accent-main-500"
-            />
-            팀 용어집 적용
-            <a href="#/glossary" className="text-[13px] font-semibold text-main-500">
-              용어집 보기
-            </a>
-          </label>
-
-          <CioBadge feature="Dev-aware Translation" size="sm" className="ml-auto" />
+      {/* ── 번역 설정은 속성이라 Card가 아니다 ── */}
+      <div className="mt-[20px] flex flex-wrap items-center gap-x-[20px] gap-y-[12px] border-y border-line py-[12px]">
+        <div className="flex items-center gap-[8px]">
+          <span className="text-[13px] font-medium text-neutral-500">번역 언어</span>
+          <select
+            value={language.code}
+            onChange={(event) =>
+              setLanguage(LANGUAGES.find((item) => item.code === event.target.value))
+            }
+            className="h-[32px] rounded-sm border border-line bg-neutral-0 px-[10px] text-[13px] font-semibold text-neutral-900 outline-none focus:border-main-500"
+          >
+            {LANGUAGES.map((item) => (
+              <option key={item.code} value={item.code}>
+                {item.label}
+              </option>
+            ))}
+          </select>
         </div>
-        <AiDisclaimer className="mt-[14px]" />
-      </Card>
+
+        <div className="flex items-center gap-[8px]">
+          <span className="text-[13px] font-medium text-neutral-500">보기</span>
+          <div className="flex rounded-sm border border-line bg-neutral-50 p-[2px]">
+            {VIEWS.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setView(item.key)}
+                aria-pressed={view === item.key}
+                className={cx(
+                  "h-[26px] rounded-xs px-[10px] text-[13px] font-semibold transition-colors",
+                  view === item.key
+                    ? "bg-neutral-0 text-main-700 shadow-[0_0_0_1px_rgba(0,0,0,0.06)]"
+                    : "text-neutral-500 hover:text-neutral-700",
+                )}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <label className="flex cursor-pointer items-center gap-[8px] text-[13px] font-medium text-neutral-700">
+          <input
+            type="checkbox"
+            checked={useGlossary}
+            onChange={(event) => setUseGlossary(event.target.checked)}
+            className="size-[15px] accent-main-500"
+          />
+          팀 용어집 적용
+          <a href="#/glossary" className="text-[13px] font-semibold text-main-500">
+            용어집 보기
+          </a>
+        </label>
+
+        <CioBadge feature="Dev-aware Translation" size="sm" className="ml-auto" />
+      </div>
+      <AiDisclaimer className="mt-[10px]" />
 
       {/* ── 원문 / 번역문 ── */}
       <Section title="본문">
@@ -205,7 +204,7 @@ export default function TranslationPage() {
             <Card padding="none" className="overflow-hidden">
               {/* 번역문은 시각적으로 원문과 구분하고 라벨을 반드시 붙인다 (원칙 5) */}
               <div className="h-[3px] w-full bg-info" />
-              <div className="flex items-center gap-[8px] border-b border-line bg-info-tint/40 px-[16px] py-[10px]">
+              <div className="flex items-center gap-[8px] border-b border-line px-[16px] py-[10px]">
                 <h3 className="text-[14px] font-semibold text-neutral-900">번역문</h3>
                 <span className="font-mono text-[12px] text-neutral-500">{language.code}</span>
                 <AiTranslationLabel size="sm" className="ml-auto" />
@@ -225,33 +224,26 @@ export default function TranslationPage() {
         </div>
       </Section>
 
-      {/* ── 원문 유지 영역 ── */}
+      {/* ── 원문 유지 영역도 설명이라 Card가 아니다 ── */}
       <Section
-        title="원문 유지 영역"
-        caption="개발 맥락이 왜곡되지 않도록 아래 항목은 번역하지 않고 원문 그대로 뒀습니다."
+        title="번역하지 않은 항목"
+        caption="코드 블록 · 기술 용어 · 고유명사(문서명·기능명·변수명)는 원문 그대로 보존됩니다."
       >
-        <Card padding="md">
-          <CardHeader
-            title="번역하지 않은 항목"
-            caption="코드 블록 · 기술 용어 · 고유명사(문서명·기능명·변수명)는 보존됩니다."
-            right={<IconExclamationCircle size={18} className="text-main-500" />}
-          />
-          <ul className="mt-[14px] flex flex-col gap-[8px]">
-            {PRESERVED.map((item) => (
-              <li
-                key={item.kind}
-                className="flex flex-wrap items-center gap-x-[12px] gap-y-[4px] rounded-sm border border-line bg-neutral-50 px-[12px] py-[8px]"
-              >
-                <span className="w-[92px] shrink-0 text-[13px] font-medium text-neutral-500">
-                  {item.kind}
-                </span>
-                <code className="font-mono text-[13px] font-bold text-neutral-900">
-                  {item.value}
-                </code>
-              </li>
-            ))}
-          </ul>
-        </Card>
+        <ul className="flex flex-col">
+          {PRESERVED.map((item) => (
+            <li
+              key={item.kind}
+              className="flex flex-wrap items-center gap-x-[12px] gap-y-[4px] border-b border-line py-[9px] last:border-b-0"
+            >
+              <span className="w-[92px] shrink-0 text-[13px] font-medium text-neutral-500">
+                {item.kind}
+              </span>
+              <code className="font-mono text-[13px] font-bold text-neutral-900">
+                {item.value}
+              </code>
+            </li>
+          ))}
+        </ul>
       </Section>
     </Page>
   );

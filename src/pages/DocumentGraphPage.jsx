@@ -44,7 +44,7 @@ export default function DocumentGraphPage() {
   const impacts = impactOf(selectedId);
 
   return (
-    <Page wide>
+    <Page fullBleed>
       <PageHeader
         breadcrumb={[{ label: "5IO주", href: "#/dashboard" }, { label: "그래프" }]}
         title="Document Graph"

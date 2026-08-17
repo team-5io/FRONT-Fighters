@@ -10,7 +10,8 @@ import { IconSearch } from "../icons";
 export default function Topbar() {
   return (
     <header className="flex h-[52px] shrink-0 items-center gap-[12px] border-b border-line bg-neutral-0 px-[24px]">
-      <label className="flex h-[32px] w-[320px] items-center gap-[8px] rounded-sm border border-line bg-neutral-50 px-[10px] transition-colors focus-within:border-main-500 focus-within:bg-neutral-0">
+      {/* 테두리 없이 배경만 — 상단 크롬의 대비를 더 낮춘다 (3차 3.3) */}
+      <label className="flex h-[30px] w-[300px] items-center gap-[8px] rounded-sm bg-neutral-75/70 px-[10px] transition-colors focus-within:bg-neutral-0 focus-within:shadow-[0_0_0_1px_rgba(0,0,0,0.1)]">
         <IconSearch size={14} className="shrink-0 text-neutral-500" />
         <input
           type="search"

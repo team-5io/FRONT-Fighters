@@ -19,6 +19,10 @@ import {
  *  - 되돌릴 수 없는 동작이라 확인 입력을 실제로 검사한다 — 1차는 입력만 있고
  *    버튼이 항상 활성이었다.
  *  - 카드 톤 절제, 2px 테두리·회색 배경 제거.
+ *
+ * 3차 지시서 2.1·2.2: 초기화 대상 목록과 주의사항은 독립 단위가 아니라 Card가
+ * 아니다. 상태색(error) 틴트 배경도 걷어내고 텍스트 색으로만 경고를 표현한다
+ * (카드 4 → 1, 확인 폼만 남음).
  */
 
 const RESET_TARGETS = [
@@ -57,37 +61,34 @@ export default function TeamResetPage() {
       <PermissionNotice className="mt-[20px]" allowed={editable} action="팀 설정 초기화" />
 
       <Section title="초기화 대상 항목">
-        <Card padding="none">
-          <ul>
-            {RESET_TARGETS.map((item) => (
-              <li
-                key={item.label}
-                className="flex items-center gap-[10px] border-b border-line px-[16px] py-[12px] text-[14px] font-medium text-neutral-700 last:border-b-0"
-              >
-                <span className="flex size-[26px] shrink-0 items-center justify-center rounded-sm bg-main-50 text-main-500">
-                  {item.icon}
-                </span>
-                {item.label}
-              </li>
-            ))}
-          </ul>
-        </Card>
+        <ul className="flex flex-col">
+          {RESET_TARGETS.map((item) => (
+            <li
+              key={item.label}
+              className="flex items-center gap-[10px] border-b border-line py-[10px] text-[14px] font-medium text-neutral-700 last:border-b-0"
+            >
+              {/* 아이콘은 유형을 나타낼 때만 — 타일 배경은 장식이라 제거 (3차 2.6) */}
+              <span className="flex w-[18px] shrink-0 justify-center text-neutral-500">
+                {item.icon}
+              </span>
+              {item.label}
+            </li>
+          ))}
+        </ul>
       </Section>
 
       <Section title="주의사항">
-        <Card padding="md" className="border-error/25 bg-error-tint/40">
-          <ul className="flex flex-col gap-[8px]">
-            {WARNINGS.map((warning) => (
-              <li
-                key={warning}
-                className="flex gap-[8px] text-[14px] font-medium leading-[21px] text-neutral-700"
-              >
-                <span aria-hidden className="mt-[8px] size-[4px] shrink-0 rounded-full bg-error" />
-                {warning}
-              </li>
-            ))}
-          </ul>
-        </Card>
+        <ul className="flex flex-col gap-[8px]">
+          {WARNINGS.map((warning) => (
+            <li
+              key={warning}
+              className="flex gap-[8px] text-[14px] font-medium leading-[21px] text-neutral-700"
+            >
+              <span aria-hidden className="mt-[7px] size-[5px] shrink-0 rounded-full bg-error" />
+              {warning}
+            </li>
+          ))}
+        </ul>
       </Section>
 
       <Section title="초기화 확인">
