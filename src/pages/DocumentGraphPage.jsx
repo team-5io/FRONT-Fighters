@@ -27,7 +27,17 @@ import { IconLock } from "../components/icons";
  *
  * 데이터는 `src/data/graph.js` 단일 출처 — AI 작성 보조 패널의 "연결 문서 인용",
  * 작성 화면의 "연결된 문서"가 같은 곳을 읽는다.
+ *
+ * 5차 지시서 원칙 B: 우측 패널이 노드 정보 + 액션 + 영향 문서 4항목 + 사용처 2항목 +
+ * 담당 칩까지 다섯 그룹을 동시에 펼쳐 보여줬다. 기본 노출은 노드 요약 하나로 줄이고
+ * 나머지는 **탭 하나만 열리도록** 바꿨다.
  */
+
+const PANEL_TABS = [
+  { key: "impact", label: "영향받는 문서" },
+  { key: "consumers", label: "쓰는 곳" },
+  { key: "owners", label: "담당" },
+];
 
 const FOCUS_ID = "api-design";
 
@@ -40,6 +50,7 @@ const CONSUMERS = [
 
 export default function DocumentGraphPage() {
   const [selectedId, setSelectedId] = useState(FOCUS_ID);
+  const [tab, setTab] = useState("impact");
   const selected = nodeById(selectedId);
   const impacts = impactOf(selectedId);
 
@@ -114,53 +125,65 @@ export default function DocumentGraphPage() {
                 </div>
               </div>
 
-              <section className="mt-[20px] border-t border-line pt-[14px]">
-                <h3 className="text-[13px] font-semibold text-neutral-900">
-                  변경 시 영향받는 문서
-                </h3>
+              {/* 세 그룹을 동시에 펼치지 않는다 — 탭으로 하나만 (원칙 B) */}
+              <div className="mt-[20px] flex gap-[2px] border-b border-line">
+                {PANEL_TABS.map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setTab(item.key)}
+                    aria-selected={tab === item.key}
+                    role="tab"
+                    className={cx(
+                      "-mb-px h-[30px] border-b-2 px-[8px] text-[13px] font-semibold transition-colors",
+                      tab === item.key
+                        ? "border-main-500 text-main-700"
+                        : "border-transparent text-neutral-500 hover:text-neutral-700",
+                    )}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+
+              {tab === "impact" && (
                 <ul className="mt-[10px] flex flex-col gap-[2px]">
                   {impacts.map((item) => (
                     <li key={item.node.id}>
                       <button
                         type="button"
                         onClick={() => setSelectedId(item.node.id)}
-                        className="flex w-full items-center gap-[8px] rounded-sm px-[8px] py-[6px] text-left transition-colors hover:bg-neutral-50"
+                        className="flex w-full items-center gap-[8px] rounded-sm py-[6px] text-left transition-colors hover:bg-neutral-50/70"
                       >
                         <span className="truncate text-[13px] font-medium text-neutral-700">
                           {item.node.locked ? "열람 권한 없음" : item.node.title}
                         </span>
                         <span
                           className={cx(
-                            "ml-auto shrink-0 rounded-full border px-[6px] py-[1px] font-mono text-[10px] font-bold",
-                            tone(item.impact === "direct" ? "error" : "info").chip,
+                            "ml-auto shrink-0 font-mono text-[10px] font-bold",
+                            item.impact === "direct" ? "text-error-text" : "text-info-text",
                           )}
                         >
                           {item.impact === "direct" ? "직접" : "간접"}
                         </span>
-                        <span className="shrink-0 font-mono text-[10px] text-neutral-500">
-                          {RELATION_LABEL[item.relation]}
-                        </span>
                       </button>
                     </li>
                   ))}
+                  {impacts.length === 0 && (
+                    <li className="py-[6px] text-[13px] font-medium text-neutral-500">
+                      연결된 문서가 없습니다.
+                    </li>
+                  )}
                 </ul>
-                {impacts.length === 0 && (
-                  <p className="mt-[8px] text-[13px] font-medium text-neutral-500">
-                    연결된 문서가 없습니다.
-                  </p>
-                )}
-              </section>
+              )}
 
-              <section className="mt-[20px] border-t border-line pt-[14px]">
-                <h3 className="text-[13px] font-semibold text-neutral-900">
-                  이 관계를 쓰는 곳
-                </h3>
+              {tab === "consumers" && (
                 <ul className="mt-[10px] flex flex-col gap-[2px]">
                   {CONSUMERS.map((consumer) => (
                     <li key={consumer.name}>
                       <a
                         href={consumer.href}
-                        className="flex items-start gap-[8px] rounded-sm px-[8px] py-[6px] transition-colors hover:bg-neutral-50"
+                        className="flex items-start gap-[8px] rounded-sm py-[6px] transition-colors hover:bg-neutral-50/70"
                       >
                         {consumer.ai && <CioMark size={12} className="mt-[3px] shrink-0 text-info" />}
                         <span className="min-w-0">
@@ -175,15 +198,14 @@ export default function DocumentGraphPage() {
                     </li>
                   ))}
                 </ul>
-              </section>
+              )}
 
-              <section className="mt-[20px] border-t border-line pt-[14px]">
-                <h3 className="text-[13px] font-semibold text-neutral-900">담당</h3>
-                <div className="mt-[10px] flex flex-wrap gap-[6px]">
+              {tab === "owners" && (
+                <div className="mt-[12px] flex flex-wrap gap-[8px]">
                   <RaciChip role="R" name="김민섭" size="sm" />
                   <RaciChip role="A" name="고나영" size="sm" />
                 </div>
-              </section>
+              )}
             </>
           )}
         </aside>

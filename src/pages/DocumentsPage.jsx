@@ -2,9 +2,10 @@ import Page from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
 import {
   DataTable,
+  Disclosure,
   EmptyState,
   ListFilterBar,
-  MyRoleBar,
+  RoleChip,
   RaciChip,
   StatusBadge,
 } from "../components/ui";
@@ -22,6 +23,9 @@ import { IconGlobe, IconPaper } from "../components/icons";
  *
  * 3차 지시서 2.1: 우측 요약은 **선택한 문서 하나의 속성**이라 독립 단위가 아니다.
  * 카드 3장을 걷어내고 구분선 + 타이포 위계로만 나눴다 (카드 5 → 1, 표만 남음).
+ *
+ * 5차 지시서 원칙 B·C: 보조 패널도 "주인공 하나" 규칙을 받는다. 요약만 펼쳐 두고
+ * 최근 변경·연결된 Doc PR은 접었다. 반복되던 권한 배너는 헤더의 인라인 칩으로 내렸다.
  */
 
 const FILTERS = [
@@ -177,9 +181,8 @@ export default function DocumentsPage() {
         breadcrumb={[{ label: "5IO주", href: "#/dashboard" }, { label: "문서" }]}
         title="문서"
         description="팀의 모든 문서를 한눈에 확인하고 관리하세요."
+        actions={<RoleChip scope="이 팀" />}
       />
-
-      <MyRoleBar className="mt-[20px]" scope="이 팀" />
 
       <div className="mt-[24px] flex gap-[24px]">
         {/* ── 좌: 목록 ── */}
@@ -215,54 +218,70 @@ export default function DocumentsPage() {
           <p className="mt-[10px] text-[13px] font-medium leading-[20px] text-neutral-700">
             팀이 API를 설계할 때 지켜야 할 명명·인증·오류 응답 규칙을 정리한 문서입니다.
           </p>
-          <div className="mt-[10px] flex flex-wrap items-center gap-[6px]">
-            <RaciChip role={SELECTED.owner.role} name={SELECTED.owner.name} size="sm" />
-            <TranslationTag languages={SELECTED.translations} />
-          </div>
+          {/* 언어 태그는 제목 옆이 아니라 속성 줄로 — 시각 밀도를 낮춘다 (5차 문서 목록) */}
+          <dl className="mt-[12px] flex flex-col gap-[6px]">
+            <div className="flex items-center gap-[10px]">
+              <dt className="w-[52px] shrink-0 text-[12px] font-medium text-neutral-500">담당</dt>
+              <dd>
+                <RaciChip role={SELECTED.owner.role} name={SELECTED.owner.name} size="sm" />
+              </dd>
+            </div>
+            <div className="flex items-center gap-[10px]">
+              <dt className="w-[52px] shrink-0 text-[12px] font-medium text-neutral-500">번역본</dt>
+              <dd>
+                {SELECTED.translations.length > 0 ? (
+                  <TranslationTag languages={SELECTED.translations} />
+                ) : (
+                  <span className="text-[13px] text-neutral-500">없음</span>
+                )}
+              </dd>
+            </div>
+          </dl>
 
-          <section className="mt-[20px] border-t border-line pt-[14px]">
-            <h3 className="text-[13px] font-semibold text-neutral-900">최근 변경</h3>
-            <ul className="mt-[10px] flex flex-col gap-[10px]">
-              {SELECTED_CHANGES.map((change) => (
-                <li key={change.at} className="text-[13px] leading-[19px]">
-                  <p className="font-medium text-neutral-700">{change.text}</p>
-                  <p className="mt-[2px] text-neutral-500">
-                    {change.by} · {change.at}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section className="mt-[20px] border-t border-line pt-[14px]">
-            <h3 className="text-[13px] font-semibold text-neutral-900">연결된 Doc PR</h3>
-            {SELECTED_PRS.length > 0 ? (
-              <ul className="mt-[10px] flex flex-col gap-[2px]">
-                {SELECTED_PRS.map((pr) => (
-                  <li key={pr.id}>
-                    <a
-                      href="#/doc-pr-detail"
-                      className="flex items-center gap-[8px] rounded-sm py-[6px] transition-colors hover:bg-neutral-50/70"
-                    >
-                      <span className="min-w-0">
-                        <span className="block truncate text-[13px] font-medium text-neutral-700">
-                          {pr.title}
-                        </span>
-                        <span className="block font-mono text-[11px] text-neutral-500">{pr.id}</span>
-                      </span>
-                      <StatusBadge status={pr.status} size="sm" className="ml-auto" />
-                    </a>
+          {/* 나머지 정보 그룹은 접어 둔다 (원칙 B) */}
+          <div className="mt-[16px]">
+            <Disclosure title="최근 변경" count={SELECTED_CHANGES.length}>
+              <ul className="flex flex-col gap-[10px]">
+                {SELECTED_CHANGES.map((change) => (
+                  <li key={change.at} className="text-[13px] leading-[19px]">
+                    <p className="font-medium text-neutral-700">{change.text}</p>
+                    <p className="mt-[2px] text-neutral-500">
+                      {change.by} · {change.at}
+                    </p>
                   </li>
                 ))}
               </ul>
-            ) : (
-              <EmptyState
-                compact
-                title="연결된 Doc PR이 없습니다"
-                description="이 문서를 수정하려면 Doc PR을 만들어 리뷰를 거쳐야 합니다."
-              />
-            )}
-          </section>
+            </Disclosure>
+
+            <Disclosure title="연결된 Doc PR" count={SELECTED_PRS.length}>
+              {SELECTED_PRS.length > 0 ? (
+                <ul className="flex flex-col gap-[2px]">
+                  {SELECTED_PRS.map((pr) => (
+                    <li key={pr.id}>
+                      <a
+                        href="#/doc-pr-detail"
+                        className="flex items-center gap-[8px] rounded-sm py-[6px] transition-colors hover:bg-neutral-50/70"
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate text-[13px] font-medium text-neutral-700">
+                            {pr.title}
+                          </span>
+                          <span className="block font-mono text-[11px] text-neutral-500">{pr.id}</span>
+                        </span>
+                        <StatusBadge status={pr.status} size="sm" className="ml-auto" />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <EmptyState
+                  compact
+                  title="연결된 Doc PR이 없습니다"
+                  description="이 문서를 수정하려면 Doc PR을 만들어 리뷰를 거쳐야 합니다."
+                />
+              )}
+            </Disclosure>
+          </div>
         </aside>
       </div>
     </Page>

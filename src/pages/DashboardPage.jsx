@@ -5,7 +5,7 @@ import {
   Button,
   CioMark,
   Disclosure,
-  RaciChip,
+  RoleChip,
   StatusBadge,
   cx,
   tone,
@@ -23,6 +23,9 @@ import { CURRENT_USER } from "../data/raci";
  *  - **카드 남용 자제.** 통계를 카드 4장에서 얇은 요약 줄 하나로 줄였다.
  *
  * 1차가 만든 규칙(AI/사람 분리, 상태 단일화, RACI 가시성)은 그대로 유지한다.
+ *
+ * 5차 지시서 원칙 D: 통계 줄에 보라 배지 + 검정 + 주황 + 파랑이 섞여 있었다.
+ * **지금 내가 처리해야 할 건수 하나만 강조하고 나머지는 같은 회색조**로 통일한다.
  */
 
 /** 얇은 요약 줄로 줄인 지표 — 카드로 감싸지 않는다 */
@@ -30,7 +33,7 @@ const SUMMARY = [
   { label: "전체 Doc PR", value: 24 },
   { label: "검토 대기", value: 7 },
   { label: "승인 완료 · Merge 대기", value: 5 },
-  { label: "CIO 반려 권고", value: 3, ai: true },
+  { label: "CIO 반려 권고", value: 3 },
 ];
 
 /** 주인공 — 현재 사용자(A 역할)가 직접 처리해야 하는 것 */
@@ -97,19 +100,20 @@ export default function DashboardPage() {
         breadcrumb={[{ label: "5IO주" }, { label: "대시보드" }]}
         title={`${CURRENT_USER.name}님, 오늘 처리할 일이 ${actionable.length}건 있습니다`}
         properties={[
+          // 강조는 '지금 내가 처리해야 할 것' 하나만. 나머지는 같은 회색조 (원칙 D)
           {
-            label: "내 역할",
-            value: <RaciChip role={CURRENT_USER.role} showLabel size="sm" />,
+            label: "내가 처리할 일",
+            value: (
+              <span className="font-mono text-[14px] font-bold text-main-500">
+                {actionable.length}
+              </span>
+            ),
           },
           ...SUMMARY.map((item) => ({
             label: item.label,
-            value: (
-              <span className={cx("flex items-center gap-[4px]", item.ai && "text-info-text")}>
-                {item.ai && <CioMark size={11} />}
-                {item.value}
-              </span>
-            ),
+            value: <span className="font-mono text-neutral-700">{item.value}</span>,
           })),
+          { label: "내 역할", value: <RoleChip scope="이 팀" /> },
         ]}
         actions={
           /* 강조 버튼은 화면당 하나 — 주 액션은 아래 '오늘 처리할 일'의 승인 버튼이다 (3차 2.6) */
