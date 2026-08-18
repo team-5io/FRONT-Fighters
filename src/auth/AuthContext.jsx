@@ -11,15 +11,35 @@ import { GUEST_USER, normalizeUser } from "../data/raci";
  */
 const AuthContext = createContext(null);
 
+const USER_STORAGE_KEY = "doc_pr_user";
+
+function loadStoredUser() {
+  try {
+    const raw = localStorage.getItem(USER_STORAGE_KEY);
+    return raw ? normalizeUser(JSON.parse(raw)) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveStoredUser(user) {
+  if (user && user.id) {
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+  } else {
+    localStorage.removeItem(USER_STORAGE_KEY);
+  }
+}
+
 export function AuthProvider({ children }) {
-  // 앱 시작 시 저장된 토큰이 있으면 인증된 상태로 시작
-  const [user, setUser] = useState(null);
+  // 앱 시작 시 저장된 토큰과 유저가 있으면 인증된 상태로 시작
+  const [user, setUser] = useState(() => loadStoredUser());
   const [token, setToken] = useState(() => getAccessToken());
 
   const signOut = useCallback(({ redirect = true } = {}) => {
     setAccessToken(null);
     setToken(null);
     setUser(null);
+    saveStoredUser(null);
     if (redirect) window.location.hash = "#/login";
   }, []);
 
@@ -36,7 +56,9 @@ export function AuthProvider({ children }) {
     const nextToken = payload?.accessToken ?? payload?.token ?? payload?.access_token ?? null;
     setAccessToken(nextToken);
     setToken(nextToken);
-    setUser(normalizeUser(payload?.user ?? payload));
+    const normalizedUser = normalizeUser(payload?.user ?? payload);
+    setUser(normalizedUser);
+    saveStoredUser(normalizedUser);
     return result;
   }, []);
 
@@ -57,7 +79,13 @@ export function AuthProvider({ children }) {
       signIn,
       signUp,
       signOut: signOutRemote,
-      updateUser: (patch) => setUser((prev) => normalizeUser({ ...(prev ?? GUEST_USER), ...patch })),
+      updateUser: (patch) => {
+        setUser((prev) => {
+          const updated = normalizeUser({ ...(prev ?? GUEST_USER), ...patch });
+          saveStoredUser(updated);
+          return updated;
+        });
+      },
     }),
     [user, token, signIn, signUp, signOutRemote],
   );
