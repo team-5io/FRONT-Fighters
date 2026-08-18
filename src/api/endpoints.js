@@ -39,7 +39,7 @@ export const teams = {
 /* ── 문서 (2.4 · 2.5 · 2.6 · 2.9) ── */
 export const documents = {
   list: (query) => api.get("/documents", { query }),
-  search: (q) => api.get("/documents/search", { query: { q } }),
+  search: (query) => api.get("/documents/search", { query }),
   create: (payload) => api.post("/documents", payload),
   update: (documentId, payload) => api.patch(`/documents/${documentId}`, payload),
   remove: (documentId) => api.del(`/documents/${documentId}`),
