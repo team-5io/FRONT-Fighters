@@ -6,16 +6,24 @@ import {
   RoleChip,
 } from "../components/ui";
 import { useAuth } from "../auth/AuthContext";
+import { teams as teamsApi } from "../api/endpoints";
+import { useMutation } from "../hooks/useApi";
+import { useState } from "react";
 
 /**
  * 대시보드(홈) — `#/dashboard`
  *
- * 대시보드 전용 API가 없어 현재는 빠른 진입점 역할만 한다.
- * 백엔드에서 대시보드 데이터를 제공하면 그때 채운다.
+ * 팀이 없으면 팀 생성 화면만 보여준다.
+ * 팀이 있으면 빠른 진입점을 제공한다.
  */
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
+  const hasTeam = Boolean(user.teamId);
+
+  if (!hasTeam) {
+    return <NoTeamView />;
+  }
 
   return (
     <Page>
@@ -43,6 +51,75 @@ export default function DashboardPage() {
         <QuickLink href="#/charter" title="협업 규칙" description="CIO 검토 기준을 설정하세요" />
         <QuickLink href="#/graph" title="Document Graph" description="문서 관계를 확인하세요" />
         <QuickLink href="#/me" title="내 계정" description="프로필과 설정을 변경하세요" />
+      </div>
+    </Page>
+  );
+}
+
+/** 팀이 없을 때 보여주는 화면 */
+function NoTeamView() {
+  const { user, updateUser } = useAuth();
+  const [teamName, setTeamName] = useState("");
+  const createTeam = useMutation((payload) => teamsApi.create(payload));
+
+  async function handleCreate(event) {
+    event.preventDefault();
+    if (!teamName.trim()) return;
+    try {
+      const result = await createTeam.mutate({ name: teamName.trim() });
+      const team = result?.data ?? result;
+      if (team?.id ?? team?.teamId) {
+        updateUser({ teamId: team.id ?? team.teamId, teamName: team.name ?? teamName });
+        window.location.hash = "#/dashboard";
+        window.location.reload();
+      }
+    } catch {
+      // 에러는 useMutation이 관리
+    }
+  }
+
+  return (
+    <Page>
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="w-full max-w-[400px]">
+          <h1 className="text-[24px] font-bold leading-[32px] text-neutral-900">
+            팀을 만들어 시작하세요
+          </h1>
+          <p className="mt-[8px] text-[14px] font-medium leading-[21px] text-neutral-500">
+            Doc PR은 팀 단위로 문서를 관리합니다. 팀을 생성하면 문서 작성, 리뷰, 협업 규칙을 설정할 수 있습니다.
+          </p>
+
+          <form onSubmit={handleCreate} className="mt-[24px]">
+            <label className="block">
+              <span className="mb-[6px] block text-[13px] font-medium text-neutral-700">팀 이름</span>
+              <input
+                value={teamName}
+                onChange={(e) => setTeamName(e.target.value)}
+                placeholder="예: 개발팀, 문서관리팀"
+                required
+                className="h-[40px] w-full rounded-sm border border-line bg-neutral-0 px-[12px] text-[14px] font-medium text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500"
+              />
+            </label>
+            <Button
+              type="submit"
+              disabled={createTeam.pending || !teamName.trim()}
+              className="mt-[16px] h-[40px] w-full justify-center rounded-sm"
+            >
+              {createTeam.pending ? "생성 중…" : "팀 생성하기"}
+            </Button>
+            {createTeam.error && (
+              <p className="mt-[8px] text-[13px] font-medium text-error-text">
+                {createTeam.error.message}
+              </p>
+            )}
+          </form>
+
+          <div className="mt-[24px] border-t border-line pt-[16px]">
+            <a href="#/me" className="text-[13px] font-semibold text-main-500">
+              내 계정 설정 →
+            </a>
+          </div>
+        </div>
       </div>
     </Page>
   );
