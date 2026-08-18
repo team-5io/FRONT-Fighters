@@ -50,6 +50,12 @@ export default function TeamSettingsPage() {
   const membersRaw = membersQuery.data?.data ?? membersQuery.data;
   const members = Array.isArray(membersRaw) ? membersRaw : [];
 
+  // 팀원 목록에서 현재 사용자가 ADMIN인지 확인 (canManageTeam fallback)
+  // 팀 생성 직후에는 멤버 목록에 자신이 아직 없을 수 있으니,
+  // 팀이 있으면(teamId가 있으면) 기본적으로 관리 가능하게 열어둔다
+  const myMembership = members.find((m) => String(m.userId) === String(user.id));
+  const isAdmin = editable || myMembership?.role === "ADMIN" || (members.length === 0 && Boolean(user.teamId));
+
   return (
     <Page>
       <PageHeader
@@ -90,11 +96,11 @@ export default function TeamSettingsPage() {
 
         {/* ── 우: 탭 내용 ── */}
         <div className="min-w-0 flex-1">
-          {active === "team" && <TeamInfoPanel teamName={teamName} memberCount={members.length} editable={editable} members={members} teamId={teamId} reload={membersQuery.reload} />}
-          {active === "raci" && <RaciPanel teamId={teamId} editable={editable} />}
-          {active === "charter" && <CharterPanel teamId={teamId} editable={editable} />}
+          {active === "team" && <TeamInfoPanel teamName={teamName} memberCount={members.length} editable={isAdmin} members={members} teamId={teamId} reload={membersQuery.reload} />}
+          {active === "raci" && <RaciPanel teamId={teamId} editable={isAdmin} />}
+          {active === "charter" && <CharterPanel teamId={teamId} editable={isAdmin} />}
           {active === "glossary" && <GlossaryPanel />}
-          {active === "members" && <MembersPanel teamId={teamId} members={members} editable={editable} reload={membersQuery.reload} />}
+          {active === "members" && <MembersPanel teamId={teamId} members={members} editable={isAdmin} reload={membersQuery.reload} />}
         </div>
       </div>
     </Page>
