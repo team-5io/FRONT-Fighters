@@ -181,7 +181,8 @@ export default function DocumentsPage() {
             loading={loading}
             rows={list}
             onRowClick={(row) => {
-              window.location.hash = `#/write?documentId=${encodeURIComponent(row.id)}`;
+              const base = teamId ? `#/t/${teamId}/write` : "#/write";
+              window.location.hash = `${base}?documentId=${encodeURIComponent(row.id)}`;
             }}
             empty={{
               title: error ? "문서를 불러오지 못했습니다" : "아직 문서가 없습니다",
