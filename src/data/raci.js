@@ -78,7 +78,7 @@ export const GUEST_USER = {
 export function normalizeUser(raw) {
   if (!raw) return GUEST_USER;
   return {
-    id: raw.id ?? raw.userId ?? null,
+    id: raw.id ?? raw.publicId ?? raw.userId ?? null,
     name: raw.name ?? raw.displayName ?? raw.email ?? "이름 없음",
     email: raw.email ?? null,
     role: RACI_ROLES[raw.role] ? raw.role : (raw.raciRole ?? "I"),
