@@ -169,25 +169,86 @@ export default function DocumentWritePage() {
     return newId ?? null;
   }
 
-  // 자동 저장 — 제목이나 내용이 변하면 3초 후 서버에 저장
+  // ── Undo/Redo (Ctrl+Z / Cmd+Z) ──
+  const historyRef = useRef([]);
+  const historyIndexRef = useRef(-1);
+
+  function pushHistory(newBlocks, newTitle) {
+    const h = historyRef.current;
+    // 현재 위치 이후 히스토리 잘라내기
+    historyRef.current = h.slice(0, historyIndexRef.current + 1);
+    historyRef.current.push({ blocks: newBlocks, title: newTitle });
+    // 최대 50단계
+    if (historyRef.current.length > 50) historyRef.current.shift();
+    historyIndexRef.current = historyRef.current.length - 1;
+  }
+
+  function undo() {
+    if (historyIndexRef.current <= 0) return;
+    historyIndexRef.current -= 1;
+    const prev = historyRef.current[historyIndexRef.current];
+    setBlocks(prev.blocks);
+    setTitle(prev.title);
+  }
+
+  function redo() {
+    if (historyIndexRef.current >= historyRef.current.length - 1) return;
+    historyIndexRef.current += 1;
+    const next = historyRef.current[historyIndexRef.current];
+    setBlocks(next.blocks);
+    setTitle(next.title);
+  }
+
+  // 키보드 단축키: Undo/Redo + spacebar/enter 즉시 저장
+  useEffect(() => {
+    function onKeyDown(e) {
+      // Undo/Redo
+      if ((e.metaKey || e.ctrlKey) && e.key === "z") {
+        e.preventDefault();
+        if (e.shiftKey) redo();
+        else undo();
+        return;
+      }
+      // Spacebar 또는 Enter 시 즉시 저장
+      if (e.key === " " || e.key === "Enter") {
+        saveNow();
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  // ── 자동 저장 로직 ──
   const saveTimerRef = useRef(null);
+  const savingRef = useRef(false);
+
+  async function saveNow() {
+    if (!documentId || !teamId || isOfficial || savingRef.current) return;
+    savingRef.current = true;
+    try {
+      await documentsApi.update(documentId, {
+        title: title || "제목 없음",
+        blocks: toServerBlocks(blocks),
+      });
+      setSavedAt("방금 전");
+      setAutoSaveError(null);
+    } catch (err) {
+      console.error("[자동저장 실패]", err.body?.code ?? "", err.message);
+      setAutoSaveError(err.body?.message ?? err.message);
+    } finally {
+      savingRef.current = false;
+    }
+  }
+
+  function scheduleSave() {
+    clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(saveNow, 2000);
+  }
+
+  // 내용 변경 시 2초 디바운스 저장 예약
   useEffect(() => {
     if (!documentId || !teamId || isOfficial) return;
-    clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(async () => {
-      try {
-        await documentsApi.update(documentId, {
-          title: title || "제목 없음",
-          blocks: toServerBlocks(blocks),
-        });
-        setSavedAt("방금 전");
-        setAutoSaveError(null);
-      } catch (err) {
-        // 초안이 아닌 문서(OFFICIAL)는 400 DOCUMENT_400_1로 거절된다 — 조용히 멈춘다
-        console.error("[자동저장 실패]", err.body?.code ?? "", err.message);
-        setAutoSaveError(err.body?.message ?? err.message);
-      }
-    }, 3000);
+    scheduleSave();
     return () => clearTimeout(saveTimerRef.current);
   }, [title, blocks, documentId, teamId, isOfficial]);
 
@@ -427,8 +488,8 @@ export default function DocumentWritePage() {
             className="mt-[16px]"
             blocks={blocks}
             onChange={(next) => {
+              pushHistory(next, title);
               setBlocks(next);
-              setSavedAt("방금 전");
             }}
           />
 
