@@ -95,7 +95,8 @@ export default function App() {
 
   // 레거시 URL(#/settings 등)로 들어왔는데 팀이 있으면 팀 URL로 리다이렉트
   if (!teamId && activeTeamId && pageName !== "dashboard" && pageName !== "me") {
-    window.location.hash = `#/t/${activeTeamId}/${pageName}`;
+    const queryPart = hash.includes("?") ? hash.slice(hash.indexOf("?")) : "";
+    window.location.hash = `#/t/${activeTeamId}/${pageName}${queryPart}`;
     return null;
   }
 
