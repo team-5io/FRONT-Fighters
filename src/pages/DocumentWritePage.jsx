@@ -113,10 +113,15 @@ export default function DocumentWritePage() {
   // 새 문서 생성 (POST /documents)
   const createDocument = useMutation((payload) => documentsApi.create(payload));
 
-  // 초안 저장 (PATCH /documents/{id})
-  const saveDraft = useMutation(() => {
+  // 초안 저장 (PATCH /documents/{id}) — 매번 최신 documentId를 사용
+  const saveDraft = useMutation(async () => {
+    if (!documentId) return null;
     const content = blocks.map((b) => b.content ?? b.text ?? "").filter(Boolean).join("\n");
-    return documentsApi.update(documentId, { title, content });
+    return documentsApi.update(documentId, {
+      teamId: Number(teamId) || teamId,
+      title: title || "제목 없음",
+      content,
+    });
   });
 
   // Doc PR 생성 (POST /documents/{id}/doc-prs)
@@ -149,20 +154,26 @@ export default function DocumentWritePage() {
     return newId ?? null;
   }
 
-  // 자동 저장 — 제목이나 내용이 변하면 2초 후 서버에 저장
+  // 자동 저장 — 제목이나 내용이 변하면 3초 후 서버에 저장
   const saveTimerRef = useRef(null);
   useEffect(() => {
     if (!documentId) return;
     clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(async () => {
-      const content = blocks.map((b) => b.content ?? b.text ?? "").filter(Boolean).join("\n");
       try {
-        await saveDraft.mutate();
+        const content = blocks.map((b) => b.content ?? b.text ?? "").filter(Boolean).join("\n");
+        await documentsApi.update(documentId, {
+          teamId: Number(teamId) || teamId,
+          title: title || "제목 없음",
+          content,
+        });
         setSavedAt("방금 전");
-      } catch { /* 에러는 useMutation이 관리 */ }
-    }, 2000);
+      } catch (err) {
+        console.error("[자동저장 실패]", err.message);
+      }
+    }, 3000);
     return () => clearTimeout(saveTimerRef.current);
-  }, [title, blocks, documentId]);
+  }, [title, blocks, documentId, teamId]);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -325,25 +336,29 @@ export default function DocumentWritePage() {
               )}
             </div>
 
-            {/* 자동 저장이라 버튼 대신 상태 텍스트로 (원칙 E) */}
+            {/* 저장 상태 */}
             <span className="text-[12px] font-medium text-neutral-500">
               {saveDraft.pending || createDocument.pending ? "저장 중…" : savedAt ? `${savedAt} 저장됨` : documentId ? "불러옴" : "새 문서"}
             </span>
 
-            {/* 새 문서일 때 명시적 초안 저장 버튼 */}
-            {!documentId && title.trim() && (
-              <Button
-                variant="secondary"
-                size="sm"
-                className="rounded-sm"
-                disabled={createDocument.pending}
-                onClick={async () => {
-                  await ensureDocument();
-                }}
-              >
-                {createDocument.pending ? "생성 중…" : "초안 저장"}
-              </Button>
-            )}
+            {/* 수동 초안 저장 버튼 */}
+            <Button
+              variant="secondary"
+              size="sm"
+              className="rounded-sm"
+              disabled={saveDraft.pending || createDocument.pending || (!title.trim() && !documentId)}
+              onClick={async () => {
+                const docId = await ensureDocument();
+                if (docId) {
+                  try {
+                    await saveDraft.mutate();
+                    setSavedAt("방금 전");
+                  } catch { /* 에러는 mutation이 관리 */ }
+                }
+              }}
+            >
+              {saveDraft.pending ? "저장 중…" : "초안 저장"}
+            </Button>
 
             <div className="ml-auto">
               <Button
