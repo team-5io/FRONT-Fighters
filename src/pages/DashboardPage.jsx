@@ -67,14 +67,13 @@ function NoTeamView() {
     if (!teamName.trim()) return;
     try {
       const result = await createTeam.mutate({ name: teamName.trim() });
+      // 응답: { status: 201, data: { id, name } }
       const team = result?.data ?? result;
-      if (team?.id ?? team?.teamId) {
-        updateUser({ teamId: team.id ?? team.teamId, teamName: team.name ?? teamName });
-        window.location.hash = "#/dashboard";
-        window.location.reload();
-      }
+      const teamId = team?.id ?? team?.teamId;
+      updateUser({ teamId: teamId ?? "created", teamName: team?.name ?? teamName.trim() });
+      window.location.reload();
     } catch {
-      // 에러는 useMutation이 관리
+      // 에러는 useMutation이 관리 — 화면에 error.message 표시
     }
   }
 
