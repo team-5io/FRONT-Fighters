@@ -98,22 +98,41 @@ export async function request(path, { method = "GET", body, query, signal } = {}
   } catch (err) {
     clearTimeout(timeoutId);
     if (err.name === "AbortError") {
+      console.error(`[API TIMEOUT] ${method} ${url.toString()}`);
       throw new ApiTimeoutError(url.toString());
     }
     // 네트워크 에러 (CORS, DNS, 서버 다운 등)
+    console.error(`[API NETWORK ERROR] ${method} ${url.toString()}`, err.message);
     throw new ApiError(0, { message: `서버에 연결할 수 없습니다: ${err.message}` }, url.toString());
   } finally {
     clearTimeout(timeoutId);
   }
 
+  const text = await response.text();
+  const parsed = text ? safeJson(text) : null;
+
+  // 모든 응답을 콘솔에 기록
+  if (response.ok) {
+    console.log(
+      `[API ${response.status}] ${method} ${url.toString()}`,
+      parsed?.code ?? "",
+      parsed?.message ?? "",
+      parsed?.data !== undefined ? parsed.data : parsed,
+    );
+  } else {
+    console.error(
+      `[API ${response.status}] ${method} ${url.toString()}`,
+      parsed?.code ?? "",
+      parsed?.message ?? "",
+      parsed,
+    );
+  }
+
   if (response.status === 401) {
     setAccessToken(null);
     onUnauthorized?.();
-    throw new ApiError(401, { message: "로그인이 필요합니다." }, url.toString());
+    throw new ApiError(401, parsed ?? { message: "로그인이 필요합니다." }, url.toString());
   }
-
-  const text = await response.text();
-  const parsed = text ? safeJson(text) : null;
 
   if (!response.ok) throw new ApiError(response.status, parsed, url.toString());
   return parsed;
