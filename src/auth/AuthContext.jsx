@@ -1,22 +1,20 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { auth as authApi } from "../api/endpoints";
-import { isApiConfigured, setAccessToken, setUnauthorizedHandler } from "../api/client";
+import { getAccessToken, isApiConfigured, setAccessToken, setUnauthorizedHandler } from "../api/client";
 import { GUEST_USER, normalizeUser } from "../data/raci";
 
 /**
- * 로그인 세션 (API 연동 지시서 1.2).
+ * 로그인 세션.
  *
- * 토큰과 사용자 정보를 **메모리에만** 둔다 — 새로고침 시 세션이 끊기는 것은
- * 이번 범위에서 허용한다(지속 저장·자동 로그인은 범위 밖).
- *
- * 1~4차가 A 역할로 고정해 두었던 `CURRENT_USER` mock을 대체하는 자리다.
- * 로그인 전에는 `GUEST_USER`가 쓰이고, 로그인하면 응답의 실제 사용자로 바뀐다.
+ * 토큰은 localStorage에 보관한다 — 새로고침해도 세션이 유지된다.
+ * 로그아웃하면 localStorage에서 제거한다.
  */
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
+  // 앱 시작 시 저장된 토큰이 있으면 인증된 상태로 시작
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
+  const [token, setToken] = useState(() => getAccessToken());
 
   const signOut = useCallback(({ redirect = true } = {}) => {
     setAccessToken(null);
