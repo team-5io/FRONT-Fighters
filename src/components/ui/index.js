@@ -9,6 +9,7 @@ export { default as Field } from "./Field";
 export { default as ListFilterBar } from "./ListFilterBar";
 export { default as MyRoleBar, PermissionNotice } from "./MyRoleBar";
 export { default as RaciChip, RaciLetter } from "./RaciChip";
+export { default as RoleChip } from "./RoleChip";
 export { AiReviewCard, HumanReviewCard } from "./ReviewCard";
 export { default as StatusBadge } from "./StatusBadge";
 export { cx } from "./cx";

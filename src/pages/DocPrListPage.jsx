@@ -5,11 +5,10 @@ import {
   CioMark,
   DataTable,
   ListFilterBar,
-  MyRoleBar,
+  RoleChip,
   RaciChip,
   StatusBadge,
 } from "../components/ui";
-import { CURRENT_USER, RACI_ROLES } from "../data/raci";
 import { DOC_PR_STATUS } from "../data/status";
 import { IconStar } from "../components/icons";
 
@@ -130,7 +129,6 @@ const COLUMNS = [
 ];
 
 export default function DocPrListPage() {
-  const myRoleMeta = RACI_ROLES[CURRENT_USER.role];
   /** AI가 만든 상태와 사람이 만든 상태가 각각 몇 건인지 — 원칙 3 */
   const aiCount = DOC_PRS.filter((pr) => DOC_PR_STATUS[pr.status].ai).length;
 
@@ -140,6 +138,7 @@ export default function DocPrListPage() {
         breadcrumb={[{ label: "5IO주", href: "#/dashboard" }, { label: "Doc PR" }]}
         title="Doc PR"
         description="문서의 생성, 검토, 승인 상태를 한눈에 관리하세요."
+        actions={<RoleChip scope="이 팀" />}
         properties={[
           { label: "전체", value: `${DOC_PRS.length}건` },
           {
@@ -157,16 +156,6 @@ export default function DocPrListPage() {
           },
         ]}
       />
-
-      <MyRoleBar
-        className="mt-[20px]"
-        scope="이 팀"
-      />
-      <p className="mt-[8px] text-[13px] font-medium leading-[19px] text-neutral-500">
-        기본 역할은 {myRoleMeta.key}({myRoleMeta.label})이고, Doc PR마다 배정된 역할은 아래
-        &lsquo;내 역할&rsquo; 열에서 확인할 수 있습니다. {myRoleMeta.hidden.join(" · ")}은
-        표시되지 않습니다.
-      </p>
 
       <div className="mt-[24px]">
         <ListFilterBar
