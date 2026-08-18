@@ -11,37 +11,23 @@ import {
   RaciChip,
   StatusBadge,
 } from "../components/ui";
-import { IconGlobe, IconPaper } from "../components/icons";
+import { IconPaper } from "../components/icons";
 import { documents as documentsApi } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
 import { unwrapList, totalCount } from "../api/unwrap";
+import { normalizeDocument } from "../api/normalize";
 import { useAuth } from "../auth/AuthContext";
-import { DOCUMENT_STATUS } from "../data/status";
 
 /**
  * 문서 목록 — `#/documents`
  *
  * API: `GET /documents`, `GET /documents/search`, `GET /documents/{id}/versions`
- * "연결된 Doc PR" 서브 섹션은 Doc PR 목록 API가 없어 표시하지 않는다(지시서 0장).
+ *
+ * PR #100으로 응답이 바뀌었다 — `authorId`가 사라지고 `assignee{userId,name,role}`가,
+ * `blocks`(목록에서는 항상 `[]`)와 `restricted`가 들어왔다. 상태는 `DRAFT`/`OFFICIAL`
+ * 대문자 enum이라 `documentStatusOf`로 화면 키에 맞춘다.
+ * 목록에 없는 값(유형·버전·번역본)은 스펙에 필드가 없어 표시하지 않는다.
  */
-
-/** 백엔드 응답의 키가 달라도 화면이 쓰는 모양으로 맞춘다 */
-function normalizeDocument(raw) {
-  const status = DOCUMENT_STATUS[raw.status] ? raw.status : "draft";
-  return {
-    id: raw.id ?? raw.documentId,
-    title: raw.title ?? "제목 없음",
-    type: raw.type ?? raw.documentType ?? "—",
-    status,
-    version: raw.version ?? "—",
-    owner: {
-      name: raw.owner?.name ?? raw.author?.name ?? "—",
-      role: raw.owner?.role ?? raw.author?.role ?? "R",
-    },
-    updated: raw.updatedAt ?? raw.updated ?? "—",
-    translations: raw.translations ?? [],
-  };
-}
 
 const FILTERS = [
   { label: "상태", value: "전체" },
@@ -49,32 +35,29 @@ const FILTERS = [
   { label: "정렬", value: "최근 수정순" },
 ];
 
-/** 번역본이 있으면 어떤 언어로 있는지 목록에서 바로 보이게 한다 */
-function TranslationTag({ languages }) {
-  if (!languages.length) return null;
-  return (
-    <span
-      className="inline-flex h-[22px] shrink-0 items-center gap-[4px] rounded-full border border-info/25 bg-info-tint px-[7px] font-mono text-[11px] font-bold text-info-text"
-      title={`AI 번역본 있음 — ${languages.join(", ")}`}
-    >
-      <IconGlobe size={11} />
-      {languages.join("·")}
-    </span>
-  );
-}
-
 const COLUMNS_BASE = [
   {
     key: "title",
     label: "문서명",
     render: (row) => (
-      <div className="flex items-center gap-[8px]">
-        <span className="truncate font-semibold text-neutral-900">{row.title}</span>
-        <TranslationTag languages={row.translations} />
+      <div className="min-w-0">
+        <p className="flex items-center gap-[8px] truncate font-semibold text-neutral-900">
+          {row.title}
+          {row.restricted && (
+            <span
+              title="지정 참여자 전용 문서"
+              className="shrink-0 rounded-full border border-warning/30 bg-warning-tint px-[6px] font-mono text-[10px] font-bold text-warning-text"
+            >
+              제한
+            </span>
+          )}
+        </p>
+        {row.preview && (
+          <p className="mt-[2px] truncate text-[13px] text-neutral-500">{row.preview}</p>
+        )}
       </div>
     ),
   },
-  { key: "type", label: "유형", width: 120 },
   {
     key: "status",
     label: "상태",
@@ -82,23 +65,10 @@ const COLUMNS_BASE = [
     render: (row) => <StatusBadge status={row.status} kind="document" size="sm" />,
   },
   {
-    key: "owner",
+    key: "assignee",
     label: "담당",
-    width: 150,
-    render: (row) => <RaciChip role={row.owner.role} name={row.owner.name} size="sm" />,
-  },
-  {
-    key: "version",
-    label: "버전",
-    width: 80,
-    render: (row) => <span className="font-mono text-[13px] text-neutral-500">{row.version}</span>,
-  },
-  {
-    key: "updated",
-    label: "최근 수정",
-    width: 100,
-    align: "right",
-    render: (row) => <span className="text-[13px] text-neutral-500">{row.updated}</span>,
+    width: 160,
+    render: (row) => <RaciChip role={row.assignee.role} name={row.assignee.name} size="sm" />,
   },
 ];
 
@@ -114,8 +84,8 @@ export default function DocumentsPage() {
     reload,
   } = useApi(
     () => (keyword.trim()
-      ? documentsApi.search({ teamId: Number(teamId), keyword: keyword.trim() })
-      : documentsApi.list({ teamId: Number(teamId) })),
+      ? documentsApi.search({ teamId: Number(teamId), keyword: keyword.trim(), size: 100 })
+      : documentsApi.list({ teamId: Number(teamId), size: 100 })),
     [keyword, teamId],
     { enabled: Boolean(teamId) },
   );
@@ -234,24 +204,22 @@ export default function DocumentsPage() {
               </h2>
               <StatusBadge status={selected.status} kind="document" size="sm" />
             </div>
-            <p className="mt-[4px] text-[13px] font-medium text-neutral-500">
-              {selected.type} · {selected.version}
-            </p>
+            {selected.preview && (
+              <p className="mt-[4px] line-clamp-3 text-[13px] font-medium text-neutral-500">
+                {selected.preview}
+              </p>
+            )}
             <dl className="mt-[12px] flex flex-col gap-[6px]">
               <div className="flex items-center gap-[10px]">
                 <dt className="w-[52px] shrink-0 text-[12px] font-medium text-neutral-500">담당</dt>
                 <dd>
-                  <RaciChip role={selected.owner.role} name={selected.owner.name} size="sm" />
+                  <RaciChip role={selected.assignee.role} name={selected.assignee.name} size="sm" />
                 </dd>
               </div>
               <div className="flex items-center gap-[10px]">
-                <dt className="w-[52px] shrink-0 text-[12px] font-medium text-neutral-500">번역본</dt>
-                <dd>
-                  {(selected.translations ?? []).length > 0 ? (
-                    <TranslationTag languages={selected.translations} />
-                  ) : (
-                    <span className="text-[13px] text-neutral-500">없음</span>
-                  )}
+                <dt className="w-[52px] shrink-0 text-[12px] font-medium text-neutral-500">열람</dt>
+                <dd className="text-[13px] text-neutral-500">
+                  {selected.restricted ? "지정 참여자 전용" : "팀 전체"}
                 </dd>
               </div>
             </dl>

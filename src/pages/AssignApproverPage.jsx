@@ -13,6 +13,7 @@ import { canManageTeam } from "../data/raci";
 import { docPrs, teams as teamsApi } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
 import { unwrap, unwrapList } from "../api/unwrap";
+import { normalizeDocPr, normalizeMember } from "../api/normalize";
 import { useAuth } from "../auth/AuthContext";
 
 /**
@@ -45,15 +46,18 @@ export default function AssignApproverPage() {
     [prId],
     { enabled: Boolean(prId) },
   );
-  const pr = unwrap(prData) ?? {};
+  const pr = normalizeDocPr(unwrap(prData) ?? {});
 
   // 팀원 중 A 역할 후보자
   const { data: membersData } = useApi(() => teamsApi.members(teamId), [teamId]);
-  const allMembers = unwrapList(membersData);
-  const candidates = allMembers.filter((m) => m.role === "A" || m.raciRole === "A");
+  /**
+   * 후보는 팀원 전체다. 팀원 목록의 role은 MEMBER/ADMIN(팀 역할)이라
+   * RACI의 A를 걸러낼 수 없고, Doc PR 승인권자는 RACI와 별개로 지정된다.
+   */
+  const candidates = unwrapList(membersData).map(normalizeMember);
 
   const assign = useMutation(() =>
-    docPrs.setApprover(prId, { approver, reason: reason || undefined }),
+    docPrs.setApprover(prId, { approverId: Number(approver), reason: reason || undefined }),
   );
   const [approver, setApprover] = useState("");
   const [reason, setReason] = useState("");
@@ -117,35 +121,44 @@ export default function AssignApproverPage() {
           {candidates.length === 0 ? (
             <EmptyState
               compact
-              title="A 역할 후보가 없습니다"
-              description="팀원 중 A 역할을 가진 사람이 없습니다. 팀원 관리에서 역할을 지정해 주세요."
+              title="팀원이 없습니다"
+              description="팀 설정에서 팀원을 초대하면 대체 승인권자로 지정할 수 있습니다."
+              actionLabel="팀 설정 열기"
+              onAction={() => (window.location.hash = "#/settings?tab=members")}
             />
           ) : (
             <ul className="flex flex-col gap-[8px]">
-              {candidates.map((candidate) => (
-                <li key={candidate.name ?? candidate.id}>
-                  <label
-                    className={`flex items-center gap-[10px] rounded-sm border px-[12px] py-[10px] transition-colors ${
-                      !editable
-                        ? "cursor-not-allowed border-line bg-neutral-50 opacity-60"
-                        : approver === (candidate.name ?? candidate.id)
-                          ? "cursor-pointer border-main-500 bg-main-50"
-                          : "cursor-pointer border-line bg-neutral-0 hover:bg-neutral-50"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="approver"
-                      value={candidate.name ?? candidate.id}
-                      checked={approver === (candidate.name ?? candidate.id)}
-                      disabled={!editable}
-                      onChange={() => setApprover(candidate.name ?? candidate.id)}
-                      className="size-[15px] accent-main-500"
-                    />
-                    <RaciChip role="A" name={candidate.name ?? "—"} size="sm" />
-                  </label>
-                </li>
-              ))}
+              {candidates.map((candidate) => {
+                const value = String(candidate.userId ?? candidate.memberId);
+                const selected = approver === value;
+                return (
+                  <li key={candidate.memberId}>
+                    <label
+                      className={`flex items-center gap-[10px] rounded-sm border px-[12px] py-[10px] transition-colors ${
+                        !editable
+                          ? "cursor-not-allowed border-line bg-neutral-50 opacity-60"
+                          : selected
+                            ? "cursor-pointer border-main-500 bg-main-50"
+                            : "cursor-pointer border-line bg-neutral-0 hover:bg-neutral-50"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="approver"
+                        value={value}
+                        checked={selected}
+                        disabled={!editable}
+                        onChange={() => setApprover(value)}
+                        className="size-[15px] accent-main-500"
+                      />
+                      <RaciChip role="A" name={candidate.name} size="sm" />
+                      <span className="ml-auto text-[12px] text-neutral-500">
+                        {candidate.email}
+                      </span>
+                    </label>
+                  </li>
+                );
+              })}
             </ul>
           )}
 

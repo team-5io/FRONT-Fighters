@@ -56,6 +56,23 @@ export const RACI_ROLES = {
 export const RACI_ORDER = ["R", "A", "C", "I"];
 
 /**
+ * 팀 역할 — RACI와 **다른 축**이다.
+ *
+ * `GET /teams/{teamId}/members`와 `GET /teams/me`의 `role`은 `MEMBER`/`ADMIN`이고
+ * (PR #98), RACI(R/A/C/I)는 문서마다 `PUT /documents/{id}/raci`로 따로 배정한다.
+ * 팀원 목록의 role을 RACI로 읽으면 안 된다 — 예전 연동이 그랬다.
+ */
+export const TEAM_ROLES = {
+  ADMIN: { key: "ADMIN", label: "팀 관리자", tone: "main" },
+  MEMBER: { key: "MEMBER", label: "팀원", tone: "neutral" },
+};
+
+/** 팀 역할 문자열이 관리자인가 */
+export function isTeamAdminRole(role) {
+  return String(role ?? "").toUpperCase() === "ADMIN";
+}
+
+/**
  * 로그인 전 기본값.
  *
  * 1~4차는 여기 `CURRENT_USER`를 A 역할·팀 관리자로 고정해 두고 화면 분기의

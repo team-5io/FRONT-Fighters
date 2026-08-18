@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Page from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
 import { Button } from "../components/ui";
@@ -6,6 +6,7 @@ import { useAuth } from "../auth/AuthContext";
 import { teams as teamsApi } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
 import { unwrap, unwrapList } from "../api/unwrap";
+import { normalizeTeam } from "../api/normalize";
 
 /**
  * 대시보드(홈) — `#/dashboard`
@@ -16,17 +17,17 @@ import { unwrap, unwrapList } from "../api/unwrap";
  */
 
 export default function DashboardPage() {
-  const { user, updateUser } = useAuth();
+  const { user, setActiveTeam } = useAuth();
 
-  // 소속 팀 목록 조회
+  // 소속 팀 목록 조회 — 응답에 role(MEMBER/ADMIN)이 포함된다 (PR #98)
   const { data: teamsResult, loading, reload } = useApi(() => teamsApi.myTeams(), []);
-  const myTeamList = unwrapList(teamsResult);
+  const myTeamList = unwrapList(teamsResult).map(normalizeTeam);
 
-  // 팀이 있으면 첫 번째 팀을 활성 팀으로 설정 (localStorage에도 반영)
+  // 팀이 있으면 첫 번째 팀을 활성 팀으로 (역할까지 세션에 반영)
   const activeTeam = myTeamList[0] ?? null;
-  if (activeTeam && !user.teamId) {
-    updateUser({ teamId: activeTeam.id, teamName: activeTeam.name });
-  }
+  useEffect(() => {
+    if (activeTeam && !user.teamId) setActiveTeam(activeTeam);
+  }, [activeTeam, user.teamId, setActiveTeam]);
 
   const hasTeam = Boolean(activeTeam) || Boolean(user.teamId);
 
@@ -51,6 +52,10 @@ export default function DashboardPage() {
         title={`${user.name}님, 환영합니다`}
         properties={[
           { label: "팀", value: teamName },
+          {
+            label: "내 팀 역할",
+            value: activeTeam?.isAdmin ? "팀 관리자" : "팀원",
+          },
         ]}
       />
     </Page>
@@ -59,7 +64,7 @@ export default function DashboardPage() {
 
 /** 팀이 없을 때 보여주는 화면 */
 function NoTeamView({ onCreated }) {
-  const { updateUser } = useAuth();
+  const { setActiveTeam } = useAuth();
   const [teamName, setTeamName] = useState("");
   const createTeam = useMutation((payload) => teamsApi.create(payload));
 
@@ -69,9 +74,10 @@ function NoTeamView({ onCreated }) {
     try {
       const result = await createTeam.mutate({ name: teamName.trim() });
       // 응답: { status: 201, data: { id, name } }
-      const team = unwrap(result);
-      const newTeamId = team?.id ?? team?.teamId;
-      updateUser({ teamId: newTeamId ?? "created", teamName: team?.name ?? teamName.trim() });
+      // 응답: { status: 201, data: { id, name } } — 만든 사람이 ADMIN이 된다
+      const team = normalizeTeam(unwrap(result) ?? {});
+      const newTeamId = team.id;
+      setActiveTeam({ ...team, isAdmin: true });
       // 새 팀의 워크스페이스 URL로 이동
       window.location.hash = newTeamId ? `#/t/${newTeamId}/dashboard` : "#/dashboard";
       window.location.reload();

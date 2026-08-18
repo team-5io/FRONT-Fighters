@@ -9,12 +9,12 @@ import {
   StatusBadge,
   cx,
 } from "../components/ui";
-import { RACI_ORDER, RACI_ROLES, canManageTeam } from "../data/raci";
+import { RACI_ORDER, RACI_ROLES, TEAM_ROLES, canManageTeam } from "../data/raci";
 import { useAuth } from "../auth/AuthContext";
 import { documents as documentsApi, teams as teamsApi } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
 import { unwrapList } from "../api/unwrap";
-import { usePermissions } from "../hooks/usePermissions";
+import { normalizeDocument, normalizeMember } from "../api/normalize";
 import { IconPaper, IconShield, IconTeam, IconText } from "../components/icons";
 
 /**
@@ -46,9 +46,13 @@ export default function TeamSettingsPage() {
   const initialTab = new URLSearchParams(window.location.hash.split("?")[1] ?? "").get("tab") ?? "team";
   const [active, setActive] = useState(initialTab);
 
-  // 팀원 목록 — 응답: { status, data: [{ userId, role, joinedAt }] }
+  /**
+   * 팀원 목록 — 응답: `[{ memberId, name, email, role: MEMBER|ADMIN, joinedAt }]`
+   * (PR #98). `memberId`는 team_members PK이고 **유저 ID가 아니다** — 추방 API의
+   * 경로 변수도 이 값이다. `role`은 RACI가 아니라 팀 역할이다.
+   */
   const membersQuery = useApi(() => teamsApi.members(teamId), [teamId], { enabled: Boolean(teamId) });
-  const members = unwrapList(membersQuery.data);
+  const members = unwrapList(membersQuery.data).map(normalizeMember);
 
   // 팀이 있으면 관리 기능을 열어둔다 — 권한 없으면 서버가 403으로 차단한다
   const isAdmin = true;
@@ -165,25 +169,28 @@ function TeamInfoPanel({ teamName, memberCount, editable, members, teamId, reloa
           <table className="w-full border-collapse text-left">
             <thead>
               <tr className="border-b border-line bg-neutral-50">
-                <th className="px-[14px] py-[8px] text-[12px] font-semibold text-neutral-500">유저 ID</th>
+                <th className="px-[14px] py-[8px] text-[12px] font-semibold text-neutral-500">팀원</th>
                 <th className="px-[14px] py-[8px] text-[12px] font-semibold text-neutral-500">역할</th>
                 <th className="px-[14px] py-[8px] text-[12px] font-semibold text-neutral-500">합류일</th>
               </tr>
             </thead>
             <tbody>
               {members.map((member) => (
-                <tr key={member.userId ?? member.id} className="border-b border-line last:border-b-0 hover:bg-neutral-50/50">
+                <tr key={member.memberId} className="border-b border-line last:border-b-0 hover:bg-neutral-50/50">
                   <td className="px-[14px] py-[10px] text-[13px] font-medium text-neutral-900">
-                    {member.name ?? member.email ?? `#${member.userId}`}
+                    {member.name}
+                    <span className="ml-[6px] text-[12px] font-normal text-neutral-500">
+                      {member.email}
+                    </span>
                   </td>
                   <td className="px-[14px] py-[10px]">
                     <span className={cx(
                       "inline-flex h-[22px] items-center rounded-full border px-[8px] text-[11px] font-bold",
-                      member.role === "ADMIN"
+                      member.isAdmin
                         ? "border-main-500/30 bg-main-50 text-main-700"
                         : "border-line bg-neutral-50 text-neutral-600",
                     )}>
-                      {member.role === "ADMIN" ? "관리자" : "멤버"}
+                      {TEAM_ROLES[member.teamRole]?.label ?? member.teamRole}
                     </span>
                   </td>
                   <td className="px-[14px] py-[10px] text-[12px] text-neutral-500">
@@ -210,13 +217,14 @@ function RaciPanel({ teamId, editable }) {
     enabled: Boolean(teamId),
   });
   const rawMembers = unwrapList(membersQuery.data);
-  const documentRoles = unwrapList(docsQuery.data).map((doc) => ({
-    id: doc.id ?? doc.documentId,
-    name: doc.title ?? doc.name ?? "—",
-    counts: doc.counts ?? doc.raci ?? { R: 0, A: 0, C: 0, I: 0 },
-  }));
+  const documentRoles = unwrapList(docsQuery.data).map(normalizeDocument);
 
-  const missingApprover = documentRoles.filter((doc) => doc.counts.A === 0);
+  /**
+   * 문서별 RACI 배정 현황을 주는 조회 엔드포인트가 없다 (`PUT .../raci`만 있다).
+   * 대신 `restricted`가 RACI 배정 여부를 알려준다 — 하나라도 배정하면 true가 된다
+   * (my-permissions 문서의 "RACI를 하나라도 배정하면 restricted=true" 주석).
+   */
+  const unassigned = documentRoles.filter((doc) => !doc.restricted);
 
   return (
     <div>
@@ -245,10 +253,11 @@ function RaciPanel({ teamId, editable }) {
         />
       ) : (
         <>
-          {missingApprover.length > 0 && (
+          {unassigned.length > 0 && (
             <div className="mt-[16px] rounded-sm border border-warning/30 bg-warning-tint px-[12px] py-[10px]">
               <p className="text-[13px] font-medium text-warning-text">
-                A 역할(승인 책임)이 없는 문서가 {missingApprover.length}건 있습니다. Merge가 차단됩니다.
+                RACI가 아직 배정되지 않은 문서가 {unassigned.length}건 있습니다. 배정 전에는 팀원
+                전체가 열람할 수 있습니다.
               </p>
             </div>
           )}
@@ -428,19 +437,28 @@ function MembersPanel({ teamId, members, editable, reload }) {
       ) : (
         <ul className="mt-[16px] flex flex-col">
           {members.map((member) => {
-            // 응답은 { userId, role, joinedAt } 모양 — 삭제 경로에 쓸 id를 userId부터 찾는다
-            const id = member.userId ?? member.memberId ?? member.id ?? member.publicId;
+            // 추방 경로 변수는 멤버십 PK다 (PR #98) — 유저 ID를 보내면 404가 난다
+            const id = member.memberId;
             return (
               <li key={id ?? member.email} className="flex items-center gap-[12px] border-b border-line py-[10px] last:border-b-0">
-                <span className="text-[14px] font-medium text-neutral-900">{member.name ?? member.email}</span>
-                {member.role && <RaciChip role={member.role} size="sm" />}
+                <span className="text-[14px] font-medium text-neutral-900">{member.name}</span>
+                <span
+                  className={cx(
+                    "inline-flex h-[20px] items-center rounded-full border px-[7px] text-[11px] font-bold",
+                    member.isAdmin
+                      ? "border-main-500/30 bg-main-50 text-main-700"
+                      : "border-line bg-neutral-50 text-neutral-600",
+                  )}
+                >
+                  {TEAM_ROLES[member.teamRole]?.label ?? member.teamRole}
+                </span>
                 <span className="ml-auto text-[12px] text-neutral-500">{member.email}</span>
                 {editable && (
                   <button
                     type="button"
                     onClick={async () => {
                       if (!id) return window.alert("이 팀원의 식별자를 찾을 수 없습니다.");
-                      if (!window.confirm(`${member.name ?? member.email}님을 내보내시겠습니까?`)) return;
+                      if (!window.confirm(`${member.name}님을 내보내시겠습니까?`)) return;
                       try {
                         await removeMember.mutate(id);
                         reload();

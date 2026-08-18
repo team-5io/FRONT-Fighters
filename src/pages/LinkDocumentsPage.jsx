@@ -14,6 +14,7 @@ import { IconLock } from "../components/icons";
 import { documents as documentsApi } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
 import { unwrapList } from "../api/unwrap";
+import { normalizeDocument } from "../api/normalize";
 import { useAuth } from "../auth/AuthContext";
 
 /**
@@ -59,11 +60,13 @@ export default function LinkDocumentsPage() {
 
   // 검색 API 연동 — 키워드가 있으면 실제 검색
   const { data: searchResults, loading: searching } = useApi(
-    () => documentsApi.search({ teamId: Number(teamId), keyword: searchKeyword.trim() }),
+    () => documentsApi.search({ teamId: Number(teamId), keyword: searchKeyword.trim(), size: 50 }),
     [searchKeyword, teamId],
     { enabled: Boolean(searchKeyword.trim()) && Boolean(teamId) },
   );
-  const displayResults = searchKeyword.trim() ? unwrapList(searchResults) : [];
+  const displayResults = searchKeyword.trim()
+    ? unwrapList(searchResults).map(normalizeDocument)
+    : [];
 
   const saveRelations = useMutation(() =>
     documentsApi.relations(documentId, {

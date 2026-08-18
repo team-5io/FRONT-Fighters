@@ -3,6 +3,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { teams as teamsApi } from "../../api/endpoints";
 import { useApi } from "../../hooks/useApi";
 import { unwrapList } from "../../api/unwrap";
+import { normalizeTeam } from "../../api/normalize";
 import { cx } from "../ui/cx";
 import {
   IconGraph,
@@ -66,16 +67,28 @@ function NavLink({ item, active, depth = 0, teamId }) {
 }
 
 export default function Sidebar({ active, teamId }) {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, setActiveTeam } = useAuth();
   const hasTeam = Boolean(teamId);
   const [switcherOpen, setSwitcherOpen] = useState(false);
 
   // 소속 팀 목록 조회
   const { data: teamsResult } = useApi(() => teamsApi.myTeams(), []);
-  const myTeams = unwrapList(teamsResult);
+  const myTeams = unwrapList(teamsResult).map(normalizeTeam);
 
   const activeTeam = myTeams.find((t) => String(t.id) === String(teamId)) ?? myTeams[0] ?? null;
   const teamName = activeTeam?.name ?? user.teamName ?? "팀이 없음";
+
+  /**
+   * 활성 팀의 역할(MEMBER/ADMIN)을 세션에 반영한다 — `GET /teams/me`가 PR #98에서
+   * `role`을 주기 시작했다. 팀 관리자 전용 화면의 잠금이 이 값에 달려 있다.
+   */
+  useEffect(() => {
+    if (!activeTeam) return;
+    if (String(user.teamId) === String(activeTeam.id) && user.isTeamAdmin === activeTeam.isAdmin) {
+      return;
+    }
+    setActiveTeam(activeTeam);
+  }, [activeTeam, user.teamId, user.isTeamAdmin, setActiveTeam]);
   useEffect(() => {
     if (!switcherOpen) return;
     const close = (e) => {

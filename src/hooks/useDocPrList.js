@@ -1,83 +1,62 @@
+import { useMemo } from "react";
 import { docPrs, documents } from "../api/endpoints";
-import { unwrap, unwrapList } from "../api/unwrap";
+import { unwrap, unwrapList, totalCount } from "../api/unwrap";
+import { normalizeDocPr, normalizeDocument } from "../api/normalize";
 import { useApi } from "./useApi";
 
 /**
- * Doc PR 목록.
+ * Doc PR 목록 — `GET /doc-prs?teamId=&page=&size=` (PR #107, issue #105).
  *
- * 스펙에 `GET /doc-prs`(목록)가 없다 — doc-prs 엔드포인트는 전부 `{prId}` 단건이다.
- * 없는 엔드포인트를 상상해서 부르지 않는다는 규칙은 그대로 두고,
- * **있는 엔드포인트 둘을 조합해서** 목록을 만든다:
+ * 이전에는 목록 엔드포인트가 없어서 `GET /documents`로 문서를 훑고 문서마다
+ * `GET /doc-prs/{prId}`를 부르는 N+1 조합으로 만들었다. 백엔드가 목록 API를
+ * 추가했으므로 **그 조합은 걷어내고 한 번의 요청으로 바꾼다.**
  *
- *   `GET /documents` → 문서가 물고 있는 prId 수집 → prId마다 `GET /doc-prs/{prId}`
- *
- * 문서 수만큼 단건 조회가 나가므로(N+1) 목록 화면 전용으로만 쓴다.
- * 백엔드에 목록 엔드포인트가 생기면 이 훅 안만 바꾸면 된다.
+ * 다만 목록 응답은 `requesterId` / `approverId` / `documentId`처럼 **ID만** 준다
+ * (이름 없음). 그래서 문서 목록을 함께 받아 `documentId → 제목·담당자`로 채운다.
+ * 사용자 ID → 이름은 어떤 엔드포인트도 주지 않아 ID를 그대로 노출한다.
  */
-
-/** 문서 한 건이 물고 있는 Doc PR id를 전부 꺼낸다 (응답 키 이름이 달라도 받도록) */
-function docPrIdsOf(doc) {
-  const fromArray = (value) =>
-    Array.isArray(value) ? value.map((item) => item?.id ?? item?.prId ?? item) : [];
-
-  const ids = [
-    doc.docPrId,
-    doc.currentDocPrId,
-    doc.prId,
-    doc.docPr?.id ?? doc.docPr?.prId,
-    ...fromArray(doc.docPrs),
-    ...fromArray(doc.docPrIds),
-    ...fromArray(doc.prIds),
-  ];
-  return [...new Set(ids.filter(Boolean))];
-}
-
-/** 상세 응답을 목록 행 모양으로 맞춘다 */
-function normalizeDocPr(raw, doc) {
-  return {
-    id: raw.id ?? raw.prId ?? "—",
-    title: raw.title ?? doc?.title ?? "제목 없음",
-    status: raw.status ?? "created",
-    author: raw.author?.name ?? raw.authorName ?? "—",
-    authorRole: raw.author?.role ?? "R",
-    myRole: raw.myRole ?? raw.myRaciRole ?? doc?.myRole ?? "I",
-    approver: raw.approver?.name ?? raw.approverName ?? null,
-    updated: raw.updatedAt ?? raw.updated ?? raw.createdAt ?? "—",
-    documentId: raw.documentId ?? doc?.id ?? doc?.documentId ?? null,
-    documentTitle: doc?.title ?? raw.targetDoc ?? "—",
-  };
-}
-
-export function useDocPrList(teamId) {
+export function useDocPrList(teamId, { page = 0, size = 20 } = {}) {
   const query = useApi(
-    async () => {
-      const docsResponse = await documents.list(teamId ? { teamId: Number(teamId) } : undefined);
-      const docs = unwrapList(docsResponse);
-
-      const pairs = docs.flatMap((doc) => docPrIdsOf(doc).map((prId) => ({ prId, doc })));
-      if (pairs.length === 0) return [];
-
-      // 단건 하나가 실패해도 목록 전체가 죽지 않게 한다
-      const settled = await Promise.allSettled(
-        pairs.map(({ prId }) => docPrs.detail(prId)),
-      );
-
-      return settled
-        .map((result, index) =>
-          result.status === "fulfilled"
-            ? normalizeDocPr(unwrap(result.value) ?? {}, pairs[index].doc)
-            : null,
-        )
-        .filter(Boolean);
-    },
-    [teamId],
-    { fallback: [], enabled: Boolean(teamId) },
+    () => docPrs.list({ teamId: Number(teamId), page, size }),
+    [teamId, page, size],
+    { enabled: Boolean(teamId) },
   );
 
+  // 제목을 채우기 위한 문서 목록 (Doc PR 목록과 같은 팀 범위)
+  const docsQuery = useApi(
+    () => documents.list({ teamId: Number(teamId), size: 100 }),
+    [teamId],
+    { enabled: Boolean(teamId) },
+  );
+
+  const list = useMemo(() => {
+    const rows = unwrapList(query.data).map(normalizeDocPr);
+    const byId = new Map(
+      unwrapList(docsQuery.data)
+        .map(normalizeDocument)
+        .map((doc) => [String(doc.id), doc]),
+    );
+    return rows.map((pr) => {
+      const doc = byId.get(String(pr.documentId)) ?? null;
+      return {
+        ...pr,
+        documentTitle: doc?.title ?? `문서 #${pr.documentId ?? "—"}`,
+        documentStatus: doc?.status ?? null,
+        /** 목록에 제목이 없어 제안 내용을 제목 자리에 쓴다 */
+        title: pr.proposedContent || doc?.title || "제안 내용 없음",
+      };
+    });
+  }, [query.data, docsQuery.data]);
+
   return {
-    list: Array.isArray(query.data) ? query.data : [],
-    loading: query.loading,
+    list,
+    total: totalCount(query.data, list),
+    page: unwrap(query.data)?.number ?? page,
+    loading: query.loading || docsQuery.loading,
     error: query.error,
-    reload: query.reload,
+    reload: () => {
+      query.reload();
+      docsQuery.reload();
+    },
   };
 }
