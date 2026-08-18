@@ -11,6 +11,8 @@ import {
   cx,
 } from "../components/ui";
 import { IconLock } from "../components/icons";
+import { documents as documentsApi } from "../api/endpoints";
+import { useApi, useMutation } from "../hooks/useApi";
 
 /**
  * 관련 문서 연결 — `#/link-documents`
@@ -21,7 +23,15 @@ import { IconLock } from "../components/icons";
  *  - 권한 안내를 기능명세서 3장 문구와 맞췄다 — 권한 없는 문서는 검색에도 안 나온다.
  *  - 연결 결과가 Document Graph와 Impact Analysis의 입력이라는 점을 화면에 밝혔다
  *    (`GET /documents/{documentId}/graph`, `.../impact`).
+ *
+ * API 연동 지시서 2.5: 저장은 `POST /documents/{documentId}/relations`.
+ * 검색은 `GET /documents/search`로 연결할 문서를 찾는다.
  */
+
+function getDocumentIdFromHash() {
+  const params = new URLSearchParams(window.location.hash.split("?")[1] ?? "");
+  return params.get("documentId") ?? params.get("id") ?? "api-design";
+}
 
 const RELATIONS = [
   { value: "parent", label: "상위 문서", describe: (a, b) => `${b}가 ${a}의 상위 문서입니다.` },
@@ -44,10 +54,28 @@ const PERMISSION_NOTES = [
 ];
 
 export default function LinkDocumentsPage() {
+  const [documentId] = useState(getDocumentIdFromHash);
   const [relation, setRelation] = useState("parent");
   const [links, setLinks] = useState([{ id: "d2", title: "온보딩 가이드라인", relation: "child" }]);
+  const [searchKeyword, setSearchKeyword] = useState("");
 
   const relationMeta = RELATIONS.find((item) => item.value === relation);
+
+  // 검색 API 연동 — 키워드가 있으면 실제 검색, 없으면 mock으로 떨어진다
+  const { data: searchResults, loading: searching } = useApi(
+    () => documentsApi.search(searchKeyword.trim()),
+    [searchKeyword],
+    { fallback: SEARCH_RESULTS, enabled: Boolean(searchKeyword.trim()) },
+  );
+  const displayResults = searchKeyword.trim()
+    ? (Array.isArray(searchResults) ? searchResults : SEARCH_RESULTS)
+    : SEARCH_RESULTS;
+
+  const saveRelations = useMutation(() =>
+    documentsApi.relations(documentId, {
+      relations: links.map((link) => ({ targetId: link.id, relation: link.relation })),
+    }),
+  );
 
   function addLink(doc) {
     if (links.some((link) => link.id === doc.id)) return;
@@ -79,7 +107,16 @@ export default function LinkDocumentsPage() {
             >
               돌아가기
             </Button>
-            <Button className="rounded-sm">연결 저장</Button>
+            <Button
+              className="rounded-sm"
+              disabled={saveRelations.pending}
+              onClick={async () => {
+                await saveRelations.mutate();
+                window.location.hash = "#/write";
+              }}
+            >
+              {saveRelations.pending ? "저장 중…" : "연결 저장"}
+            </Button>
           </>
         }
       />
@@ -110,11 +147,11 @@ export default function LinkDocumentsPage() {
               </div>
             </div>
 
-            <ListFilterBar searchLabel="문서 검색" searchPlaceholder="연결할 문서명 검색" />
+            <ListFilterBar searchLabel="문서 검색" searchPlaceholder="연결할 문서명 검색" value={searchKeyword} onSearch={setSearchKeyword} />
 
             <Card padding="none" className="mt-[12px]">
               <ul>
-                {SEARCH_RESULTS.map((doc) => {
+                {displayResults.map((doc) => {
                   const linked = links.some((link) => link.id === doc.id);
                   return (
                     <li

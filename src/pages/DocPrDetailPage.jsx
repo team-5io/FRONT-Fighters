@@ -13,8 +13,12 @@ import {
   tone,
 } from "../components/ui";
 import { ACTOR_META, MERGE_BLOCKERS } from "../data/status";
-import { CURRENT_USER, RACI_ROLES } from "../data/raci";
+import { RACI_ROLES } from "../data/raci";
+import { useAuth } from "../auth/AuthContext";
+import { usePermissions } from "../hooks/usePermissions";
 import { IconAlertCircle, IconCheck } from "../components/icons";
+import { docPrs } from "../api/endpoints";
+import { useApi, useMutation } from "../hooks/useApi";
 
 /**
  * Doc PR 상세 — `#/doc-pr-detail`
@@ -25,7 +29,24 @@ import { IconAlertCircle, IconCheck } from "../components/icons";
  *  - 리뷰·이력·인수인계는 접기로 내렸다(점진적 노출).
  *
  * 1차가 세운 AI/사람 분리 기준선(`AiReviewCard` / `HumanReviewCard`)은 그대로다.
+ *
+ * API 연동 지시서 2.7: 상세·merge-check·history·reviews 조회와
+ * 승인/반려/재제출/Merge/예외 Merge 실행을 실제 API로 연결했다.
+ *
+ * **AI 리뷰 카드는 계속 mock이다** — DocumentLion 관련 4개 엔드포인트
+ * (review/evidence·conflict·consistency·charter-violation)가 전부 "시작 전"이라
+ * 호출하지 않는다(지시서 1.3).
+ *
+ * 진입 경로인 Doc PR 목록은 목록 API가 없어 mock이다(0장). 그래서 prId는
+ * 해시 쿼리(`#/doc-pr-detail?prId=...`)로 받고, 없으면 mock 값을 쓴다 —
+ * 백엔드가 시드한 실제 prId를 목록에 박아 넣으면 클릭이 그대로 이어진다.
  */
+
+/** `#/doc-pr-detail?prId=PR-142` 형태에서 prId를 꺼낸다 */
+function prIdFromHash() {
+  const query = window.location.hash.split("?")[1];
+  return query ? new URLSearchParams(query).get("prId") : null;
+}
 
 const DOC_PR = {
   id: "PR #142",
@@ -92,10 +113,67 @@ const MERGE_CHECKS = [
 ];
 
 export default function DocPrDetailPage() {
-  const myRole = RACI_ROLES[CURRENT_USER.role];
-  const canApprove = CURRENT_USER.role === "A";
-  const blockers = MERGE_CHECKS.filter((check) => !check.met);
+  const { user } = useAuth();
+  const prId = prIdFromHash() ?? DOC_PR.id;
+
+  const detail = useApi(() => docPrs.detail(prId), [prId], { fallback: DOC_PR });
+  const mergeCheck = useApi(() => docPrs.mergeCheck(prId), [prId], { fallback: MERGE_CHECKS });
+  const history = useApi(() => docPrs.history(prId), [prId], { fallback: TIMELINE });
+  const reviews = useApi(() => docPrs.reviews(prId), [prId], { fallback: HUMAN_REVIEWS });
+  const nextAssignee = useApi(() => docPrs.nextAssignee(prId), [prId], { fallback: null });
+
+  const approve = useMutation(() => docPrs.approve(prId));
+  const reject = useMutation((reason) => docPrs.reject(prId, { reason }));
+  const merge = useMutation(() => docPrs.merge(prId));
+  const resubmit = useMutation((payload) => docPrs.resubmit(prId, payload));
+  const mergeException = useMutation((payload) => docPrs.mergeException(prId, payload));
+  const setApprover = useMutation((payload) => docPrs.setApprover(prId, payload));
+
+  const pr = detail.data ?? DOC_PR;
+  const checks = Array.isArray(mergeCheck.data) ? mergeCheck.data : MERGE_CHECKS;
+  const timeline = Array.isArray(history.data) ? history.data : TIMELINE;
+  const humanReviews = Array.isArray(reviews.data) ? reviews.data : HUMAN_REVIEWS;
+
+  const permissions = usePermissions(pr.documentId ?? pr.targetDocId);
+  const myRole = permissions.meta;
+  const canApprove = permissions.canApprove;
+  const blockers = checks.filter((check) => !check.met);
   const primary = MERGE_BLOCKERS[blockers[0]?.key];
+  const busy = approve.pending || reject.pending || merge.pending || resubmit.pending || mergeException.pending || setApprover.pending;
+
+  async function onApprove() {
+    await approve.mutate();
+    detail.reload();
+    mergeCheck.reload();
+    history.reload();
+  }
+  async function onReject() {
+    await reject.mutate("리뷰 의견을 반영해 주세요.");
+    detail.reload();
+    history.reload();
+  }
+  async function onMerge() {
+    await merge.mutate();
+    detail.reload();
+    mergeCheck.reload();
+  }
+  async function onResubmit() {
+    await resubmit.mutate({ title: pr.title });
+    detail.reload();
+    mergeCheck.reload();
+    history.reload();
+  }
+  async function onMergeException(reason) {
+    await mergeException.mutate({ reason });
+    detail.reload();
+    mergeCheck.reload();
+    history.reload();
+  }
+  async function onSetApprover(approverPayload) {
+    await setApprover.mutate(approverPayload);
+    detail.reload();
+    history.reload();
+  }
 
   return (
     <Page>
@@ -103,21 +181,21 @@ export default function DocPrDetailPage() {
         breadcrumb={[
           { label: "5IO주", href: "#/dashboard" },
           { label: "Doc PR", href: "#/doc-pr" },
-          { label: DOC_PR.id },
+          { label: pr.id },
         ]}
-        title={`${DOC_PR.id} · ${DOC_PR.title}`}
+        title={`${pr.id} · ${pr.title}`}
         properties={[
-          { label: "상태", value: <StatusBadge variant="solid" status={DOC_PR.status} size="sm" /> },
+          { label: "상태", value: <StatusBadge variant="solid" status={pr.status} size="sm" /> },
           {
             label: "작성자",
-            value: <RaciChip role={DOC_PR.author.role} name={DOC_PR.author.name} size="sm" />,
+            value: <RaciChip role={pr.author?.role ?? "R"} name={pr.author?.name ?? "—"} size="sm" />,
           },
-          { label: "대상 문서", value: DOC_PR.targetDoc },
-          { label: "생성", value: DOC_PR.createdAt },
-          { label: "브랜치", value: <code className="font-mono text-[12px]">{DOC_PR.branch}</code> },
+          { label: "대상 문서", value: pr.targetDoc ?? "—" },
+          { label: "생성", value: pr.createdAt ?? "—" },
+          { label: "브랜치", value: <code className="font-mono text-[12px]">{pr.branch ?? "—"}</code> },
           {
             label: "내 역할",
-            value: <RaciChip role={CURRENT_USER.role} showLabel size="sm" />,
+            value: <RaciChip role={permissions.role} showLabel size="sm" />,
           },
         ]}
       />
@@ -149,19 +227,60 @@ export default function DocPrDetailPage() {
             <Button
               variant="secondary"
               className="rounded-sm"
-              onClick={() => (window.location.hash = "#/assign-approver")}
+              disabled={busy}
+              onClick={onReject}
             >
-              승인권자 지정
+              반려
             </Button>
-            <Button className="rounded-sm" disabled={!canApprove || blockers.length > 0}>
-              승인
-            </Button>
+            {blockers.length === 0 ? (
+              <Button className="rounded-sm" disabled={!canApprove || busy} onClick={onMerge}>
+                {merge.pending ? "Merge 중…" : "Merge"}
+              </Button>
+            ) : (
+              <Button className="rounded-sm" disabled={!canApprove || busy} onClick={onApprove}>
+                {approve.pending ? "승인 중…" : "승인"}
+              </Button>
+            )}
+            {/* 재제출 — 반려 상태일 때 R 역할이 누른다 */}
+            {(pr.status === "rejected" || pr.status === "반려") && permissions.canEdit && (
+              <Button variant="secondary" className="rounded-sm" disabled={busy} onClick={onResubmit}>
+                {resubmit.pending ? "재제출 중…" : "재제출"}
+              </Button>
+            )}
+            {/* 예외 Merge — 조건 미충족 상태에서 A 역할이 사유와 함께 실행 */}
+            {blockers.length > 0 && canApprove && (
+              <Button
+                variant="ghost"
+                className="rounded-sm text-error-text"
+                disabled={busy}
+                onClick={() => {
+                  const reason = window.prompt("예외 Merge 사유를 입력하세요.");
+                  if (reason) onMergeException(reason);
+                }}
+              >
+                {mergeException.pending ? "처리 중…" : "예외 Merge"}
+              </Button>
+            )}
+            {/* 대체 승인권자 지정 */}
+            {permissions.canManage && (
+              <Button
+                variant="ghost"
+                className="rounded-sm"
+                disabled={busy}
+                onClick={() => {
+                  const name = window.prompt("대체 승인권자 이름을 입력하세요.");
+                  if (name) onSetApprover({ approver: name });
+                }}
+              >
+                {setApprover.pending ? "지정 중…" : "승인권자 변경"}
+              </Button>
+            )}
           </div>
         </div>
 
         {/* Merge 조건은 주인공 안에 한 줄씩 압축 */}
         <ul className="mt-[16px] flex flex-wrap gap-x-[16px] gap-y-[8px] border-t border-line pt-[14px]">
-          {MERGE_CHECKS.map(({ key, met }) => {
+          {checks.map(({ key, met }) => {
             const blocker = MERGE_BLOCKERS[key];
             const actor = ACTOR_META[blocker.actor];
             return (
@@ -246,7 +365,7 @@ export default function DocPrDetailPage() {
 
         <Disclosure
           title="사람 리뷰"
-          count={HUMAN_REVIEWS.length}
+          count={humanReviews.length}
           caption="김민섭님 대기중"
           defaultOpen
           right={
@@ -256,7 +375,7 @@ export default function DocPrDetailPage() {
           }
         >
           <div className="flex flex-col gap-[12px]">
-            {HUMAN_REVIEWS.map((review) => (
+            {humanReviews.map((review) => (
               <HumanReviewCard
                 key={review.reviewer.name}
                 title={`${review.reviewer.name}님의 리뷰`}
@@ -277,9 +396,9 @@ export default function DocPrDetailPage() {
           </div>
         </Disclosure>
 
-        <Disclosure title="상태 이력" count={TIMELINE.length}>
+        <Disclosure title="상태 이력" count={timeline.length}>
           <ol className="flex flex-col gap-[2px]">
-            {TIMELINE.map((item) => (
+            {timeline.map((item) => (
               <li key={item.at + item.status} className="flex items-center gap-[10px] py-[7px]">
                 <StatusBadge status={item.status} size="sm" />
                 <span className="truncate text-[13px] font-medium text-neutral-700">

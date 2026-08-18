@@ -3,6 +3,7 @@ import Page, { Section } from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
 import { Button, Card, CardHeader, PermissionNotice } from "../components/ui";
 import { canManageTeam } from "../data/raci";
+import { useAuth } from "../auth/AuthContext";
 import {
   IconRelationship,
   IconShield,
@@ -42,7 +43,8 @@ const WARNINGS = [
 const CONFIRM_PHRASE = "초기화";
 
 export default function TeamResetPage() {
-  const editable = canManageTeam();
+  const { user } = useAuth();
+  const editable = canManageTeam(user);
   const [confirm, setConfirm] = useState("");
   const ready = editable && confirm.trim() === CONFIRM_PHRASE;
 

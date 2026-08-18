@@ -10,8 +10,12 @@ import {
   RaciChip,
   StatusBadge,
 } from "../components/ui";
-import { CURRENT_USER, RACI_ORDER, RACI_ROLES, canManageTeam } from "../data/raci";
+import { RACI_ORDER, RACI_ROLES, canManageTeam } from "../data/raci";
+import { useAuth } from "../auth/AuthContext";
 import { IconExclamationCircle } from "../components/icons";
+import { documents as documentsApi, teams as teamsApi } from "../api/endpoints";
+import { useApi, useMutation } from "../hooks/useApi";
+import { usePermissions } from "../hooks/usePermissions";
 
 /**
  * RACI 역할 관리 — `#/raci-roles`
@@ -27,6 +31,10 @@ import { IconExclamationCircle } from "../components/icons";
  * 2차 지시서 4장(UX 재정비): 안내 카드 4장 + 표 + 통계 6칸 + 매트릭스 + 경고 카드가
  * 동시에 나열되던 화면에서 **매트릭스를 주인공으로** 세우고, 역할 기준 안내와
  * 문서별 지정 표는 접기로 내렸다. 통계 6칸은 얇은 속성 줄로 줄였다.
+ *
+ * API 연동 지시서 2.9·2.11: 저장은 `PUT /documents/{id}/raci`,
+ * 편집 가능 여부는 `GET /documents/{id}/my-permissions` 응답으로 결정한다.
+ * 하드코딩된 역할 분기를 남기지 않는다 — 분기의 데이터 소스만 바뀌었다.
  */
 
 const FILTERS = [
@@ -121,7 +129,27 @@ const COLUMNS = [
 ];
 
 export default function RaciRolesPage() {
-  const editable = canManageTeam();
+  const { user } = useAuth();
+  const teamId = user.teamId ?? "me";
+
+  // 문서 목록과 팀원 목록을 API에서 가져온다 (fallback: mock)
+  const docsQuery = useApi(() => documentsApi.list(), [], { fallback: DOCUMENT_ROLES });
+  const membersQuery = useApi(() => teamsApi.members(teamId), [teamId], { fallback: MEMBERS });
+
+  const documentRoles = Array.isArray(docsQuery.data) ? docsQuery.data.map((doc) => ({
+    id: doc.id ?? doc.documentId,
+    name: doc.title ?? doc.name ?? "—",
+    type: doc.type ?? doc.documentType ?? "—",
+    status: doc.status ?? "draft",
+    counts: doc.counts ?? doc.raci ?? { R: 0, A: 0, C: 0, I: 0 },
+  })) : DOCUMENT_ROLES;
+
+  // 첫 문서 기준으로 권한을 받아 화면 전체의 편집 가능 여부를 정한다
+  const permissions = usePermissions(documentRoles[0]?.id);
+  const editable = permissions.canManage;
+  const saveRaci = useMutation((documentId, payload) => documentsApi.setRaci(documentId, payload));
+
+  const rawMembers = Array.isArray(membersQuery.data) ? membersQuery.data : MEMBERS;
   const [members, setMembers] = useState(MEMBERS);
 
   const counts = RACI_ORDER.reduce((acc, role) => {
@@ -169,8 +197,16 @@ export default function RaciRolesPage() {
           })),
         ]}
         actions={
-          <Button className="rounded-sm" disabled={!editable}>
-            변경 사항 저장
+          <Button
+            className="rounded-sm"
+            disabled={!editable || saveRaci.pending}
+            onClick={() =>
+              saveRaci.mutate(DOCUMENT_ROLES[0]?.id, {
+                assignments: members.map((m) => ({ name: m.name, roles: m.roles })),
+              })
+            }
+          >
+            {saveRaci.pending ? "저장 중…" : "변경 사항 저장"}
           </Button>
         }
       />
@@ -179,7 +215,7 @@ export default function RaciRolesPage() {
         className="mt-[20px]"
         allowed={editable}
         action="역할 지정·변경"
-        detail={editable ? "" : `현재 역할은 ${CURRENT_USER.role}입니다.`}
+        detail={editable ? "" : `현재 역할은 ${permissions.role}입니다.`}
       />
 
       {/* ── 주인공: 팀원 × 역할 매트릭스 ── */}

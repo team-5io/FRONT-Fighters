@@ -12,6 +12,9 @@ import {
   tone,
 } from "../components/ui";
 import { canManageTeam } from "../data/raci";
+import { teams as teamsApi } from "../api/endpoints";
+import { useMutation } from "../hooks/useApi";
+import { useAuth } from "../auth/AuthContext";
 
 /**
  * 협업 규칙 (Charter) — `#/charter`
@@ -29,6 +32,10 @@ import { canManageTeam } from "../data/raci";
  * 3차 지시서 3.1: 규칙 3장은 각각 독립적으로 수정·채택되는 단위라 Card를 유지한다.
  * 대신 카드 **내부**의 라벨/설명/셀렉트를 여백으로 다시 정리했고, 규칙이 아닌
  * 정보(현재 상태·연동 안내)는 2.1 기준에 따라 Card에서 Section으로 내렸다.
+ *
+ * API 연동 지시서 2.10 — **혼합 상태가 정상이다.**
+ *   초안 내용 표시 = mock (`POST /teams/{id}/charter/draft`가 아직 "시작 전")
+ *   수정 저장·공식 채택 = real (`PUT /teams/{id}/charter`)
  */
 
 const LINK_TARGETS = [
@@ -65,7 +72,9 @@ const LINKED_EFFECTS = [
 ];
 
 export default function CharterPage() {
-  const editable = canManageTeam();
+  const { user } = useAuth();
+  const editable = canManageTeam(user);
+  const saveCharter = useMutation((payload) => teamsApi.saveCharter(user.teamId ?? "me", payload));
   const [rules, setRules] = useState(INITIAL_RULES);
   /** adopted: 공식 채택 여부, dirty: 채택 이후 수정이 있었는지 */
   const [adopted, setAdopted] = useState(null);
@@ -96,9 +105,15 @@ export default function CharterPage() {
     markDirty();
   }
 
-  function adopt() {
+  async function adopt() {
+    // 채택은 실제 API로 저장한다 (초안 생성만 mock)
+    await saveCharter.mutate({ rules, adopted: true });
     setAdopted(new Date().toISOString().slice(0, 10));
     setDirty(false);
+  }
+
+  async function saveDraft() {
+    await saveCharter.mutate({ rules, adopted: Boolean(adopted) });
   }
 
   const statusChip = isDraft
@@ -136,8 +151,13 @@ export default function CharterPage() {
         ]}
         actions={
           <>
-            <Button variant="secondary" className="rounded-sm" disabled={!editable}>
-              초안 저장
+            <Button
+              variant="secondary"
+              className="rounded-sm"
+              disabled={!editable || saveCharter.pending}
+              onClick={saveDraft}
+            >
+              {saveCharter.pending ? "저장 중…" : "초안 저장"}
             </Button>
             {/* 1차 구현에 없던 동작 — 미채택 상태를 벗어날 수 있는 유일한 길 */}
             <Button

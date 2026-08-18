@@ -56,20 +56,47 @@ export const RACI_ROLES = {
 export const RACI_ORDER = ["R", "A", "C", "I"];
 
 /**
- * 현재 로그인한 사용자 (mock).
- * `GET /documents/{documentId}/my-permissions`가 "이 결과를 모든 API가 공통으로
- * 적용한다"고 명시 — 화면에도 항상 "내 권한"이 드러나야 한다는 뜻으로 읽고,
- * 화면 분기의 기준값으로 쓴다. 실제 호출은 하지 않는다.
+ * 로그인 전 기본값.
+ *
+ * 1~4차는 여기 `CURRENT_USER`를 A 역할·팀 관리자로 고정해 두고 화면 분기의
+ * 기준으로 썼다. API 연동 지시서 1.2에 따라 **실제 로그인 응답으로 교체**했고,
+ * 이 값은 로그인 전에만 쓰이는 게스트다 — 아무 권한도 없다.
+ *
+ * 화면은 이걸 직접 import하지 않는다. `useAuth().user` 또는 문서 화면이라면
+ * `usePermissions(documentId)`를 쓴다.
  */
-export const CURRENT_USER = {
-  name: "고나영",
-  role: "A",
-  isTeamAdmin: true,
+export const GUEST_USER = {
+  id: null,
+  name: "게스트",
+  email: null,
+  role: "I",
+  isTeamAdmin: false,
+  teamId: null,
 };
 
-/** 팀 관리자 전용 동작인지 판단 (팀 설정 초기화·RACI 지정·대체 승인권자 지정 등) */
-export function canManageTeam(user = CURRENT_USER) {
-  return Boolean(user.isTeamAdmin);
+/** 백엔드 응답의 키 이름이 달라도 화면이 쓰는 모양으로 맞춘다 */
+export function normalizeUser(raw) {
+  if (!raw) return GUEST_USER;
+  return {
+    id: raw.id ?? raw.userId ?? null,
+    name: raw.name ?? raw.displayName ?? raw.email ?? "이름 없음",
+    email: raw.email ?? null,
+    role: RACI_ROLES[raw.role] ? raw.role : (raw.raciRole ?? "I"),
+    isTeamAdmin: Boolean(raw.isTeamAdmin ?? raw.teamAdmin ?? raw.isAdmin),
+    teamId: raw.teamId ?? raw.team?.id ?? null,
+    teamName: raw.teamName ?? raw.team?.name ?? null,
+    timezone: raw.timezone ?? raw.timeZone ?? null,
+    language: raw.language ?? raw.preferredLanguage ?? null,
+  };
+}
+
+/**
+ * 팀 관리자 전용 동작인지 판단.
+ * 인자를 반드시 받는다 — 예전처럼 모듈 전역 mock을 기본값으로 두면
+ * 하드코딩된 역할 분기가 되살아난다 (지시서 2.11).
+ */
+export function canManageTeam(user) {
+  return Boolean(user?.isTeamAdmin);
 }
 
 /** 해당 역할이 할 수 있는 행동인지 */

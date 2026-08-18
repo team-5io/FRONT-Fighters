@@ -1,4 +1,4 @@
-import { CURRENT_USER } from "../../data/raci";
+import { useAuth } from "../../auth/AuthContext";
 import { IconSearch } from "../icons";
 
 /**
@@ -8,6 +8,7 @@ import { IconSearch } from "../icons";
  * 문서가 주인공이 되도록 높이를 줄이고 검색만 남긴다.
  */
 export default function Topbar() {
+  const { user } = useAuth();
   return (
     <header className="flex h-[52px] shrink-0 items-center gap-[12px] border-b border-line bg-neutral-0 px-[24px]">
       {/* 테두리 없이 배경만 — 상단 크롬의 대비를 더 낮춘다 (3차 3.3) */}
@@ -24,13 +25,13 @@ export default function Topbar() {
       {/* 마이페이지 진입점 (4차 3.2) — 아바타 + 이름 */}
       <a
         href="#/me"
-        aria-label={`내 계정 — ${CURRENT_USER.name}`}
+        aria-label={`내 계정 — ${user.name}`}
         className="ml-auto flex shrink-0 items-center gap-[8px] rounded-sm py-[3px] pl-[3px] pr-[8px] transition-colors hover:bg-neutral-75/70"
       >
         <span className="flex size-[24px] shrink-0 items-center justify-center rounded-full bg-main-500 font-mono text-[11px] font-bold text-neutral-0">
-          {CURRENT_USER.name.slice(0, 1)}
+          {user.name.slice(0, 1)}
         </span>
-        <span className="text-[13px] font-medium text-neutral-700">{CURRENT_USER.name}</span>
+        <span className="text-[13px] font-medium text-neutral-700">{user.name}</span>
       </a>
     </header>
   );

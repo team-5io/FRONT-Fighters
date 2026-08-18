@@ -1,4 +1,4 @@
-import { CURRENT_USER } from "../../data/raci";
+import { useAuth } from "../../auth/AuthContext";
 import { cx } from "../ui/cx";
 import {
   IconGraph,
@@ -64,6 +64,7 @@ function NavLink({ item, active, depth = 0 }) {
 }
 
 export default function Sidebar({ active }) {
+  const { user } = useAuth();
   const settingsOpen =
     active === SETTINGS_ITEM.label ||
     SETTINGS_ITEM.children.some((child) => child.label === active);
@@ -83,7 +84,7 @@ export default function Sidebar({ active }) {
             Doc PR
           </span>
           <span className="block truncate text-[12px] font-medium leading-[16px] text-neutral-500">
-            5IO주 · {CURRENT_USER.name}
+            5IO주 · {user.name}
           </span>
         </span>
       </a>

@@ -18,6 +18,8 @@ import {
   nodeById,
 } from "../data/graph";
 import { IconLock } from "../components/icons";
+import { documents as documentsApi } from "../api/endpoints";
+import { useApi } from "../hooks/useApi";
 
 /**
  * Document Graph — `#/graph`
@@ -31,6 +33,10 @@ import { IconLock } from "../components/icons";
  * 5차 지시서 원칙 B: 우측 패널이 노드 정보 + 액션 + 영향 문서 4항목 + 사용처 2항목 +
  * 담당 칩까지 다섯 그룹을 동시에 펼쳐 보여줬다. 기본 노출은 노드 요약 하나로 줄이고
  * 나머지는 **탭 하나만 열리도록** 바꿨다.
+ *
+ * API 연동 지시서 2.6: 캔버스는 `GET /documents/{id}/graph`,
+ * 우측 "영향받는 문서"는 `GET /documents/{id}/impact`.
+ * 백엔드 미설정이면 `src/data/graph.js` mock으로 떨어진다.
  */
 
 const PANEL_TABS = [
@@ -51,8 +57,21 @@ const CONSUMERS = [
 export default function DocumentGraphPage() {
   const [selectedId, setSelectedId] = useState(FOCUS_ID);
   const [tab, setTab] = useState("impact");
+
+  // 그래프 데이터를 실제 API에서 가져온다. 응답이 없으면 mock 그래프를 쓴다.
+  const graphQuery = useApi(() => documentsApi.graph(FOCUS_ID), [FOCUS_ID], {
+    fallback: { nodes: GRAPH_NODES, edges: GRAPH_EDGES },
+  });
+  const impactQuery = useApi(() => documentsApi.impact(selectedId), [selectedId], {
+    fallback: null,
+  });
+
+  // API가 노드/엣지를 직접 줬으면 그걸, 아니면 mock에서 가져온다
+  const graphNodes = graphQuery.data?.nodes ?? GRAPH_NODES;
+  const graphEdges = graphQuery.data?.edges ?? GRAPH_EDGES;
+
   const selected = nodeById(selectedId);
-  const impacts = impactOf(selectedId);
+  const impacts = Array.isArray(impactQuery.data) ? impactQuery.data : impactOf(selectedId);
 
   return (
     <Page fullBleed>

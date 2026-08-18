@@ -5,6 +5,7 @@ import BlockEditor from "../components/editor/BlockEditor";
 import {
   Button,
   Disclosure,
+  EmptyState,
   RoleChip,
   PropertyRow,
   RaciChip,
@@ -14,6 +15,9 @@ import {
 import { INITIAL_DOCUMENT, createBlock } from "../data/blocks";
 import { relatedDocuments } from "../data/graph";
 import { IconGlobe, IconLink, IconSparkle } from "../components/icons";
+import { documents as documentsApi } from "../api/endpoints";
+import { useApi, useMutation } from "../hooks/useApi";
+import { usePermissions } from "../hooks/usePermissions";
 
 /**
  * 문서 작성/편집 — `#/write` (딥링크 `#/ai-structure`도 이 화면으로 온다)
@@ -29,9 +33,22 @@ import { IconGlobe, IconLink, IconSparkle } from "../components/icons";
  *  - 툴바에 클릭 가능한 요소가 5개 몰려 있던 것을 **주 액션(Doc PR 생성) + ⋯ 더보기**로 나눴다.
  *  - `초안 저장` 버튼은 없앴다 — 자동 저장되므로 "최근 저장" 상태 텍스트로 충분하다.
  *  - 권한 배너를 헤더 속성 줄의 인라인 칩으로 내리고, 연결된 문서 목록은 접었다.
+ *
+ * API 연동 지시서 2.5:
+ *   - 새 문서 생성 `POST /documents`
+ *   - 초안 저장 `PATCH /documents/{id}`
+ *   - "Doc PR 생성" `POST /documents/{id}/doc-prs`(승인권자 지정 포함)
+ *   - 문서 삭제 `DELETE /documents/{id}`
+ *   편집 가능 여부는 `my-permissions`가 정한다(2.11).
+ *
+ * AI 작성 보조 패널과 번역 보기 진입점은 화면에 남기되 **동작은 mock**이다(1.3).
  */
 
-const DOCUMENT_ID = "api-design";
+/** URL에서 documentId를 읽는다. 없으면 새 문서 생성 모드. */
+function getDocumentIdFromHash() {
+  const params = new URLSearchParams(window.location.hash.split("?")[1] ?? "");
+  return params.get("documentId") ?? params.get("id") ?? null;
+}
 
 const INITIAL_SUGGESTIONS = [
   {
@@ -64,10 +81,11 @@ const INITIAL_SUGGESTIONS = [
 ];
 
 export default function DocumentWritePage() {
-  const [title, setTitle] = useState("API 설계 원칙");
+  const [documentId, setDocumentId] = useState(getDocumentIdFromHash);
+  const [title, setTitle] = useState("");
   const [blocks, setBlocks] = useState(INITIAL_DOCUMENT);
   const [suggestions, setSuggestions] = useState(INITIAL_SUGGESTIONS);
-  const [savedAt, setSavedAt] = useState("방금 전");
+  const [savedAt, setSavedAt] = useState(null);
   // `#/ai-structure` 딥링크로 들어오면 패널을 펼친 상태로 시작한다
   const [panelOpen, setPanelOpen] = useState(
     () => window.location.hash === "#/ai-structure",
@@ -81,7 +99,66 @@ export default function DocumentWritePage() {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
-  const related = relatedDocuments(DOCUMENT_ID);
+  // 기존 문서 로딩 — documentId가 있으면 서버에서 불러온다.
+  // 백엔드 미설정이면 fallback mock이 쓰인다.
+  const { data: loaded, loading: docLoading } = useApi(
+    () => documentsApi.list({ id: documentId }),
+    [documentId],
+    {
+      enabled: Boolean(documentId),
+      fallback: { title: "API 설계 원칙", blocks: INITIAL_DOCUMENT },
+    },
+  );
+
+  // 서버에서 문서를 불러왔으면 편집기에 반영한다
+  useEffect(() => {
+    if (loaded && documentId) {
+      setTitle(loaded.title ?? "");
+      if (Array.isArray(loaded.blocks) && loaded.blocks.length > 0) {
+        setBlocks(loaded.blocks);
+      }
+    }
+  }, [loaded, documentId]);
+
+  // 새 문서 모드일 때 기본값
+  useEffect(() => {
+    if (!documentId) {
+      setTitle("");
+      setBlocks(INITIAL_DOCUMENT);
+    }
+  }, [documentId]);
+
+  const related = relatedDocuments(documentId ?? "api-design");
+  const permissions = usePermissions(documentId);
+
+  // 새 문서 생성 (POST /documents)
+  const createDocument = useMutation((payload) => documentsApi.create(payload));
+
+  // 초안 저장 (PATCH /documents/{id})
+  const saveDraft = useMutation(() =>
+    documentsApi.update(documentId, { title, blocks }),
+  );
+
+  // Doc PR 생성 (POST /documents/{id}/doc-prs)
+  const createDocPr = useMutation(() =>
+    documentsApi.createDocPr(documentId, { title, approver: null }),
+  );
+
+  // 문서 삭제 (DELETE /documents/{id})
+  const removeDocument = useMutation(() => documentsApi.remove(documentId));
+
+  /** 아직 서버에 문서가 없으면 먼저 생성한다 */
+  async function ensureDocument() {
+    if (documentId) return documentId;
+    const created = await createDocument.mutate({ title: title || "제목 없음" });
+    const newId = created?.id ?? created?.documentId;
+    if (newId) {
+      setDocumentId(newId);
+      window.history.replaceState(null, "", `#/write?documentId=${encodeURIComponent(newId)}`);
+    }
+    return newId ?? null;
+  }
+
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -99,7 +176,9 @@ export default function DocumentWritePage() {
       label: "관련 문서 연결",
       icon: <IconLink size={14} className="text-neutral-500" />,
       count: related.length,
-      run: () => (window.location.hash = "#/link-documents"),
+      run: () => (window.location.hash = documentId
+        ? `#/link-documents?documentId=${encodeURIComponent(documentId)}`
+        : "#/link-documents"),
     },
     {
       label: "번역 보기",
@@ -111,6 +190,19 @@ export default function DocumentWritePage() {
       icon: <IconSparkle size={14} className="text-neutral-500" />,
       run: () => setPanelOpen((prev) => !prev),
     },
+    ...(documentId
+      ? [
+          {
+            label: "문서 삭제",
+            icon: <span className="text-[14px] text-error-text">🗑</span>,
+            run: async () => {
+              if (!window.confirm("이 문서를 삭제하시겠습니까?")) return;
+              await removeDocument.mutate();
+              window.location.hash = "#/documents";
+            },
+          },
+        ]
+      : []),
   ];
 
   function acceptSuggestion(item) {
@@ -211,18 +303,39 @@ export default function DocumentWritePage() {
 
             {/* 자동 저장이라 버튼 대신 상태 텍스트로 (원칙 E) */}
             <span className="text-[12px] font-medium text-neutral-500">
-              {savedAt} 저장됨
+              {saveDraft.pending ? "저장 중…" : savedAt ? `${savedAt} 저장됨` : documentId ? "불러옴" : "새 문서"}
             </span>
 
             <div className="ml-auto">
-              <Button size="sm" className="rounded-sm">
-                Doc PR 생성
+              <Button
+                size="sm"
+                className="rounded-sm"
+                disabled={!permissions.canEdit || createDocPr.pending}
+                onClick={async () => {
+                  const docId = await ensureDocument();
+                  if (!docId) return;
+                  await saveDraft.mutate();
+                  const created = await createDocPr.mutate();
+                  const prId = created?.id ?? created?.prId;
+                  window.location.hash = prId
+                    ? `#/doc-pr-detail?prId=${encodeURIComponent(prId)}`
+                    : "#/doc-pr-detail";
+                }}
+              >
+                {createDocPr.pending ? "생성 중…" : "Doc PR 생성"}
               </Button>
             </div>
           </div>
 
           {/* 블록 에디터 */}
-          <BlockEditor className="mt-[16px]" blocks={blocks} onChange={setBlocks} />
+          <BlockEditor
+            className="mt-[16px]"
+            blocks={blocks}
+            onChange={(next) => {
+              setBlocks(next);
+              setSavedAt("방금 전");
+            }}
+          />
 
           <p className="mt-[24px] border-t border-line pt-[12px] text-[12px] font-medium leading-[18px] text-neutral-500">
             팁 — 블록 맨 앞에서 <code className="font-mono text-neutral-700">#</code>{" "}
@@ -270,7 +383,7 @@ export default function DocumentWritePage() {
       <AssistantPanel
         open={panelOpen}
         onOpenChange={setPanelOpen}
-        documentId={DOCUMENT_ID}
+        documentId={documentId ?? "api-design"}
         suggestions={suggestions}
         onAccept={acceptSuggestion}
         onReject={(item) => setSuggestions((prev) => prev.filter((row) => row.id !== item.id))}

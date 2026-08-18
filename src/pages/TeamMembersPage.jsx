@@ -13,6 +13,9 @@ import {
   tone,
 } from "../components/ui";
 import { RACI_ROLES, canManageTeam } from "../data/raci";
+import { docPrs, teams as teamsApi } from "../api/endpoints";
+import { useApi, useMutation } from "../hooks/useApi";
+import { useAuth } from "../auth/AuthContext";
 
 /**
  * 팀원 관리 — `#/team-members`
@@ -25,7 +28,25 @@ import { RACI_ROLES, canManageTeam } from "../data/raci";
  *    씌우면 "박스의 벽"이 된다.
  *  - Card로 남긴 것은 대체 승인권자 지정 폼 하나뿐(독립 입력 단위).
  *  - 강조 버튼을 하나로 줄였다 — `팀원 초대`는 outline으로 내렸다(2.6).
+ *
+ * API 연동 지시서 2.3·2.7: 팀원 목록은 `GET /teams/{id}/members`,
+ * 초대는 `POST /teams/{id}/invitations`, 추방은 `DELETE .../members/{memberId}`,
+ * 대체 승인권자 지정은 `PATCH /doc-prs/{prId}/approver`.
+ *
+ * 승인권자 부재 Doc PR 목록은 **mock이다** — Doc PR 목록 API가 없다(0장).
  */
+
+/** 백엔드 응답을 표가 쓰는 모양으로 */
+function normalizeMember(raw, index) {
+  return {
+    id: raw.id ?? raw.memberId ?? `m${index}`,
+    name: raw.name ?? raw.user?.name ?? "—",
+    email: raw.email ?? raw.user?.email ?? "—",
+    role: RACI_ROLES[raw.role] ? raw.role : "I",
+    membership: raw.isTeamAdmin || raw.isAdmin ? "팀 관리자" : "일반 팀원",
+    docs: raw.documentCount ?? raw.docs ?? 0,
+  };
+}
 
 const MEMBERS = [
   { id: "m1", name: "고나영", role: "A", membership: "팀 관리자", email: "gonayoung@5io.team", docs: 4 },
@@ -41,6 +62,7 @@ const BLOCKED_DOC_PRS = [
 ];
 
 const APPROVER_CANDIDATES = MEMBERS.filter((member) => member.role === "A");
+
 
 const MEMBER_COLUMNS = [
   {
@@ -84,7 +106,17 @@ const MEMBER_COLUMNS = [
 ];
 
 export default function TeamMembersPage() {
-  const editable = canManageTeam();
+  const { user } = useAuth();
+  const editable = canManageTeam(user);
+  const teamId = user.teamId ?? "me";
+
+  const membersQuery = useApi(() => teamsApi.members(teamId), [teamId], { fallback: MEMBERS });
+  const rawMembers = Array.isArray(membersQuery.data) ? membersQuery.data : MEMBERS;
+  const members = rawMembers.map(normalizeMember);
+
+  const invite = useMutation((email) => teamsApi.invite(teamId, { email }));
+  const assignApprover = useMutation((prId, name) => docPrs.setApprover(prId, { approver: name }));
+
   const [targetPr, setTargetPr] = useState(BLOCKED_DOC_PRS[0].id);
   const [approver, setApprover] = useState(APPROVER_CANDIDATES[0]?.name ?? "");
   const [reason, setReason] = useState("");
@@ -102,13 +134,21 @@ export default function TeamMembersPage() {
         ]}
         title="팀원 관리"
         properties={[
-          { label: "구성원", value: `${MEMBERS.length}명` },
+          { label: "구성원", value: `${members.length}명` },
           { label: "승인권자", value: `${APPROVER_CANDIDATES.length}명` },
           { label: "승인권자 부재 Doc PR", value: `${BLOCKED_DOC_PRS.length}건` },
         ]}
         actions={
-          <Button variant="secondary" className="rounded-sm" disabled={!editable}>
-            팀원 초대
+          <Button
+            variant="secondary"
+            className="rounded-sm"
+            disabled={!editable || invite.pending}
+            onClick={() => {
+              const email = window.prompt("초대할 이메일을 입력하세요.");
+              if (email) invite.mutate(email).then(() => membersQuery.reload());
+            }}
+          >
+            {invite.pending ? "초대 중…" : "팀원 초대"}
           </Button>
         }
       />
@@ -208,18 +248,23 @@ export default function TeamMembersPage() {
               {reason.length}/1000
             </span>
             {/* 이 화면의 유일한 강조 버튼 */}
-            <Button className="ml-auto rounded-sm" disabled={!editable}>
-              대체 승인권자 지정
+            <Button
+              className="ml-auto rounded-sm"
+              disabled={!editable || assignApprover.pending}
+              onClick={() => assignApprover.mutate(targetPr, approver)}
+            >
+              {assignApprover.pending ? "지정 중…" : "대체 승인권자 지정"}
             </Button>
           </div>
         </Card>
       </Section>
 
       {/* ── 팀 목록은 표로 ── */}
-      <Section title="팀 목록" caption={`구성원 ${MEMBERS.length}명`}>
+      <Section title="팀 목록" caption={`구성원 ${members.length}명`}>
         <DataTable
           columns={MEMBER_COLUMNS}
-          rows={MEMBERS}
+          rows={members}
+          loading={membersQuery.loading}
           empty={{
             title: "아직 팀원이 없습니다",
             description: "팀원을 초대하면 여기에서 역할을 배정할 수 있습니다.",
