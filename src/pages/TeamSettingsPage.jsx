@@ -90,7 +90,7 @@ export default function TeamSettingsPage() {
 
         {/* ── 우: 탭 내용 ── */}
         <div className="min-w-0 flex-1">
-          {active === "team" && <TeamInfoPanel teamName={teamName} memberCount={members.length} editable={editable} members={members} />}
+          {active === "team" && <TeamInfoPanel teamName={teamName} memberCount={members.length} editable={editable} members={members} teamId={teamId} reload={membersQuery.reload} />}
           {active === "raci" && <RaciPanel teamId={teamId} editable={editable} />}
           {active === "charter" && <CharterPanel teamId={teamId} editable={editable} />}
           {active === "glossary" && <GlossaryPanel />}
@@ -102,7 +102,24 @@ export default function TeamSettingsPage() {
 }
 
 /* ─────────────────────── 팀 정보 ─────────────────────── */
-function TeamInfoPanel({ teamName, memberCount, editable, members }) {
+function TeamInfoPanel({ teamName, memberCount, editable, members, teamId, reload }) {
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteError, setInviteError] = useState(null);
+  const invite = useMutation((email) => teamsApi.invite(teamId, { email }));
+
+  async function handleInvite(e) {
+    e.preventDefault();
+    if (!inviteEmail.trim()) return;
+    setInviteError(null);
+    try {
+      await invite.mutate(inviteEmail.trim());
+      setInviteEmail("");
+      reload();
+    } catch (err) {
+      setInviteError(err.body?.message ?? err.message);
+    }
+  }
+
   return (
     <div>
       <h2 className="text-[16px] font-semibold text-neutral-900">팀 정보</h2>
@@ -116,10 +133,30 @@ function TeamInfoPanel({ teamName, memberCount, editable, members }) {
         </Button>
       )}
 
-      {/* 팀원 목록 */}
+      {/* 팀원 초대 */}
       <h3 className="mt-[28px] text-[14px] font-semibold text-neutral-900">팀원 목록</h3>
+      {editable && (
+        <form onSubmit={handleInvite} className="mt-[12px] flex items-center gap-[8px]">
+          <input
+            type="email"
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+            placeholder="초대할 이메일 입력"
+            required
+            className="h-[36px] min-w-0 flex-1 rounded-sm border border-line bg-neutral-0 px-[12px] text-[13px] font-medium text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500"
+          />
+          <Button type="submit" size="sm" className="shrink-0 rounded-sm" disabled={invite.pending || !inviteEmail.trim()}>
+            {invite.pending ? "초대 중…" : "팀원 초대"}
+          </Button>
+        </form>
+      )}
+      {inviteError && (
+        <p className="mt-[6px] text-[13px] font-medium text-error-text">{inviteError}</p>
+      )}
+
+      {/* 팀원 테이블 */}
       {members.length === 0 ? (
-        <p className="mt-[8px] text-[13px] text-neutral-500">팀원이 없습니다.</p>
+        <p className="mt-[12px] text-[13px] text-neutral-500">팀원이 없습니다.</p>
       ) : (
         <div className="mt-[12px] overflow-hidden rounded-md border border-line">
           <table className="w-full border-collapse text-left">
