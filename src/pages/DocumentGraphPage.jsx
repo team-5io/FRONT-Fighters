@@ -9,6 +9,7 @@ import {
 } from "../components/ui";
 import { documents as documentsApi } from "../api/endpoints";
 import { useApi } from "../hooks/useApi";
+import { unwrap, unwrapList } from "../api/unwrap";
 
 /**
  * Document Graph — `#/graph`
@@ -38,9 +39,10 @@ export default function DocumentGraphPage() {
     { enabled: Boolean(selectedId ?? documentId) },
   );
 
-  const nodes = Array.isArray(graphQuery.data?.nodes) ? graphQuery.data.nodes : [];
-  const edges = Array.isArray(graphQuery.data?.edges) ? graphQuery.data.edges : [];
-  const impacts = Array.isArray(impactQuery.data) ? impactQuery.data : [];
+  const graph = unwrap(graphQuery.data) ?? {};
+  const nodes = Array.isArray(graph.nodes) ? graph.nodes : [];
+  const edges = Array.isArray(graph.edges) ? graph.edges : [];
+  const impacts = unwrapList(impactQuery.data);
   const selectedNode = nodes.find((n) => (n.id ?? n.documentId) === selectedId) ?? null;
 
   // 데이터가 없으면 빈 상태

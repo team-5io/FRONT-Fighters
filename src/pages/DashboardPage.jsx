@@ -5,6 +5,7 @@ import { Button } from "../components/ui";
 import { useAuth } from "../auth/AuthContext";
 import { teams as teamsApi } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
+import { unwrap, unwrapList } from "../api/unwrap";
 
 /**
  * 대시보드(홈) — `#/dashboard`
@@ -19,7 +20,7 @@ export default function DashboardPage() {
 
   // 소속 팀 목록 조회
   const { data: teamsResult, loading, reload } = useApi(() => teamsApi.myTeams(), []);
-  const myTeamList = Array.isArray(teamsResult?.data) ? teamsResult.data : (Array.isArray(teamsResult) ? teamsResult : []);
+  const myTeamList = unwrapList(teamsResult);
 
   // 팀이 있으면 첫 번째 팀을 활성 팀으로 설정 (localStorage에도 반영)
   const activeTeam = myTeamList[0] ?? null;
@@ -68,7 +69,7 @@ function NoTeamView({ onCreated }) {
     try {
       const result = await createTeam.mutate({ name: teamName.trim() });
       // 응답: { status: 201, data: { id, name } }
-      const team = result?.data ?? result;
+      const team = unwrap(result);
       const newTeamId = team?.id ?? team?.teamId;
       updateUser({ teamId: newTeamId ?? "created", teamName: team?.name ?? teamName.trim() });
       // 새 팀의 워크스페이스 URL로 이동

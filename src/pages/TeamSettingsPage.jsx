@@ -13,6 +13,7 @@ import { RACI_ORDER, RACI_ROLES, canManageTeam } from "../data/raci";
 import { useAuth } from "../auth/AuthContext";
 import { documents as documentsApi, teams as teamsApi } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
+import { unwrapList } from "../api/unwrap";
 import { usePermissions } from "../hooks/usePermissions";
 import { IconPaper, IconShield, IconTeam, IconText } from "../components/icons";
 
@@ -47,8 +48,7 @@ export default function TeamSettingsPage() {
 
   // 팀원 목록 — 응답: { status, data: [{ userId, role, joinedAt }] }
   const membersQuery = useApi(() => teamsApi.members(teamId), [teamId], { enabled: Boolean(teamId) });
-  const membersRaw = membersQuery.data?.data ?? membersQuery.data;
-  const members = Array.isArray(membersRaw) ? membersRaw : [];
+  const members = unwrapList(membersQuery.data);
 
   // 팀이 있으면 관리 기능을 열어둔다 — 권한 없으면 서버가 403으로 차단한다
   const isAdmin = true;
@@ -201,21 +201,40 @@ function TeamInfoPanel({ teamName, memberCount, editable, members, teamId, reloa
 
 /* ─────────────────────── RACI 역할 ─────────────────────── */
 function RaciPanel({ teamId, editable }) {
-  const docsQuery = useApi(() => documentsApi.list(), []);
-  const membersQuery = useApi(() => teamsApi.members(teamId), [teamId]);
-  const rawMembers = Array.isArray(membersQuery.data) ? membersQuery.data : [];
-  const documentRoles = Array.isArray(docsQuery.data) ? docsQuery.data.map((doc) => ({
+  const docsQuery = useApi(
+    () => documentsApi.list({ teamId: Number(teamId) }),
+    [teamId],
+    { enabled: Boolean(teamId) },
+  );
+  const membersQuery = useApi(() => teamsApi.members(teamId), [teamId], {
+    enabled: Boolean(teamId),
+  });
+  const rawMembers = unwrapList(membersQuery.data);
+  const documentRoles = unwrapList(docsQuery.data).map((doc) => ({
     id: doc.id ?? doc.documentId,
     name: doc.title ?? doc.name ?? "—",
     counts: doc.counts ?? doc.raci ?? { R: 0, A: 0, C: 0, I: 0 },
-  })) : [];
+  }));
 
   const missingApprover = documentRoles.filter((doc) => doc.counts.A === 0);
 
   return (
     <div>
-      <h2 className="text-[16px] font-semibold text-neutral-900">RACI 역할</h2>
-      <p className="mt-[4px] text-[13px] text-neutral-500">누가 어떤 문서를 쓰고, 검토하고, 승인하는지 정합니다.</p>
+      <div className="flex items-start gap-[12px]">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[16px] font-semibold text-neutral-900">RACI 역할</h2>
+          <p className="mt-[4px] text-[13px] text-neutral-500">누가 어떤 문서를 쓰고, 검토하고, 승인하는지 정합니다.</p>
+        </div>
+        {/* 실제 지정·저장(PUT /documents/{id}/raci)은 전용 화면에서 한다 */}
+        <Button
+          variant="secondary"
+          size="sm"
+          className="shrink-0 rounded-sm"
+          onClick={() => (window.location.hash = "#/raci-roles")}
+        >
+          역할 지정하기
+        </Button>
+      </div>
 
       {rawMembers.length === 0 && documentRoles.length === 0 ? (
         <EmptyState
@@ -274,8 +293,20 @@ function CharterPanel({ teamId, editable }) {
 
   return (
     <div>
-      <h2 className="text-[16px] font-semibold text-neutral-900">협업 규칙 (Charter)</h2>
-      <p className="mt-[4px] text-[13px] text-neutral-500">CIO가 Doc PR을 검토할 때 근거로 삼는 팀 협업 규칙입니다.</p>
+      <div className="flex items-start gap-[12px]">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[16px] font-semibold text-neutral-900">협업 규칙 (Charter)</h2>
+          <p className="mt-[4px] text-[13px] text-neutral-500">CIO가 Doc PR을 검토할 때 근거로 삼는 팀 협업 규칙입니다.</p>
+        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="shrink-0 rounded-sm"
+          onClick={() => (window.location.hash = "#/charter")}
+        >
+          규칙 편집하기
+        </Button>
+      </div>
 
       {rules.length === 0 ? (
         <EmptyState
@@ -354,8 +385,20 @@ function MembersPanel({ teamId, members, editable, reload }) {
 
   return (
     <div>
-      <h2 className="text-[16px] font-semibold text-neutral-900">팀원 관리</h2>
-      <p className="mt-[4px] text-[13px] text-neutral-500">초대 · 역할 배정 · 추방</p>
+      <div className="flex items-start gap-[12px]">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[16px] font-semibold text-neutral-900">팀원 관리</h2>
+          <p className="mt-[4px] text-[13px] text-neutral-500">초대 · 역할 배정 · 추방</p>
+        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="shrink-0 rounded-sm"
+          onClick={() => (window.location.hash = "#/team-members")}
+        >
+          대체 승인권자 지정
+        </Button>
+      </div>
 
       {editable && (
         <Button
@@ -385,9 +428,10 @@ function MembersPanel({ teamId, members, editable, reload }) {
       ) : (
         <ul className="mt-[16px] flex flex-col">
           {members.map((member) => {
-            const id = member.id ?? member.publicId ?? member.email;
+            // 응답은 { userId, role, joinedAt } 모양 — 삭제 경로에 쓸 id를 userId부터 찾는다
+            const id = member.userId ?? member.memberId ?? member.id ?? member.publicId;
             return (
-              <li key={id} className="flex items-center gap-[12px] border-b border-line py-[10px] last:border-b-0">
+              <li key={id ?? member.email} className="flex items-center gap-[12px] border-b border-line py-[10px] last:border-b-0">
                 <span className="text-[14px] font-medium text-neutral-900">{member.name ?? member.email}</span>
                 {member.role && <RaciChip role={member.role} size="sm" />}
                 <span className="ml-auto text-[12px] text-neutral-500">{member.email}</span>
@@ -395,9 +439,13 @@ function MembersPanel({ teamId, members, editable, reload }) {
                   <button
                     type="button"
                     onClick={async () => {
-                      if (window.confirm(`${member.name ?? member.email}님을 내보내시겠습니까?`)) {
+                      if (!id) return window.alert("이 팀원의 식별자를 찾을 수 없습니다.");
+                      if (!window.confirm(`${member.name ?? member.email}님을 내보내시겠습니까?`)) return;
+                      try {
                         await removeMember.mutate(id);
                         reload();
+                      } catch (err) {
+                        window.alert(`팀원 제외 실패: ${err.body?.message ?? err.message}`);
                       }
                     }}
                     className="text-[12px] text-error-text"

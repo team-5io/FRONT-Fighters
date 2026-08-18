@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Page, { Section } from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
 import {
@@ -15,6 +15,8 @@ import {
 import { RACI_ROLES, canManageTeam } from "../data/raci";
 import { docPrs, teams as teamsApi } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
+import { useDocPrList } from "../hooks/useDocPrList";
+import { unwrapList } from "../api/unwrap";
 import { useAuth } from "../auth/AuthContext";
 
 /**
@@ -33,7 +35,9 @@ import { useAuth } from "../auth/AuthContext";
  * 초대는 `POST /teams/{id}/invitations`, 추방은 `DELETE .../members/{memberId}`,
  * 대체 승인권자 지정은 `PATCH /doc-prs/{prId}/approver`.
  *
- * 승인권자 부재 Doc PR 목록은 **mock이다** — Doc PR 목록 API가 없다(0장).
+ * 승인권자 부재 Doc PR 목록은 `useDocPrList`로 만든다 —
+ * `GET /doc-prs`(목록)가 없어서 `GET /documents` + `GET /doc-prs/{prId}`를 조합하고,
+ * 그중 승인권자가 없는 것만 걸러 낸다.
  */
 
 /** 백엔드 응답을 표가 쓰는 모양으로 */
@@ -47,8 +51,6 @@ function normalizeMember(raw, index) {
     docs: raw.documentCount ?? raw.docs ?? 0,
   };
 }
-
-const BLOCKED_DOC_PRS = [];
 
 const MEMBER_COLUMNS = [
   {
@@ -97,16 +99,52 @@ export default function TeamMembersPage() {
   const teamId = user.teamId ?? "me";
 
   const membersQuery = useApi(() => teamsApi.members(teamId), [teamId]);
-  const rawMembers = Array.isArray(membersQuery.data) ? membersQuery.data : [];
+  const rawMembers = unwrapList(membersQuery.data);
   const members = rawMembers.map(normalizeMember);
 
   const invite = useMutation((email) => teamsApi.invite(teamId, { email }));
-  const assignApprover = useMutation((prId, name) => docPrs.setApprover(prId, { approver: name }));
+  const removeMember = useMutation((memberId) => teamsApi.removeMember(teamId, memberId));
+  const assignApprover = useMutation((prId, name, note) =>
+    docPrs.setApprover(prId, { approver: name, reason: note || undefined }),
+  );
+
+  // 승인권자가 없어 Merge가 막힌 Doc PR
+  const docPrList = useDocPrList(teamId);
+  const blockedDocPrs = docPrList.list.filter((pr) => !pr.approver);
 
   const approverCandidates = members.filter((member) => member.role === "A");
-  const [targetPr, setTargetPr] = useState(BLOCKED_DOC_PRS[0]?.id ?? "");
+  const [targetPr, setTargetPr] = useState("");
   const [approver, setApprover] = useState("");
   const [reason, setReason] = useState("");
+
+  // 목록이 도착하면 첫 항목을 기본 선택으로 잡는다
+  useEffect(() => {
+    if (!targetPr && blockedDocPrs.length > 0) setTargetPr(blockedDocPrs[0].id);
+  }, [blockedDocPrs, targetPr]);
+  useEffect(() => {
+    if (!approver && approverCandidates.length > 0) setApprover(approverCandidates[0].name);
+  }, [approverCandidates, approver]);
+
+  async function onAssignApprover() {
+    if (!targetPr || !approver) return;
+    try {
+      await assignApprover.mutate(targetPr, approver, reason);
+      setReason("");
+      docPrList.reload();
+    } catch (err) {
+      window.alert(`대체 승인권자 지정 실패: ${err.body?.message ?? err.message}`);
+    }
+  }
+
+  async function onRemoveMember(member) {
+    if (!window.confirm(`${member.name}님을 팀에서 제외하시겠습니까?`)) return;
+    try {
+      await removeMember.mutate(member.id);
+      membersQuery.reload();
+    } catch (err) {
+      window.alert(`팀원 제외 실패: ${err.body?.message ?? err.message}`);
+    }
+  }
 
   const selectClass =
     "h-[36px] w-full border-0 border-b border-line bg-transparent rounded-none px-[10px] text-[14px] font-medium text-neutral-900 outline-none focus:border-main-500 disabled:cursor-not-allowed disabled:text-neutral-500";
@@ -123,7 +161,7 @@ export default function TeamMembersPage() {
         properties={[
           { label: "구성원", value: `${members.length}명` },
           { label: "승인권자", value: `${approverCandidates.length}명` },
-          { label: "승인권자 부재 Doc PR", value: `${BLOCKED_DOC_PRS.length}건` },
+          { label: "승인권자 부재 Doc PR", value: `${blockedDocPrs.length}건` },
         ]}
         actions={
           <Button
@@ -149,15 +187,24 @@ export default function TeamMembersPage() {
       {/* ── 주인공: 승인권자가 없어 막혀 있는 것 ── */}
       <section className="mt-[28px]">
         <h2 className="text-[18px] font-bold leading-[26px] text-neutral-900">
-          {BLOCKED_DOC_PRS.length > 0
-            ? `승인권자가 없는 Doc PR이 ${BLOCKED_DOC_PRS.length}건 있습니다`
+          {blockedDocPrs.length > 0
+            ? `승인권자가 없는 Doc PR이 ${blockedDocPrs.length}건 있습니다`
             : "모든 Doc PR에 승인권자가 지정되어 있습니다"}
         </h2>
         <p className="mt-[6px] text-[14px] font-medium leading-[21px] text-neutral-700">
           승인권자가 없으면 Merge가 차단됩니다. 아래에서 대체 승인권자를 지정하세요.
         </p>
         <ul className="mt-[14px] flex flex-col">
-          {BLOCKED_DOC_PRS.map((pr) => (
+          {blockedDocPrs.length === 0 && (
+            <li className="py-[10px] text-[13px] font-medium text-neutral-500">
+              {docPrList.loading
+                ? "Doc PR을 불러오는 중입니다…"
+                : docPrList.error
+                  ? `Doc PR을 불러오지 못했습니다 — ${docPrList.error.message}`
+                  : "승인권자가 비어 있는 Doc PR이 없습니다."}
+            </li>
+          )}
+          {blockedDocPrs.map((pr) => (
             <li
               key={pr.id}
               className="flex items-center gap-[10px] border-b border-line py-[10px] last:border-b-0"
@@ -166,7 +213,9 @@ export default function TeamMembersPage() {
               <span className="truncate text-[14px] font-medium text-neutral-700">
                 <span className="font-mono text-[12px] text-neutral-500">{pr.id}</span> {pr.title}
               </span>
-              <span className="ml-auto shrink-0 text-[13px] text-neutral-500">{pr.reason}</span>
+              <span className="ml-auto shrink-0 text-[13px] text-neutral-500">
+                승인권자 미지정
+              </span>
             </li>
           ))}
         </ul>
@@ -186,7 +235,8 @@ export default function TeamMembersPage() {
                 disabled={!editable}
                 className={selectClass}
               >
-                {BLOCKED_DOC_PRS.map((pr) => (
+                {blockedDocPrs.length === 0 && <option value="">지정할 Doc PR이 없습니다</option>}
+                {blockedDocPrs.map((pr) => (
                   <option key={pr.id} value={pr.id}>
                     {pr.id} · {pr.title}
                   </option>
@@ -204,6 +254,9 @@ export default function TeamMembersPage() {
                 disabled={!editable}
                 className={selectClass}
               >
+                {approverCandidates.length === 0 && (
+                  <option value="">A 역할 팀원이 없습니다</option>
+                )}
                 {approverCandidates.map((member) => (
                   <option key={member.name} value={member.name}>
                     {member.name} — A 역할 (승인 책임)
@@ -237,8 +290,8 @@ export default function TeamMembersPage() {
             {/* 이 화면의 유일한 강조 버튼 */}
             <Button
               className="ml-auto rounded-sm"
-              disabled={!editable || assignApprover.pending}
-              onClick={() => assignApprover.mutate(targetPr, approver)}
+              disabled={!editable || assignApprover.pending || !targetPr || !approver}
+              onClick={onAssignApprover}
             >
               {assignApprover.pending ? "지정 중…" : "대체 승인권자 지정"}
             </Button>
@@ -249,7 +302,29 @@ export default function TeamMembersPage() {
       {/* ── 팀 목록은 표로 ── */}
       <Section title="팀 목록" caption={`구성원 ${members.length}명`}>
         <DataTable
-          columns={MEMBER_COLUMNS}
+          columns={[
+            ...MEMBER_COLUMNS,
+            {
+              key: "remove",
+              label: "",
+              width: 72,
+              align: "right",
+              render: (row) => (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-sm text-error-text"
+                  disabled={!editable || removeMember.pending}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onRemoveMember(row);
+                  }}
+                >
+                  제외
+                </Button>
+              ),
+            },
+          ]}
           rows={members}
           loading={membersQuery.loading}
           empty={{

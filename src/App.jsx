@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import AppShell from "./components/layout/AppShell";
 import { useAuth } from "./auth/AuthContext";
 import AiReviewPage from "./pages/AiReviewPage";
+import CharterPage from "./pages/CharterPage";
+import GlossaryPage from "./pages/GlossaryPage";
+import RaciRolesPage from "./pages/RaciRolesPage";
+import TeamMembersPage from "./pages/TeamMembersPage";
 import AssignApproverPage from "./pages/AssignApproverPage";
 import DashboardPage from "./pages/DashboardPage";
 import DocPrDetailPage from "./pages/DocPrDetailPage";
@@ -35,6 +39,12 @@ const PAGES = {
   "ai-review": { page: AiReviewPage, activeNav: "Doc PR" },
   "human-review": { page: HumanReviewPage, activeNav: "Doc PR" },
   settings: { page: TeamSettingsPage, activeNav: "설정" },
+  // 팀 설정에서 갈라져 나오는 화면들. `data/nav.js`가 이미 뒤로가기를 정의해 두고
+  // 있었는데 ROUTES에서만 빠져 있어 도달할 수 없었다 (화면-목록.md 17~20번).
+  "raci-roles": { page: RaciRolesPage, activeNav: "설정" },
+  charter: { page: CharterPage, activeNav: "설정" },
+  glossary: { page: GlossaryPage, activeNav: "설정" },
+  "team-members": { page: TeamMembersPage, activeNav: "설정" },
   "assign-approver": { page: AssignApproverPage, activeNav: "설정" },
   graph: { page: DocumentGraphPage, activeNav: "그래프" },
   write: { page: DocumentWritePage, activeNav: "작성" },

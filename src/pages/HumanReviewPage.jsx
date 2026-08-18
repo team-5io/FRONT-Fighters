@@ -5,6 +5,7 @@ import {
   AiReviewCard,
   Button,
   Card,
+  HumanReviewCard,
   CioMark,
   Disclosure,
   RaciChip,
@@ -16,6 +17,7 @@ import { ACTOR_META, MERGE_BLOCKERS } from "../data/status";
 import { RACI_ROLES } from "../data/raci";
 import { docPrs } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
+import { unwrap, unwrapList } from "../api/unwrap";
 import { useAuth } from "../auth/AuthContext";
 
 /**
@@ -73,9 +75,21 @@ export default function HumanReviewPage() {
   const detailQuery = useApi(() => docPrs.detail(prId), [prId], { enabled: Boolean(prId) });
   const historyQuery = useApi(() => docPrs.history(prId), [prId], { enabled: Boolean(prId) });
   const reviewsQuery = useApi(() => docPrs.reviews(prId), [prId], { enabled: Boolean(prId) });
+  const mergeCheckQuery = useApi(() => docPrs.mergeCheck(prId), [prId], { enabled: Boolean(prId) });
 
-  const pr = detailQuery.data ?? DOC_PR_EMPTY;
-  const prHistory = Array.isArray(historyQuery.data) ? historyQuery.data : [];
+  const pr = unwrap(detailQuery.data) ?? DOC_PR_EMPTY;
+  const prHistory = unwrapList(historyQuery.data);
+  const humanReviews = unwrapList(reviewsQuery.data);
+
+  // 남은 Merge 조건 — `GET /doc-prs/{prId}/merge-check`의 미충족 항목
+  const mergeCheckBody = unwrap(mergeCheckQuery.data);
+  const checks = Array.isArray(mergeCheckBody)
+    ? mergeCheckBody
+    : unwrapList(mergeCheckBody?.checks ?? mergeCheckBody);
+  const openBlockers = checks
+    .filter((check) => !check.met)
+    .map((check) => check.key)
+    .filter((key) => MERGE_BLOCKERS[key]);
 
   const myRole = RACI_ROLES[user.role];
   const canDecide = user.role === "A";
@@ -98,20 +112,20 @@ export default function HumanReviewPage() {
         breadcrumb={[
           { label: "5IO주", href: "#/dashboard" },
           { label: "Doc PR", href: "#/doc-pr" },
-          { label: DOC_PR.id, href: "#/doc-pr-detail" },
+          { label: pr.id ?? "—", href: "#/doc-pr-detail" },
           { label: "사람 리뷰" },
         ]}
-        title={`${DOC_PR.id} · ${DOC_PR.title}`}
+        title={`${pr.id ?? "—"} · ${pr.title ?? ""}`}
         properties={[
-          { label: "상태", value: <StatusBadge variant="solid" status={DOC_PR.status} size="sm" /> },
-          { label: "문서", value: DOC_PR.document },
+          { label: "상태", value: <StatusBadge variant="solid" status={pr.status} size="sm" /> },
+          { label: "문서", value: pr.document ?? pr.targetDoc ?? "—" },
           {
             label: "작성자",
-            value: <RaciChip role={DOC_PR.author.role} name={DOC_PR.author.name} size="sm" />,
+            value: <RaciChip role={pr.author?.role ?? "R"} name={pr.author?.name ?? "—"} size="sm" />,
           },
           {
             label: "승인자",
-            value: <RaciChip role={DOC_PR.approver.role} name={DOC_PR.approver.name} size="sm" />,
+            value: <RaciChip role={pr.approver?.role ?? "A"} name={pr.approver?.name ?? "미지정"} size="sm" />,
           },
           { label: "내 역할", value: <RaciChip role={user.role} showLabel size="sm" /> },
         ]}
@@ -120,7 +134,7 @@ export default function HumanReviewPage() {
       {/* ── 주인공: 지금 리뷰가 어디까지 왔는가 (박스 없이 타이포로) ── */}
       <section className="mt-[28px]">
         <h2 className="text-[18px] font-bold leading-[26px] text-neutral-900">
-          리뷰어 {DOC_PR.reviewers.length}명 중 {doneCount}명이 의견을 남겼습니다
+          리뷰어 {reviewers.length}명 중 {doneCount}명이 의견을 남겼습니다
         </h2>
         <p className="mt-[6px] text-[14px] font-medium leading-[21px] text-neutral-700">
           {pending.length > 0
@@ -135,7 +149,7 @@ export default function HumanReviewPage() {
               label: "리뷰어",
               value: (
                 <span className="flex flex-wrap items-center gap-[10px]">
-                  {DOC_PR.reviewers.map((reviewer) => (
+                  {reviewers.map((reviewer) => (
                     <span key={reviewer.name} className="flex items-center gap-[5px]">
                       <RaciChip role={reviewer.role} name={reviewer.name} size="sm" />
                       <span
@@ -151,12 +165,15 @@ export default function HumanReviewPage() {
                 </span>
               ),
             },
-            { label: "최소 승인", value: `${DOC_PR.minApprovals}명 이상` },
+            { label: "최소 승인", value: `${pr.minApprovals ?? 1}명 이상` },
             {
               label: "남은 Merge 조건",
               value: (
                 <span className="flex flex-wrap items-center gap-[6px]">
-                  {OPEN_BLOCKERS.map((key) => {
+                  {openBlockers.length === 0 && (
+                    <span className="text-neutral-500">남은 조건이 없습니다</span>
+                  )}
+                  {openBlockers.map((key) => {
                     const blocker = MERGE_BLOCKERS[key];
                     const actor = ACTOR_META[blocker.actor];
                     return (
@@ -177,7 +194,7 @@ export default function HumanReviewPage() {
                 </span>
               ),
             },
-            { label: "생성일", value: DOC_PR.createdAt },
+            { label: "생성일", value: pr.createdAt ?? "—" },
           ]}
         />
       </section>
@@ -200,6 +217,43 @@ export default function HumanReviewPage() {
             ))}
           </ul>
         </AiReviewCard>
+      </Section>
+
+      {/* ── 등록된 리뷰 의견 (사람 판단 — AI 카드와 분리) ── */}
+      <Section
+        title="등록된 리뷰 의견"
+        caption="리뷰어와 승인권자가 남긴 의견입니다. 시간순으로 표시합니다."
+      >
+        {humanReviews.length === 0 ? (
+          <p className="text-[13px] font-medium text-neutral-500">
+            {reviewsQuery.loading
+              ? "리뷰 의견을 불러오는 중입니다…"
+              : reviewsQuery.error
+                ? `리뷰 의견을 불러오지 못했습니다 — ${reviewsQuery.error.message}`
+                : "아직 등록된 리뷰 의견이 없습니다. 첫 의견을 남겨 보세요."}
+          </p>
+        ) : (
+          <div className="flex flex-col gap-[12px]">
+            {humanReviews.map((review, index) => {
+              const reviewer = review.reviewer ?? {
+                name: review.reviewerName ?? review.author?.name ?? "—",
+                role: review.reviewerRole ?? review.author?.role ?? "C",
+              };
+              return (
+                <HumanReviewCard
+                  key={review.id ?? `${reviewer.name}-${index}`}
+                  title={`${reviewer.name}님의 리뷰`}
+                  caption={review.at ?? review.createdAt ?? "—"}
+                  reviewer={reviewer}
+                >
+                  <p className="text-[14px] font-medium leading-[21px] text-neutral-700">
+                    {review.body ?? review.comment ?? review.content ?? ""}
+                  </p>
+                </HumanReviewCard>
+              );
+            })}
+          </div>
+        )}
       </Section>
 
       {/* ── Card 2: 리뷰 의견 입력 (독립 단위) ── */}
@@ -258,6 +312,7 @@ export default function HumanReviewPage() {
                 await addReview.mutate();
                 setComment("");
                 reviewsQuery.reload();
+                mergeCheckQuery.reload();
               }}
             >
               {addReview.pending ? "등록 중…" : "의견 등록"}
@@ -286,14 +341,23 @@ export default function HumanReviewPage() {
               variant="secondary"
               disabled={!canDecide || reject.pending}
               className="rounded-sm"
-              onClick={() => reject.mutate()}
+              onClick={async () => {
+                await reject.mutate();
+                detailQuery.reload();
+                historyQuery.reload();
+              }}
             >
               {reject.pending ? "반려 중…" : "반려"}
             </Button>
             <Button
               disabled={!canDecide || approve.pending}
               className="rounded-sm"
-              onClick={() => approve.mutate()}
+              onClick={async () => {
+                await approve.mutate();
+                detailQuery.reload();
+                historyQuery.reload();
+                mergeCheckQuery.reload();
+              }}
             >
               {approve.pending ? "승인 중…" : "승인"}
             </Button>
@@ -303,13 +367,18 @@ export default function HumanReviewPage() {
 
       {/* ── 이력은 접기 ── */}
       <div className="mt-[32px]">
-        <Disclosure title="처리 이력" count={HISTORY.length}>
+        <Disclosure title="처리 이력" count={prHistory.length}>
           <ol className="flex flex-col">
-            {HISTORY.map((item) => (
+            {prHistory.length === 0 && (
+              <li className="py-[8px] text-[13px] font-medium text-neutral-500">
+                {historyQuery.loading ? "이력을 불러오는 중입니다…" : "아직 처리 이력이 없습니다."}
+              </li>
+            )}
+            {prHistory.map((item) => (
               <li key={item.at + item.by} className="flex items-center gap-[10px] py-[8px]">
                 <StatusBadge status={item.status} size="sm" />
                 <span className="truncate text-[13px] font-medium text-neutral-700">
-                  {item.text}
+                  {item.note ?? item.text}
                 </span>
                 <span className="ml-auto flex shrink-0 items-center gap-[5px] text-[12px] font-medium text-neutral-500">
                   {item.actor === "ai" && <CioMark size={10} className="text-info" />}

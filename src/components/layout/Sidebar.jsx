@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { teams as teamsApi } from "../../api/endpoints";
 import { useApi } from "../../hooks/useApi";
+import { unwrapList } from "../../api/unwrap";
 import { cx } from "../ui/cx";
 import {
   IconGraph,
@@ -71,11 +72,7 @@ export default function Sidebar({ active, teamId }) {
 
   // 소속 팀 목록 조회
   const { data: teamsResult } = useApi(() => teamsApi.myTeams(), []);
-  const myTeams = Array.isArray(teamsResult?.data)
-    ? teamsResult.data
-    : Array.isArray(teamsResult)
-      ? teamsResult
-      : [];
+  const myTeams = unwrapList(teamsResult);
 
   const activeTeam = myTeams.find((t) => String(t.id) === String(teamId)) ?? myTeams[0] ?? null;
   const teamName = activeTeam?.name ?? user.teamName ?? "팀이 없음";

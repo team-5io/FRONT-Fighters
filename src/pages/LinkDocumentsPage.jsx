@@ -13,6 +13,7 @@ import {
 import { IconLock } from "../components/icons";
 import { documents as documentsApi } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
+import { unwrapList } from "../api/unwrap";
 import { useAuth } from "../auth/AuthContext";
 
 /**
@@ -62,10 +63,7 @@ export default function LinkDocumentsPage() {
     [searchKeyword, teamId],
     { enabled: Boolean(searchKeyword.trim()) && Boolean(teamId) },
   );
-  const responseData = searchResults?.data ?? searchResults;
-  const displayResults = searchKeyword.trim()
-    ? (Array.isArray(responseData?.content) ? responseData.content : (Array.isArray(responseData) ? responseData : []))
-    : [];
+  const displayResults = searchKeyword.trim() ? unwrapList(searchResults) : [];
 
   const saveRelations = useMutation(() =>
     documentsApi.relations(documentId, {
@@ -104,10 +102,16 @@ export default function LinkDocumentsPage() {
             </Button>
             <Button
               className="rounded-sm"
-              disabled={saveRelations.pending}
+              disabled={saveRelations.pending || !documentId || links.length === 0}
               onClick={async () => {
-                await saveRelations.mutate();
-                window.location.hash = "#/write";
+                try {
+                  await saveRelations.mutate();
+                  window.location.hash = documentId
+                    ? `#/write?documentId=${encodeURIComponent(documentId)}`
+                    : "#/write";
+                } catch (err) {
+                  window.alert(`문서 연결 저장 실패: ${err.body?.message ?? err.message}`);
+                }
               }}
             >
               {saveRelations.pending ? "저장 중…" : "연결 저장"}

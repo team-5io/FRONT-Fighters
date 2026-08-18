@@ -14,6 +14,7 @@ import {
 import { IconGlobe, IconPaper } from "../components/icons";
 import { documents as documentsApi } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
+import { unwrapList, totalCount } from "../api/unwrap";
 import { useAuth } from "../auth/AuthContext";
 import { DOCUMENT_STATUS } from "../data/status";
 
@@ -158,10 +159,8 @@ export default function DocumentsPage() {
   ];
 
   // 응답: { status, data: { content: [...], totalElements, ... } }
-  const responseData = rows?.data ?? rows;
-  const content = Array.isArray(responseData?.content) ? responseData.content : (Array.isArray(responseData) ? responseData : []);
-  const list = content.map(normalizeDocument);
-  const totalElements = responseData?.totalElements ?? list.length;
+  const list = unwrapList(rows).map(normalizeDocument);
+  const totalElements = totalCount(rows, list);
   const selected = list[0] ?? null;
 
   // 우측 "최근 변경" — 선택 문서의 버전 이력
@@ -170,7 +169,7 @@ export default function DocumentsPage() {
     [selected?.id],
     { enabled: Boolean(selected?.id) },
   );
-  const changes = (Array.isArray(versions) ? versions : []).slice(0, 3).map((v) => ({
+  const changes = unwrapList(versions).slice(0, 3).map((v) => ({
     at: v.at ?? v.createdAt ?? "—",
     by: v.by ?? v.author?.name ?? "—",
     text: v.text ?? v.summary ?? v.title ?? "변경 내용",

@@ -16,6 +16,7 @@ import { createBlock } from "../data/blocks";
 import { IconGlobe, IconLink, IconSparkle } from "../components/icons";
 import { documents as documentsApi, teams as teamsApi } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
+import { unwrap, unwrapList } from "../api/unwrap";
 import { usePermissions } from "../hooks/usePermissions";
 import { useAuth } from "../auth/AuthContext";
 
@@ -84,14 +85,22 @@ export default function DocumentWritePage() {
     { enabled: Boolean(documentId) },
   );
 
-  // 서버에서 문서를 불러왔으면 편집기에 반영한다
+  /**
+   * 서버에서 문서를 불러왔으면 편집기에 반영한다.
+   *
+   * 단건 조회 엔드포인트가 스펙에 없어 `GET /documents`로 받아 오므로
+   * 응답은 목록 봉투다 — 배열에서 이 documentId를 찾아 써야 한다.
+   */
   useEffect(() => {
-    if (loaded && documentId) {
-      setTitle(loaded.title ?? "");
-      if (Array.isArray(loaded.blocks) && loaded.blocks.length > 0) {
-        setBlocks(loaded.blocks);
-      }
-    }
+    if (!documentId) return;
+    const list = unwrapList(loaded);
+    const doc =
+      list.find((item) => String(item.id ?? item.documentId) === String(documentId)) ??
+      (list.length === 1 ? list[0] : null) ??
+      unwrap(loaded);
+    if (!doc || Array.isArray(doc)) return;
+    setTitle(doc.title ?? "");
+    if (Array.isArray(doc.blocks) && doc.blocks.length > 0) setBlocks(doc.blocks);
   }, [loaded, documentId]);
 
   // 새 문서 모드일 때 기본값
@@ -105,7 +114,7 @@ export default function DocumentWritePage() {
   const { user } = useAuth();
   const teamId = user.teamId ?? null;
   const { data: membersData } = useApi(() => teamsApi.members(teamId), [teamId], { enabled: Boolean(teamId) });
-  const teamMembers = Array.isArray(membersData?.data ?? membersData) ? (membersData?.data ?? membersData) : [];
+  const teamMembers = unwrapList(membersData);
   const [author, setAuthor] = useState(null); // null = 자기 자신
 
   const permissions = usePermissions(documentId);
@@ -113,11 +122,17 @@ export default function DocumentWritePage() {
   // 새 문서 생성 (POST /documents)
   const createDocument = useMutation((payload) => documentsApi.create(payload));
 
-  // 초안 저장 (PATCH /documents/{id}) — 매번 최신 documentId를 사용
-  const saveDraft = useMutation(async () => {
-    if (!documentId) return null;
+  /**
+   * 초안 저장 (PATCH /documents/{id}).
+   *
+   * 저장할 문서 id를 **인자로 받는다** — 방금 `ensureDocument()`가 만든 문서를
+   * 이어서 저장할 때 `setDocumentId`가 아직 반영되지 않아
+   * 클로저의 `documentId`는 여전히 null이기 때문이다.
+   */
+  const saveDraft = useMutation(async (targetId = documentId) => {
+    if (!targetId) return null;
     const content = blocks.map((b) => b.content ?? b.text ?? "").filter(Boolean).join("\n");
-    return documentsApi.update(documentId, {
+    return documentsApi.update(targetId, {
       teamId: Number(teamId) || teamId,
       title: title || "제목 없음",
       content,
@@ -125,8 +140,8 @@ export default function DocumentWritePage() {
   });
 
   // Doc PR 생성 (POST /documents/{id}/doc-prs)
-  const createDocPr = useMutation(() =>
-    documentsApi.createDocPr(documentId, { title, approver: null }),
+  const createDocPr = useMutation((targetId) =>
+    documentsApi.createDocPr(targetId, { title, approver: null }),
   );
 
   // 문서 삭제 (DELETE /documents/{id})
@@ -145,7 +160,7 @@ export default function DocumentWritePage() {
       title: title || "제목 없음",
       content: content || undefined,
     });
-    const doc = result?.data ?? result;
+    const doc = unwrap(result);
     const newId = doc?.id ?? doc?.documentId;
     if (newId) {
       setDocumentId(newId);
@@ -212,8 +227,12 @@ export default function DocumentWritePage() {
             icon: <span className="text-[14px] text-error-text">🗑</span>,
             run: async () => {
               if (!window.confirm("이 문서를 삭제하시겠습니까?")) return;
-              await removeDocument.mutate();
-              window.location.hash = "#/documents";
+              try {
+                await removeDocument.mutate();
+                window.location.hash = "#/documents";
+              } catch (err) {
+                window.alert(`문서 삭제 실패: ${err.body?.message ?? err.message}`);
+              }
             },
           },
         ]
@@ -348,12 +367,13 @@ export default function DocumentWritePage() {
               className="rounded-sm"
               disabled={saveDraft.pending || createDocument.pending || (!title.trim() && !documentId)}
               onClick={async () => {
-                const docId = await ensureDocument();
-                if (docId) {
-                  try {
-                    await saveDraft.mutate();
-                    setSavedAt("방금 전");
-                  } catch { /* 에러는 mutation이 관리 */ }
+                try {
+                  const docId = await ensureDocument();
+                  if (!docId) return;
+                  await saveDraft.mutate(docId);
+                  setSavedAt("방금 전");
+                } catch (err) {
+                  window.alert(`초안 저장 실패: ${err.body?.message ?? err.message}`);
                 }
               }}
             >
@@ -366,14 +386,19 @@ export default function DocumentWritePage() {
                 className="rounded-sm"
                 disabled={!permissions.canEdit || createDocPr.pending}
                 onClick={async () => {
-                  const docId = await ensureDocument();
-                  if (!docId) return;
-                  await saveDraft.mutate();
-                  const created = await createDocPr.mutate();
-                  const prId = created?.id ?? created?.prId;
-                  window.location.hash = prId
-                    ? `#/doc-pr-detail?prId=${encodeURIComponent(prId)}`
-                    : "#/doc-pr-detail";
+                  try {
+                    const docId = await ensureDocument();
+                    if (!docId) return;
+                    await saveDraft.mutate(docId);
+                    // 응답 봉투를 벗겨야 prId가 잡힌다 — 안 벗기면 상세로 못 넘어간다
+                    const created = unwrap(await createDocPr.mutate(docId));
+                    const prId = created?.id ?? created?.prId ?? created?.docPrId;
+                    window.location.hash = prId
+                      ? `#/doc-pr-detail?prId=${encodeURIComponent(prId)}`
+                      : "#/doc-pr";
+                  } catch (err) {
+                    window.alert(`Doc PR 생성 실패: ${err.body?.message ?? err.message}`);
+                  }
                 }}
               >
                 {createDocPr.pending ? "생성 중…" : "Doc PR 생성"}
