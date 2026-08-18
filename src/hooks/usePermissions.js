@@ -2,6 +2,7 @@ import { documents } from "../api/endpoints";
 import { RACI_ROLES, canManageTeam } from "../data/raci";
 import { useAuth } from "../auth/AuthContext";
 import { useApi } from "./useApi";
+import { unwrap } from "../api/unwrap";
 
 /**
  * 문서 단위 권한 게이트 (API 연동 지시서 2.11).
@@ -18,18 +19,21 @@ import { useApi } from "./useApi";
 export function usePermissions(documentId) {
   const { user } = useAuth();
 
-  const { data, loading, error } = useApi(
+  const { data: response, loading, error } = useApi(
     () => documents.myPermissions(documentId),
     [documentId],
     { enabled: Boolean(documentId) },
   );
 
-  const role = data?.role ?? data?.raciRole ?? user.role;
+  // 응답 봉투(`{ status, data }`)를 벗겨야 role·allowedActions가 잡힌다
+  const data = unwrap(response) ?? {};
+
+  const role = data.role ?? data.raciRole ?? user.role;
   const meta = RACI_ROLES[role] ?? RACI_ROLES.I;
 
   /** 서버가 허용 행동을 내려주면 그걸 쓰고, 없으면 역할 정의에서 가져온다 */
-  const allowed = data?.allowedActions ?? data?.can ?? meta.can;
-  const isTeamAdmin = data?.isTeamAdmin ?? canManageTeam(user);
+  const allowed = data.allowedActions ?? data.can ?? meta.can;
+  const isTeamAdmin = data.isTeamAdmin ?? canManageTeam(user);
 
   return {
     loading,

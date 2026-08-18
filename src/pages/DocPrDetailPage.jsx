@@ -19,6 +19,7 @@ import { usePermissions } from "../hooks/usePermissions";
 import { IconAlertCircle, IconCheck } from "../components/icons";
 import { docPrs } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
+import { unwrap, unwrapList } from "../api/unwrap";
 
 /**
  * Doc PR 상세 — `#/doc-pr-detail`
@@ -90,10 +91,31 @@ export default function DocPrDetailPage() {
   const mergeException = useMutation((payload) => docPrs.mergeException(prId, payload));
   const setApprover = useMutation((payload) => docPrs.setApprover(prId, payload));
 
-  const pr = detail.data ?? {};
-  const checks = Array.isArray(mergeCheck.data) ? mergeCheck.data : [];
-  const timeline = Array.isArray(history.data) ? history.data : [];
-  const humanReviews = Array.isArray(reviews.data) ? reviews.data : [];
+  const pr = unwrap(detail.data) ?? {};
+  const mergeCheckBody = unwrap(mergeCheck.data);
+  // merge-check는 배열로 오기도 하고 `{ checks: [...] }`로 오기도 한다
+  const checks = Array.isArray(mergeCheckBody)
+    ? mergeCheckBody
+    : unwrapList(mergeCheckBody?.checks ?? mergeCheckBody);
+  const timeline = unwrapList(history.data);
+  const humanReviews = unwrapList(reviews.data);
+  const handover = unwrap(nextAssignee.data) ?? {};
+
+  // Follow-the-Sun 인수인계 — 응답 키 이름이 달라도 받도록 넓게 읽는다
+  const current = {
+    name: handover.currentAssignee?.name ?? handover.current?.name ?? pr.author?.name ?? "—",
+    role: handover.currentAssignee?.role ?? handover.current?.role ?? pr.author?.role ?? "R",
+    timezone: handover.currentAssignee?.timezone ?? handover.current?.timezone ?? null,
+  };
+  const next = {
+    name: handover.nextAssignee?.name ?? handover.next?.name ?? handover.name ?? null,
+    role: handover.nextAssignee?.role ?? handover.next?.role ?? "R",
+    timezone: handover.nextAssignee?.timezone ?? handover.next?.timezone ?? null,
+  };
+  const handoverNote = handover.note ?? handover.handoverNote ?? handover.memo ?? "";
+  const handoverCaption = `${current.name}${current.timezone ? ` (${current.timezone})` : ""} · ${
+    next.name ? `다음 작업자 ${next.name}` : "다음 작업자 미지정"
+  }`;
 
   const permissions = usePermissions(pr.documentId ?? pr.targetDocId);
   const myRole = permissions.meta;
@@ -102,39 +124,32 @@ export default function DocPrDetailPage() {
   const primary = MERGE_BLOCKERS[blockers[0]?.key];
   const busy = approve.pending || reject.pending || merge.pending || resubmit.pending || mergeException.pending || setApprover.pending;
 
-  async function onApprove() {
-    await approve.mutate();
-    detail.reload();
-    mergeCheck.reload();
-    history.reload();
+  /** 상태를 바꾸는 요청은 전부 같은 모양이다 — 실행 → 갱신, 실패하면 사유를 알린다 */
+  async function run(label, action, reloads) {
+    try {
+      await action();
+      reloads.forEach((query) => query.reload());
+    } catch (err) {
+      window.alert(`${label} 실패: ${err.body?.message ?? err.message}`);
+    }
   }
-  async function onReject() {
-    await reject.mutate("리뷰 의견을 반영해 주세요.");
-    detail.reload();
-    history.reload();
-  }
-  async function onMerge() {
-    await merge.mutate();
-    detail.reload();
-    mergeCheck.reload();
-  }
-  async function onResubmit() {
-    await resubmit.mutate({ title: pr.title });
-    detail.reload();
-    mergeCheck.reload();
-    history.reload();
-  }
-  async function onMergeException(reason) {
-    await mergeException.mutate({ reason });
-    detail.reload();
-    mergeCheck.reload();
-    history.reload();
-  }
-  async function onSetApprover(approverPayload) {
-    await setApprover.mutate(approverPayload);
-    detail.reload();
-    history.reload();
-  }
+
+  const onApprove = () =>
+    run("승인", () => approve.mutate(), [detail, mergeCheck, history]);
+  const onReject = () =>
+    run("반려", () => reject.mutate("리뷰 의견을 반영해 주세요."), [detail, history]);
+  const onMerge = () => run("Merge", () => merge.mutate(), [detail, mergeCheck, history]);
+  const onResubmit = () =>
+    run("재제출", () => resubmit.mutate({ title: pr.title }), [detail, mergeCheck, history]);
+  const onMergeException = (reason) =>
+    run("예외 Merge", () => mergeException.mutate({ reason }), [detail, mergeCheck, history]);
+  const onSetApprover = (approverPayload) =>
+    run("승인권자 변경", () => setApprover.mutate(approverPayload), [
+      detail,
+      mergeCheck,
+      history,
+      nextAssignee,
+    ]);
 
   return (
     <Page>
@@ -282,7 +297,7 @@ export default function DocPrDetailPage() {
         <Disclosure
           title="CIO 1차 검토"
           count={AI_FINDINGS.filter((f) => f.level !== "pass").length}
-          caption="반려 권고 1건 · 주의 1건"
+          caption="AI 검토 엔드포인트는 아직 준비되지 않았습니다"
           right={
             <a href="#/ai-review" className="text-[13px] font-semibold text-main-500">
               상세 보기
@@ -327,7 +342,11 @@ export default function DocPrDetailPage() {
         <Disclosure
           title="사람 리뷰"
           count={humanReviews.length}
-          caption="김민섭님 대기중"
+          caption={
+            humanReviews.length > 0
+              ? `${humanReviews.length}건의 의견이 등록되었습니다`
+              : "아직 등록된 리뷰 의견이 없습니다"
+          }
           defaultOpen
           right={
             <a href="#/human-review" className="text-[13px] font-semibold text-main-500">
@@ -336,24 +355,35 @@ export default function DocPrDetailPage() {
           }
         >
           <div className="flex flex-col gap-[12px]">
-            {humanReviews.map((review) => (
-              <HumanReviewCard
-                key={review.reviewer.name}
-                title={`${review.reviewer.name}님의 리뷰`}
-                caption={review.at}
-                reviewer={review.reviewer}
-              >
-                <p className="text-[14px] font-medium leading-[21px] text-neutral-700">
-                  {review.body}
-                </p>
-              </HumanReviewCard>
-            ))}
-            <EmptyState
-              compact
-              title="김민섭님의 리뷰를 기다리는 중입니다"
-              description="지정된 리뷰어가 모두 의견을 남겨야 Merge 조건이 충족됩니다."
-              actionLabel="리뷰 요청 다시 보내기"
-            />
+            {humanReviews.map((review, index) => {
+              const reviewer = review.reviewer ?? {
+                name: review.reviewerName ?? review.author?.name ?? "—",
+                role: review.reviewerRole ?? review.author?.role ?? "C",
+              };
+              return (
+                <HumanReviewCard
+                  key={review.id ?? `${reviewer.name}-${index}`}
+                  title={`${reviewer.name}님의 리뷰`}
+                  caption={review.at ?? review.createdAt ?? "—"}
+                  reviewer={reviewer}
+                >
+                  <p className="text-[14px] font-medium leading-[21px] text-neutral-700">
+                    {review.body ?? review.comment ?? review.content ?? ""}
+                  </p>
+                </HumanReviewCard>
+              );
+            })}
+            {humanReviews.length === 0 && (
+              <EmptyState
+                compact
+                title="아직 등록된 리뷰 의견이 없습니다"
+                description="지정된 리뷰어가 모두 의견을 남겨야 Merge 조건이 충족됩니다."
+                actionLabel="리뷰 화면 열기"
+                onAction={() =>
+                  (window.location.hash = `#/human-review?prId=${encodeURIComponent(prId)}`)
+                }
+              />
+            )}
           </div>
         </Disclosure>
 
@@ -377,28 +407,61 @@ export default function DocPrDetailPage() {
           </ol>
         </Disclosure>
 
-        <Disclosure title="다음 작업자 인수인계" caption="김성민 (UTC+9) · 다음 작업자 미지정">
+        {/* Follow-the-Sun — `GET /doc-prs/{prId}/next-assignee` 응답을 그대로 읽는다 */}
+        <Disclosure
+          title="다음 작업자 인수인계"
+          caption={
+            handoverCaption
+          }
+        >
           <dl className="flex flex-wrap gap-x-[24px] gap-y-[10px]">
             <div>
               <dt className="text-[13px] font-medium text-neutral-500">현재 담당자</dt>
               <dd className="mt-[4px] flex items-center gap-[8px]">
-                <RaciChip role="R" name="김성민" size="sm" />
-                <span className="font-mono text-[12px] text-neutral-500">UTC+9</span>
+                {current.name === "—" ? (
+                  <span className="text-[14px] font-medium text-neutral-500">—</span>
+                ) : (
+                  <RaciChip role={current.role} name={current.name} size="sm" />
+                )}
+                {current.timezone && (
+                  <span className="font-mono text-[12px] text-neutral-500">{current.timezone}</span>
+                )}
               </dd>
             </div>
             <div>
               <dt className="text-[13px] font-medium text-neutral-500">다음 작업자</dt>
+              <dd className="mt-[4px] flex items-center gap-[8px]">
+                {next.name ? (
+                  <>
+                    <RaciChip role={next.role} name={next.name} size="sm" />
+                    {next.timezone && (
+                      <span className="font-mono text-[12px] text-neutral-500">{next.timezone}</span>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-[14px] font-medium text-neutral-700">
+                    {nextAssignee.loading
+                      ? "불러오는 중입니다…"
+                      : nextAssignee.error
+                        ? `다음 작업자 정보를 불러오지 못했습니다 — ${nextAssignee.error.message}`
+                        : "아직 지정되지 않았습니다. 자동 추천은 후속 단계 범위입니다."}
+                  </span>
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-[13px] font-medium text-neutral-500">필요한 상태</dt>
               <dd className="mt-[4px] text-[14px] font-medium text-neutral-700">
-                아직 지정되지 않았습니다. 자동 추천은 후속 단계 범위입니다.
+                {handover.requiredState ?? handover.state ?? "—"}
               </dd>
             </div>
           </dl>
-          <textarea
-            rows={3}
-            placeholder="다음 작업자가 이어서 작업할 수 있도록 남길 내용을 적어주세요."
-            aria-label="인수인계 메모"
-            className="mt-[12px] w-full resize-none rounded-sm border-0 border-b border-line bg-neutral-50/60 px-[12px] py-[10px] font-sans text-[14px] font-medium leading-[21px] text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500"
-          />
+          <p className="mt-[12px] text-[13px] font-medium leading-[19px] text-neutral-500">
+            인수인계 메모
+          </p>
+          <p className="mt-[4px] whitespace-pre-wrap text-[14px] font-medium leading-[21px] text-neutral-700">
+            {handoverNote || "아직 남긴 인수인계 메모가 없습니다."}
+          </p>
         </Disclosure>
       </div>
     </Page>

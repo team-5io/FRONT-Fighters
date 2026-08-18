@@ -12,6 +12,7 @@ import {
 import { canManageTeam } from "../data/raci";
 import { docPrs, teams as teamsApi } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
+import { unwrap, unwrapList } from "../api/unwrap";
 import { useAuth } from "../auth/AuthContext";
 
 /**
@@ -44,11 +45,11 @@ export default function AssignApproverPage() {
     [prId],
     { enabled: Boolean(prId) },
   );
-  const pr = prData?.data ?? prData ?? {};
+  const pr = unwrap(prData) ?? {};
 
   // 팀원 중 A 역할 후보자
   const { data: membersData } = useApi(() => teamsApi.members(teamId), [teamId]);
-  const allMembers = Array.isArray(membersData) ? membersData : [];
+  const allMembers = unwrapList(membersData);
   const candidates = allMembers.filter((m) => m.role === "A" || m.raciRole === "A");
 
   const assign = useMutation(() =>
@@ -167,8 +168,12 @@ export default function AssignApproverPage() {
               className="rounded-sm"
               disabled={!editable || !approver || assign.pending}
               onClick={async () => {
-                await assign.mutate();
-                window.location.hash = `#/doc-pr-detail?prId=${encodeURIComponent(prId)}`;
+                try {
+                  await assign.mutate();
+                  window.location.hash = `#/doc-pr-detail?prId=${encodeURIComponent(prId)}`;
+                } catch (err) {
+                  window.alert(`대체 승인권자 지정 실패: ${err.body?.message ?? err.message}`);
+                }
               }}
             >
               {assign.pending ? "지정 중…" : "대체 승인권자 지정"}

@@ -55,7 +55,8 @@ const LINKED_EFFECTS = [
 export default function CharterPage() {
   const { user } = useAuth();
   const editable = canManageTeam(user);
-  const saveCharter = useMutation((payload) => teamsApi.saveCharter(user.teamId ?? "me", payload));
+  const teamId = user.teamId ?? null;
+  const saveCharter = useMutation((payload) => teamsApi.saveCharter(teamId, payload));
   const [rules, setRules] = useState(INITIAL_RULES);
   /** adopted: 공식 채택 여부, dirty: 채택 이후 수정이 있었는지 */
   const [adopted, setAdopted] = useState(null);
@@ -86,15 +87,28 @@ export default function CharterPage() {
     markDirty();
   }
 
+  /**
+   * 채택·저장 모두 `PUT /teams/{teamId}/charter`로 나간다.
+   * 조회 엔드포인트가 스펙에 없어(초안 생성은 "구현 시작 전") 서버에서 다시 읽어오지는 못한다.
+   */
   async function adopt() {
-    // 채택은 실제 API로 저장한다 (초안 생성만 mock)
-    await saveCharter.mutate({ rules, adopted: true });
-    setAdopted(new Date().toISOString().slice(0, 10));
-    setDirty(false);
+    if (!teamId) return window.alert("팀을 먼저 선택해 주세요.");
+    try {
+      await saveCharter.mutate({ rules, adopted: true });
+      setAdopted(new Date().toISOString().slice(0, 10));
+      setDirty(false);
+    } catch (err) {
+      window.alert(`협업 규칙 채택 실패: ${err.body?.message ?? err.message}`);
+    }
   }
 
   async function saveDraft() {
-    await saveCharter.mutate({ rules, adopted: Boolean(adopted) });
+    if (!teamId) return window.alert("팀을 먼저 선택해 주세요.");
+    try {
+      await saveCharter.mutate({ rules, adopted: Boolean(adopted) });
+    } catch (err) {
+      window.alert(`협업 규칙 저장 실패: ${err.body?.message ?? err.message}`);
+    }
   }
 
   const statusChip = isDraft

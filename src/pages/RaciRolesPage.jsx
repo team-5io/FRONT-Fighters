@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Page from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
 import {
@@ -15,6 +15,7 @@ import { useAuth } from "../auth/AuthContext";
 import { IconExclamationCircle } from "../components/icons";
 import { documents as documentsApi, teams as teamsApi } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
+import { unwrapList } from "../api/unwrap";
 import { usePermissions } from "../hooks/usePermissions";
 
 /**
@@ -86,16 +87,22 @@ export default function RaciRolesPage() {
   const teamId = user.teamId ?? "me";
 
   // 문서 목록과 팀원 목록을 API에서 가져온다
-  const docsQuery = useApi(() => documentsApi.list(), []);
-  const membersQuery = useApi(() => teamsApi.members(teamId), [teamId]);
+  const docsQuery = useApi(
+    () => documentsApi.list({ teamId: Number(teamId) }),
+    [teamId],
+    { enabled: Boolean(teamId) },
+  );
+  const membersQuery = useApi(() => teamsApi.members(teamId), [teamId], {
+    enabled: Boolean(teamId),
+  });
 
-  const documentRoles = Array.isArray(docsQuery.data) ? docsQuery.data.map((doc) => ({
+  const documentRoles = unwrapList(docsQuery.data).map((doc) => ({
     id: doc.id ?? doc.documentId,
     name: doc.title ?? doc.name ?? "—",
     type: doc.type ?? doc.documentType ?? "—",
     status: doc.status ?? "draft",
     counts: doc.counts ?? doc.raci ?? { R: 0, A: 0, C: 0, I: 0 },
-  })) : [];
+  }));
 
   const MISSING_APPROVER = documentRoles.filter((doc) => doc.counts.A === 0);
 
@@ -103,20 +110,65 @@ export default function RaciRolesPage() {
   const permissions = usePermissions(documentRoles[0]?.id);
   const editable = permissions.canManage;
   const saveRaci = useMutation((documentId, payload) => documentsApi.setRaci(documentId, payload));
+  const targetDocumentId = documentRoles[0]?.id ?? null;
 
-  const rawMembers = Array.isArray(membersQuery.data) ? membersQuery.data : [];
+  async function onSave() {
+    if (!targetDocumentId) return;
+    try {
+      await saveRaci.mutate(targetDocumentId, {
+        assignments: members.map((member) => ({
+          memberId: member.id,
+          name: member.name,
+          roles: member.roles,
+        })),
+      });
+      membersQuery.reload();
+      docsQuery.reload();
+    } catch (err) {
+      window.alert(`역할 저장 실패: ${err.body?.message ?? err.message}`);
+    }
+  }
+
+  const rawMembers = unwrapList(membersQuery.data);
+
+  /**
+   * 팀원 응답을 매트릭스 행 모양으로 맞춘다.
+   * `GET /teams/{teamId}/members`는 팀원당 역할을 하나(`role`)로 주기도 하고
+   * 배열(`roles`)로 주기도 한다 — 둘 다 받는다.
+   *
+   * deps는 **응답 원본**(`membersQuery.data`)이다. `rawMembers`는 렌더마다
+   * 새 배열이라, 그걸 deps로 쓰면 아래 useEffect가 매 렌더 setState를 호출해
+   * 무한 렌더에 빠진다.
+   */
+  const serverMembers = useMemo(
+    () =>
+      unwrapList(membersQuery.data).map((member) => ({
+        id: member.id ?? member.memberId ?? member.publicId ?? member.name,
+        name: member.name ?? member.userName ?? member.email ?? "—",
+        roles: Array.isArray(member.roles)
+          ? member.roles
+          : [member.role ?? member.raciRole].filter(Boolean),
+      })),
+    [membersQuery.data],
+  );
+
+  // 서버에서 받은 역할을 매트릭스의 초기값으로 넣는다.
+  // 이걸 안 하면 체크박스가 항상 비어 있고, 저장이 빈 배열을 보내 역할을 전부 지운다.
   const [members, setMembers] = useState([]);
+  useEffect(() => {
+    setMembers(serverMembers);
+  }, [serverMembers]);
 
   const counts = RACI_ORDER.reduce((acc, role) => {
     acc[role] = members.filter((member) => member.roles.includes(role)).length;
     return acc;
   }, {});
 
-  function toggle(memberName, role) {
+  function toggle(memberId, role) {
     if (!editable) return;
     setMembers((prev) =>
       prev.map((member) =>
-        member.name === memberName
+        member.id === memberId
           ? {
               ...member,
               roles: member.roles.includes(role)
@@ -154,12 +206,8 @@ export default function RaciRolesPage() {
         actions={
           <Button
             className="rounded-sm"
-            disabled={!editable || saveRaci.pending}
-            onClick={() =>
-              saveRaci.mutate(documentRoles[0]?.id, {
-                assignments: members.map((m) => ({ name: m.name, roles: m.roles })),
-              })
-            }
+            disabled={!editable || saveRaci.pending || !targetDocumentId || members.length === 0}
+            onClick={onSave}
           >
             {saveRaci.pending ? "저장 중…" : "변경 사항 저장"}
           </Button>
@@ -204,7 +252,7 @@ export default function RaciRolesPage() {
             </thead>
             <tbody>
               {members.map((member) => (
-                <tr key={member.name} className="border-b border-line last:border-b-0 hover:bg-neutral-50">
+                <tr key={member.id} className="border-b border-line last:border-b-0 hover:bg-neutral-50">
                   <td className="px-[16px] py-[12px] text-[14px] font-semibold text-neutral-900">
                     {member.name}
                   </td>
@@ -213,7 +261,7 @@ export default function RaciRolesPage() {
                       <input
                         type="checkbox"
                         checked={member.roles.includes(role)}
-                        onChange={() => toggle(member.name, role)}
+                        onChange={() => toggle(member.id, role)}
                         disabled={!editable}
                         aria-label={`${member.name} — ${role} (${RACI_ROLES[role].label})`}
                         className="size-[16px] accent-main-500 disabled:cursor-not-allowed disabled:opacity-50"
@@ -224,6 +272,15 @@ export default function RaciRolesPage() {
               ))}
             </tbody>
           </table>
+          {members.length === 0 && (
+            <p className="px-[16px] py-[18px] text-[13px] font-medium text-neutral-500">
+              {membersQuery.loading
+                ? "팀원을 불러오는 중입니다…"
+                : membersQuery.error
+                  ? `팀원을 불러오지 못했습니다 — ${membersQuery.error.message}`
+                  : "아직 팀원이 없습니다. 팀 설정에서 팀원을 초대하세요."}
+            </p>
+          )}
         </div>
       </section>
 
@@ -263,6 +320,7 @@ export default function RaciRolesPage() {
           <DataTable
             className="mt-[12px]"
             columns={COLUMNS}
+            loading={docsQuery.loading}
             rows={documentRoles}
             empty={{
               title: "역할을 지정할 문서가 없습니다",

@@ -6,6 +6,7 @@ import { RACI_ROLES } from "../data/raci";
 import { useAuth } from "../auth/AuthContext";
 import { users } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
+import { unwrap } from "../api/unwrap";
 
 /**
  * 마이페이지 — `#/me` (4차 지시서 3장)
@@ -76,7 +77,7 @@ export default function MyPage() {
 
   // GET /users/me로 서버에서 최신 프로필을 불러온다
   const { data: profile, loading: profileLoading } = useApi(() => users.getMe(), []);
-  const me = profile?.data ?? profile ?? user;
+  const me = unwrap(profile) ?? user;
 
   const [name, setName] = useState(user.name);
   const [timezone, setTimezone] = useState(user.timezone ?? "Asia/Seoul");
@@ -99,7 +100,7 @@ export default function MyPage() {
     event.preventDefault();
     try {
       const result = await save({ name, timezone, language });
-      const updated = result?.data ?? result ?? { name, timezone, language };
+      const updated = unwrap(result) ?? { name, timezone, language };
       updateUser({ name: updated.name, timezone: updated.timezone, language: updated.language });
       window.location.reload();
     } catch {
