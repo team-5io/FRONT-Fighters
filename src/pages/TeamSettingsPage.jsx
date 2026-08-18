@@ -45,9 +45,10 @@ export default function TeamSettingsPage() {
   const initialTab = new URLSearchParams(window.location.hash.split("?")[1] ?? "").get("tab") ?? "team";
   const [active, setActive] = useState(initialTab);
 
-  // 팀원 목록
+  // 팀원 목록 — 응답: { status, data: [{ userId, role, joinedAt }] }
   const membersQuery = useApi(() => teamsApi.members(teamId), [teamId]);
-  const members = Array.isArray(membersQuery.data) ? membersQuery.data : [];
+  const membersRaw = membersQuery.data?.data ?? membersQuery.data;
+  const members = Array.isArray(membersRaw) ? membersRaw : [];
 
   return (
     <Page>
@@ -89,7 +90,7 @@ export default function TeamSettingsPage() {
 
         {/* ── 우: 탭 내용 ── */}
         <div className="min-w-0 flex-1">
-          {active === "team" && <TeamInfoPanel teamName={teamName} memberCount={members.length} editable={editable} />}
+          {active === "team" && <TeamInfoPanel teamName={teamName} memberCount={members.length} editable={editable} members={members} />}
           {active === "raci" && <RaciPanel teamId={teamId} editable={editable} />}
           {active === "charter" && <CharterPanel teamId={teamId} editable={editable} />}
           {active === "glossary" && <GlossaryPanel />}
@@ -101,7 +102,7 @@ export default function TeamSettingsPage() {
 }
 
 /* ─────────────────────── 팀 정보 ─────────────────────── */
-function TeamInfoPanel({ teamName, memberCount, editable }) {
+function TeamInfoPanel({ teamName, memberCount, editable, members }) {
   return (
     <div>
       <h2 className="text-[16px] font-semibold text-neutral-900">팀 정보</h2>
@@ -113,6 +114,46 @@ function TeamInfoPanel({ teamName, memberCount, editable }) {
         <Button variant="secondary" size="sm" className="mt-[16px] rounded-sm">
           팀 정보 수정
         </Button>
+      )}
+
+      {/* 팀원 목록 */}
+      <h3 className="mt-[28px] text-[14px] font-semibold text-neutral-900">팀원 목록</h3>
+      {members.length === 0 ? (
+        <p className="mt-[8px] text-[13px] text-neutral-500">팀원이 없습니다.</p>
+      ) : (
+        <div className="mt-[12px] overflow-hidden rounded-md border border-line">
+          <table className="w-full border-collapse text-left">
+            <thead>
+              <tr className="border-b border-line bg-neutral-50">
+                <th className="px-[14px] py-[8px] text-[12px] font-semibold text-neutral-500">유저 ID</th>
+                <th className="px-[14px] py-[8px] text-[12px] font-semibold text-neutral-500">역할</th>
+                <th className="px-[14px] py-[8px] text-[12px] font-semibold text-neutral-500">합류일</th>
+              </tr>
+            </thead>
+            <tbody>
+              {members.map((member) => (
+                <tr key={member.userId ?? member.id} className="border-b border-line last:border-b-0 hover:bg-neutral-50/50">
+                  <td className="px-[14px] py-[10px] text-[13px] font-medium text-neutral-900">
+                    {member.name ?? member.email ?? `#${member.userId}`}
+                  </td>
+                  <td className="px-[14px] py-[10px]">
+                    <span className={cx(
+                      "inline-flex h-[22px] items-center rounded-full border px-[8px] text-[11px] font-bold",
+                      member.role === "ADMIN"
+                        ? "border-main-500/30 bg-main-50 text-main-700"
+                        : "border-line bg-neutral-50 text-neutral-600",
+                    )}>
+                      {member.role === "ADMIN" ? "관리자" : "멤버"}
+                    </span>
+                  </td>
+                  <td className="px-[14px] py-[10px] text-[12px] text-neutral-500">
+                    {member.joinedAt ? new Date(member.joinedAt).toLocaleDateString("ko-KR") : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
