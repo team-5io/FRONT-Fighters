@@ -91,6 +91,12 @@ export default function App() {
   // 팀 ID가 URL에 있으면 그걸 활성 팀으로 사용
   const activeTeamId = teamId ?? user.teamId ?? null;
 
+  // 레거시 URL(#/settings 등)로 들어왔는데 팀이 있으면 팀 URL로 리다이렉트
+  if (!teamId && activeTeamId && pageName !== "dashboard" && pageName !== "me") {
+    window.location.hash = `#/t/${activeTeamId}/${pageName}`;
+    return null;
+  }
+
   // 팀이 없으면 대시보드(팀 생성)와 마이페이지만 허용
   const allowedWithoutTeam = ["dashboard", "me"];
   if (!activeTeamId && !allowedWithoutTeam.includes(pageName)) {

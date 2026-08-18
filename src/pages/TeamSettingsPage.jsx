@@ -7,7 +7,6 @@ import {
   RaciChip,
   StatusBadge,
   cx,
-  tone,
 } from "../components/ui";
 import { canManageTeam } from "../data/raci";
 import { useAuth } from "../auth/AuthContext";
@@ -29,39 +28,35 @@ const SECTIONS = [
     key: "team",
     icon: <IconTeam size={15} />,
     label: "팀 정보",
-    summary: "이름 · 코드 · 생성일 · 구성원",
+    summary: "이름 · 구성원",
   },
   {
     key: "raci",
     icon: <IconShield size={14} />,
     label: "RACI 역할",
     summary: "역할과 권한 정의",
-    href: "#/raci-roles",
-    status: { label: "A 미지정 1건", tone: "warning" },
+    page: "raci-roles",
   },
   {
     key: "charter",
     icon: <IconPaper size={14} />,
     label: "협업 규칙 (Charter)",
     summary: "CIO 검토의 근거",
-    href: "#/charter",
-    status: { label: "초안 · 미채택", tone: "warning" },
+    page: "charter",
   },
   {
     key: "glossary",
     icon: <IconText size={14} />,
     label: "팀 용어집",
     summary: "검토·번역의 표기 기준",
-    href: "#/glossary",
-    status: { label: "0개", tone: "neutral" },
+    page: "glossary",
   },
   {
     key: "members",
     icon: <IconTeam size={15} />,
     label: "팀원 관리",
     summary: "초대 · 역할 배정 · 대체 승인권자",
-    href: "#/team-members",
-    status: { label: "—", tone: "neutral" },
+    page: "team-members",
   },
 ];
 
@@ -99,8 +94,8 @@ export default function TeamSettingsPage() {
                 <button
                   type="button"
                   onClick={() =>
-                    section.href
-                      ? (window.location.hash = section.href)
+                    section.page
+                      ? (window.location.hash = `#/t/${teamId}/${section.page}`)
                       : setActive(section.key)
                   }
                   aria-current={active === section.key ? "true" : undefined}
@@ -115,16 +110,6 @@ export default function TeamSettingsPage() {
                     {section.icon}
                   </span>
                   <span className="truncate">{section.label}</span>
-                  {section.status && (
-                    <span
-                      className={cx(
-                        "ml-auto shrink-0 rounded-full border px-[6px] py-[1px] font-mono text-[10px] font-bold",
-                        tone(section.status.tone).chip,
-                      )}
-                    >
-                      {section.status.label}
-                    </span>
-                  )}
                 </button>
               </li>
             ))}
@@ -132,7 +117,7 @@ export default function TeamSettingsPage() {
 
           <button
             type="button"
-            onClick={() => (window.location.hash = "#/team-reset")}
+            onClick={() => (window.location.hash = `#/t/${teamId}/team-reset`)}
             className="mt-[16px] w-full rounded-sm border-t border-line px-[10px] pt-[12px] text-left text-[13px] font-medium text-neutral-500 hover:text-error-text"
           >
             팀 설정 초기화
@@ -148,13 +133,8 @@ export default function TeamSettingsPage() {
 
           <dl className="mt-[16px] flex flex-col gap-[2px]">
             {[
-              { label: "팀 이름", value: TEAM.name },
-              {
-                label: "팀 코드",
-                value: <code className="font-mono text-[13px] font-bold">{TEAM.code}</code>,
-              },
-              { label: "생성일", value: TEAM.createdAt },
-              { label: "구성원", value: `${TEAM.memberCount}명` },
+              { label: "팀 이름", value: teamName },
+              { label: "구성원", value: `${memberCount}명` },
             ].map((row) => (
               <div
                 key={row.label}
