@@ -1,11 +1,7 @@
 import { useState } from "react";
 import Page from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
-import {
-  Button,
-  EmptyState,
-  RoleChip,
-} from "../components/ui";
+import { Button } from "../components/ui";
 import { useAuth } from "../auth/AuthContext";
 import { teams as teamsApi } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
@@ -54,55 +50,8 @@ export default function DashboardPage() {
         title={`${user.name}님, 환영합니다`}
         properties={[
           { label: "팀", value: teamName },
-          { label: "내 역할", value: <RoleChip scope="이 팀" /> },
         ]}
-        actions={
-          <Button
-            variant="secondary"
-            className="rounded-sm"
-            onClick={() => (window.location.hash = "#/write")}
-          >
-            문서 작성하기
-          </Button>
-        }
       />
-
-      {/* 소속 팀이 여러 개면 목록으로 표시 */}
-      {myTeamList.length > 1 && (
-        <div className="mt-[16px]">
-          <p className="text-[13px] font-medium text-neutral-500">소속된 팀 {myTeamList.length}개</p>
-          <ul className="mt-[8px] flex flex-wrap gap-[8px]">
-            {myTeamList.map((team) => (
-              <li key={team.id}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    updateUser({ teamId: team.id, teamName: team.name });
-                    window.location.hash = `#/t/${team.id}/dashboard`;
-                    window.location.reload();
-                  }}
-                  className={`rounded-md border px-[14px] py-[8px] text-[13px] font-medium transition-colors ${
-                    team.id === (activeTeam?.id ?? user.teamId)
-                      ? "border-main-500 bg-main-50 text-main-700"
-                      : "border-line text-neutral-700 hover:border-main-300"
-                  }`}
-                >
-                  {team.name}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <div className="mt-[32px] grid grid-cols-1 gap-[16px] sm:grid-cols-2 lg:grid-cols-3">
-        <QuickLink href="#/documents" title="문서" description="팀의 모든 문서를 확인하세요" />
-        <QuickLink href="#/doc-pr" title="Doc PR" description="검토·승인 상태를 관리하세요" />
-        <QuickLink href="#/settings" title="팀 설정" description="팀 정보와 역할을 관리하세요" />
-        <QuickLink href="#/charter" title="협업 규칙" description="CIO 검토 기준을 설정하세요" />
-        <QuickLink href="#/graph" title="Document Graph" description="문서 관계를 확인하세요" />
-        <QuickLink href="#/me" title="내 계정" description="프로필과 설정을 변경하세요" />
-      </div>
     </Page>
   );
 }
@@ -177,14 +126,4 @@ function NoTeamView({ onCreated }) {
   );
 }
 
-function QuickLink({ href, title, description }) {
-  return (
-    <a
-      href={href}
-      className="flex flex-col gap-[6px] rounded-md border border-line px-[20px] py-[16px] transition-colors hover:border-main-500/40 hover:bg-main-50/30"
-    >
-      <span className="text-[15px] font-semibold text-neutral-900">{title}</span>
-      <span className="text-[13px] font-medium text-neutral-500">{description}</span>
-    </a>
-  );
-}
+
