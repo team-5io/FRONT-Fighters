@@ -114,9 +114,10 @@ export default function DocumentWritePage() {
   const createDocument = useMutation((payload) => documentsApi.create(payload));
 
   // 초안 저장 (PATCH /documents/{id})
-  const saveDraft = useMutation(() =>
-    documentsApi.update(documentId, { title, blocks }),
-  );
+  const saveDraft = useMutation(() => {
+    const content = blocks.map((b) => b.content ?? b.text ?? "").filter(Boolean).join("\n");
+    return documentsApi.update(documentId, { title, content });
+  });
 
   // Doc PR 생성 (POST /documents/{id}/doc-prs)
   const createDocPr = useMutation(() =>
@@ -129,14 +130,39 @@ export default function DocumentWritePage() {
   /** 아직 서버에 문서가 없으면 먼저 생성한다 */
   async function ensureDocument() {
     if (documentId) return documentId;
-    const created = await createDocument.mutate({ title: title || "제목 없음" });
-    const newId = created?.id ?? created?.documentId;
+    // POST /documents — teamId, title 필수, content 선택
+    const content = blocks
+      .map((b) => b.content ?? b.text ?? "")
+      .filter(Boolean)
+      .join("\n");
+    const result = await createDocument.mutate({
+      teamId: Number(teamId) || teamId,
+      title: title || "제목 없음",
+      content: content || undefined,
+    });
+    const doc = result?.data ?? result;
+    const newId = doc?.id ?? doc?.documentId;
     if (newId) {
       setDocumentId(newId);
       window.history.replaceState(null, "", `#/write?documentId=${encodeURIComponent(newId)}`);
     }
     return newId ?? null;
   }
+
+  // 자동 저장 — 제목이나 내용이 변하면 2초 후 서버에 저장
+  const saveTimerRef = useRef(null);
+  useEffect(() => {
+    if (!documentId) return;
+    clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(async () => {
+      const content = blocks.map((b) => b.content ?? b.text ?? "").filter(Boolean).join("\n");
+      try {
+        await saveDraft.mutate();
+        setSavedAt("방금 전");
+      } catch { /* 에러는 useMutation이 관리 */ }
+    }, 2000);
+    return () => clearTimeout(saveTimerRef.current);
+  }, [title, blocks, documentId]);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -301,8 +327,23 @@ export default function DocumentWritePage() {
 
             {/* 자동 저장이라 버튼 대신 상태 텍스트로 (원칙 E) */}
             <span className="text-[12px] font-medium text-neutral-500">
-              {saveDraft.pending ? "저장 중…" : savedAt ? `${savedAt} 저장됨` : documentId ? "불러옴" : "새 문서"}
+              {saveDraft.pending || createDocument.pending ? "저장 중…" : savedAt ? `${savedAt} 저장됨` : documentId ? "불러옴" : "새 문서"}
             </span>
+
+            {/* 새 문서일 때 명시적 초안 저장 버튼 */}
+            {!documentId && title.trim() && (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="rounded-sm"
+                disabled={createDocument.pending}
+                onClick={async () => {
+                  await ensureDocument();
+                }}
+              >
+                {createDocument.pending ? "생성 중…" : "초안 저장"}
+              </Button>
+            )}
 
             <div className="ml-auto">
               <Button
