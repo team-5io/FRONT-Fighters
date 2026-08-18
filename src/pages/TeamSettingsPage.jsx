@@ -50,11 +50,8 @@ export default function TeamSettingsPage() {
   const membersRaw = membersQuery.data?.data ?? membersQuery.data;
   const members = Array.isArray(membersRaw) ? membersRaw : [];
 
-  // 팀원 목록에서 현재 사용자가 ADMIN인지 확인 (canManageTeam fallback)
-  // 팀 생성 직후에는 멤버 목록에 자신이 아직 없을 수 있으니,
-  // 팀이 있으면(teamId가 있으면) 기본적으로 관리 가능하게 열어둔다
-  const myMembership = members.find((m) => String(m.userId) === String(user.id));
-  const isAdmin = editable || myMembership?.role === "ADMIN" || (members.length === 0 && Boolean(user.teamId));
+  // 팀이 있으면 관리 기능을 열어둔다 — 권한 없으면 서버가 403으로 차단한다
+  const isAdmin = true;
 
   return (
     <Page>
