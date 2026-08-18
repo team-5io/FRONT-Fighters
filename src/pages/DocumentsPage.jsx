@@ -113,7 +113,7 @@ export default function DocumentsPage() {
     reload,
   } = useApi(
     () => (keyword.trim()
-      ? documentsApi.search(keyword.trim())
+      ? documentsApi.search({ teamId: Number(teamId), keyword: keyword.trim() })
       : documentsApi.list({ teamId: Number(teamId) })),
     [keyword, teamId],
     { enabled: Boolean(teamId) },

@@ -13,6 +13,7 @@ import {
 import { IconLock } from "../components/icons";
 import { documents as documentsApi } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
+import { useAuth } from "../auth/AuthContext";
 
 /**
  * 관련 문서 연결 — `#/link-documents`
@@ -46,6 +47,8 @@ const PERMISSION_NOTES = [
 ];
 
 export default function LinkDocumentsPage() {
+  const { user } = useAuth();
+  const teamId = user.teamId;
   const [documentId] = useState(getDocumentIdFromHash);
   const [relation, setRelation] = useState("parent");
   const [links, setLinks] = useState([]);
@@ -55,12 +58,13 @@ export default function LinkDocumentsPage() {
 
   // 검색 API 연동 — 키워드가 있으면 실제 검색
   const { data: searchResults, loading: searching } = useApi(
-    () => documentsApi.search(searchKeyword.trim()),
-    [searchKeyword],
-    { enabled: Boolean(searchKeyword.trim()) },
+    () => documentsApi.search({ teamId: Number(teamId), keyword: searchKeyword.trim() }),
+    [searchKeyword, teamId],
+    { enabled: Boolean(searchKeyword.trim()) && Boolean(teamId) },
   );
+  const responseData = searchResults?.data ?? searchResults;
   const displayResults = searchKeyword.trim()
-    ? (Array.isArray(searchResults) ? searchResults : [])
+    ? (Array.isArray(responseData?.content) ? responseData.content : (Array.isArray(responseData) ? responseData : []))
     : [];
 
   const saveRelations = useMutation(() =>
