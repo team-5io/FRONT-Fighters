@@ -145,8 +145,8 @@ export default function DocumentWritePage() {
   });
 
   // Doc PR 생성 (POST /documents/{id}/doc-prs)
-  const createDocPr = useMutation((targetId) =>
-    documentsApi.createDocPr(targetId, { title, approver: null }),
+  const createDocPr = useMutation((targetId, payload) =>
+    documentsApi.createDocPr(targetId, payload),
   );
 
   // 문서 삭제 (DELETE /documents/{id})
@@ -463,12 +463,25 @@ export default function DocumentWritePage() {
                 className="rounded-sm"
                 disabled={!canWrite || createDocPr.pending}
                 onClick={async () => {
+                  // 승인권자 ID 입력 (필수)
+                  const approverIdStr = window.prompt("승인권자(A)의 유저 ID를 입력하세요.\n(팀원 목록에서 확인할 수 있습니다)");
+                  if (!approverIdStr) return;
+                  const approverId = Number(approverIdStr);
+                  if (!approverId || isNaN(approverId)) {
+                    window.alert("유효한 숫자 ID를 입력해 주세요.");
+                    return;
+                  }
+                  // 제안 내용 입력 (필수)
+                  const proposedContent = window.prompt("이 Doc PR이 제안하는 변경 내용을 입력하세요.");
+                  if (!proposedContent?.trim()) {
+                    window.alert("제안 내용은 필수입니다.");
+                    return;
+                  }
                   try {
                     const docId = await ensureDocument();
                     if (!docId) return;
                     await saveDraft.mutate(docId);
-                    // 응답 봉투를 벗겨야 prId가 잡힌다 — 안 벗기면 상세로 못 넘어간다
-                    const created = unwrap(await createDocPr.mutate(docId));
+                    const created = unwrap(await createDocPr.mutate(docId, { approverId, proposedContent: proposedContent.trim() }));
                     const prId = created?.id ?? created?.prId ?? created?.docPrId;
                     window.location.hash = prId
                       ? `#/doc-pr-detail?prId=${encodeURIComponent(prId)}`
