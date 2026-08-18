@@ -38,13 +38,6 @@ const SETTINGS_ITEM = {
   label: "설정",
   page: "settings",
   icon: <IconSettings size={15} />,
-  children: [
-    { label: "RACI 역할 관리", page: "raci-roles" },
-    { label: "협업 규칙 (Charter)", page: "charter" },
-    { label: "팀 용어집", page: "glossary" },
-    { label: "팀원 관리", page: "team-members" },
-    { label: "승인권자 지정", page: "assign-approver" },
-  ],
 };
 
 function NavLink({ item, active, depth = 0, teamId }) {
@@ -86,8 +79,6 @@ export default function Sidebar({ active, teamId }) {
 
   const activeTeam = myTeams.find((t) => String(t.id) === String(teamId)) ?? myTeams[0] ?? null;
   const teamName = activeTeam?.name ?? user.teamName ?? "팀이 없음";
-
-  // 외부 클릭으로 드롭다운 닫기
   useEffect(() => {
     if (!switcherOpen) return;
     const close = (e) => {
@@ -96,10 +87,6 @@ export default function Sidebar({ active, teamId }) {
     document.addEventListener("pointerdown", close);
     return () => document.removeEventListener("pointerdown", close);
   }, [switcherOpen]);
-
-  const settingsOpen =
-    active === SETTINGS_ITEM.label ||
-    SETTINGS_ITEM.children.some((child) => child.label === active);
 
   return (
     <aside className="flex w-[240px] shrink-0 flex-col border-r border-line bg-neutral-50">
@@ -202,16 +189,7 @@ export default function Sidebar({ active, teamId }) {
       {/* 하단 설정 — 팀 소속일 때만 */}
       {hasTeam && (
         <div className="border-t border-line px-[12px] py-[12px]">
-          <NavLink item={SETTINGS_ITEM} active={SETTINGS_ITEM.label === active} teamId={teamId} />
-          {settingsOpen && (
-            <ul className="mt-[2px] flex flex-col gap-[2px]">
-              {SETTINGS_ITEM.children.map((child) => (
-                <li key={child.label}>
-                  <NavLink item={child} active={child.label === active} depth={1} teamId={teamId} />
-                </li>
-              ))}
-            </ul>
-          )}
+          <NavLink item={SETTINGS_ITEM} active={active === "설정"} teamId={teamId} />
         </div>
       )}
     </aside>

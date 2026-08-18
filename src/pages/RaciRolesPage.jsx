@@ -139,8 +139,8 @@ export default function RaciRolesPage() {
         title="RACI 역할 관리"
         description="누가 어떤 문서를 쓰고, 검토하고, 승인하는지 정합니다."
         properties={[
-          { label: "팀원", value: `${members.length}명` },
-          { label: "문서", value: `${DOCUMENT_ROLES.length}건` },
+          { label: "팀원", value: `${rawMembers.length}명` },
+          { label: "문서", value: `${documentRoles.length}건` },
           ...RACI_ORDER.map((role) => ({
             label: RACI_ROLES[role].label,
             value: (
@@ -156,7 +156,7 @@ export default function RaciRolesPage() {
             className="rounded-sm"
             disabled={!editable || saveRaci.pending}
             onClick={() =>
-              saveRaci.mutate(DOCUMENT_ROLES[0]?.id, {
+              saveRaci.mutate(documentRoles[0]?.id, {
                 assignments: members.map((m) => ({ name: m.name, roles: m.roles })),
               })
             }
@@ -258,12 +258,12 @@ export default function RaciRolesPage() {
           </Disclosure>
         )}
 
-        <Disclosure title="문서별 역할 지정" count={DOCUMENT_ROLES.length}>
+        <Disclosure title="문서별 역할 지정" count={documentRoles.length}>
           <ListFilterBar filters={FILTERS} searchLabel="문서 검색" searchPlaceholder="문서명·유형 검색" />
           <DataTable
             className="mt-[12px]"
             columns={COLUMNS}
-            rows={DOCUMENT_ROLES}
+            rows={documentRoles}
             empty={{
               title: "역할을 지정할 문서가 없습니다",
               description: "문서를 만들면 여기에서 R·A·C·I를 지정할 수 있습니다.",

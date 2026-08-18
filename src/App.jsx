@@ -3,21 +3,17 @@ import AppShell from "./components/layout/AppShell";
 import { useAuth } from "./auth/AuthContext";
 import AiReviewPage from "./pages/AiReviewPage";
 import AssignApproverPage from "./pages/AssignApproverPage";
-import CharterPage from "./pages/CharterPage";
 import DashboardPage from "./pages/DashboardPage";
 import DocPrDetailPage from "./pages/DocPrDetailPage";
 import DocPrListPage from "./pages/DocPrListPage";
 import DocumentGraphPage from "./pages/DocumentGraphPage";
 import DocumentWritePage from "./pages/DocumentWritePage";
 import DocumentsPage from "./pages/DocumentsPage";
-import GlossaryPage from "./pages/GlossaryPage";
 import HumanReviewPage from "./pages/HumanReviewPage";
 import LinkDocumentsPage from "./pages/LinkDocumentsPage";
 import LoginPage from "./pages/LoginPage";
 import MyPage from "./pages/MyPage";
-import RaciRolesPage from "./pages/RaciRolesPage";
 import TeamInvitePage from "./pages/TeamInvitePage";
-import TeamMembersPage from "./pages/TeamMembersPage";
 import TeamSettingsPage from "./pages/TeamSettingsPage";
 import TranslationPage from "./pages/TranslationPage";
 import TeamResetPage from "./pages/TeamResetPage";
@@ -39,11 +35,7 @@ const PAGES = {
   "ai-review": { page: AiReviewPage, activeNav: "Doc PR" },
   "human-review": { page: HumanReviewPage, activeNav: "Doc PR" },
   settings: { page: TeamSettingsPage, activeNav: "설정" },
-  "raci-roles": { page: RaciRolesPage, activeNav: "RACI 역할 관리" },
-  charter: { page: CharterPage, activeNav: "협업 규칙 (Charter)" },
-  glossary: { page: GlossaryPage, activeNav: "팀 용어집" },
-  "team-members": { page: TeamMembersPage, activeNav: "팀원 관리" },
-  "assign-approver": { page: AssignApproverPage, activeNav: "승인권자 지정" },
+  "assign-approver": { page: AssignApproverPage, activeNav: "설정" },
   graph: { page: DocumentGraphPage, activeNav: "그래프" },
   write: { page: DocumentWritePage, activeNav: "작성" },
   "ai-structure": { page: DocumentWritePage, activeNav: "작성" },
