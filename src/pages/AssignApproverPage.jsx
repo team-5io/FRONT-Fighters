@@ -4,46 +4,27 @@ import PageHeader from "../components/layout/PageHeader";
 import {
   Button,
   Card,
+  EmptyState,
   PermissionNotice,
   RaciChip,
   StatusBadge,
 } from "../components/ui";
 import { canManageTeam } from "../data/raci";
-import { docPrs } from "../api/endpoints";
-import { useMutation } from "../hooks/useApi";
+import { docPrs, teams as teamsApi } from "../api/endpoints";
+import { useApi, useMutation } from "../hooks/useApi";
 import { useAuth } from "../auth/AuthContext";
 
 /**
  * 승인권자 지정 — `#/assign-approver`
  *
- * 정상화 지시서 5.K 적용:
- *  - `지정 조건 안내` 패널만 테두리가 `main-500` 실색이던 것을 다른 안내 패널과 같은
- *    톤으로 맞췄다.
- *  - **팀원 관리 화면과의 관계를 화면에 명시.** 기능이 겹쳐 보이지만 단위가 다르다 —
- *    이 화면은 **Doc PR 하나**의 대체 승인권자를 지정하고(`PATCH /doc-prs/{prId}/approver`),
- *    팀원 관리는 승인권자가 없는 Doc PR을 **팀 단위로 모아** 처리한다.
- *    유저플로우도 n22(Doc PR 상세) → n25(승인권자 지정) → n44로 이 화면을 Doc PR 계열에 둔다.
- *  - 팀 관리자 권한 표시 추가.
- *
- * 3차 지시서 2.1: 부재 상태 안내와 지정 조건은 같은 대상의 설명이라 독립 단위가
- * 아니다. Card를 걷어내고 타이포 위계로만 나눴다 (카드 4 → 1, 선택 폼만 남음).
- * 상태색 틴트 배경도 제거했다(2.2).
- *
- * API 연동 지시서 2.7: `PATCH /doc-prs/{prId}/approver`.
+ * `PATCH /doc-prs/{prId}/approver`를 호출한다.
+ * prId는 URL 쿼리에서 읽고, 후보자는 팀원 목록(A 역할)에서 가져온다.
  */
 
-const TARGET_PR = {
-  id: "PR #142",
-  title: "온보딩 가이드 v2 검토 요청",
-  document: "온보딩 가이드 v2",
-  status: "needsReviewer",
-  previousApprover: "김성민",
-};
-
-const CANDIDATES = [
-  { name: "고나영", role: "A", note: "현재 활성 · 담당 문서 4건" },
-  { name: "김성민", role: "A", note: "비활성 상태 (지정 불가)", disabled: true },
-];
+function prIdFromHash() {
+  const query = window.location.hash.split("?")[1];
+  return query ? new URLSearchParams(query).get("prId") : null;
+}
 
 const CONDITIONS = [
   "대체 승인권자는 해당 문서에 대한 A 역할(승인 권한) 보유자여야 합니다.",
@@ -54,11 +35,40 @@ const CONDITIONS = [
 export default function AssignApproverPage() {
   const { user } = useAuth();
   const editable = canManageTeam(user);
-  const assign = useMutation(() =>
-    docPrs.setApprover(TARGET_PR.id, { approver, reason: reason || undefined }),
+  const prId = prIdFromHash();
+  const teamId = user.teamId ?? "me";
+
+  // Doc PR 상세 로딩
+  const { data: prData } = useApi(
+    () => docPrs.detail(prId),
+    [prId],
+    { enabled: Boolean(prId) },
   );
-  const [approver, setApprover] = useState("고나영");
+  const pr = prData?.data ?? prData ?? {};
+
+  // 팀원 중 A 역할 후보자
+  const { data: membersData } = useApi(() => teamsApi.members(teamId), [teamId]);
+  const allMembers = Array.isArray(membersData) ? membersData : [];
+  const candidates = allMembers.filter((m) => m.role === "A" || m.raciRole === "A");
+
+  const assign = useMutation(() =>
+    docPrs.setApprover(prId, { approver, reason: reason || undefined }),
+  );
+  const [approver, setApprover] = useState("");
   const [reason, setReason] = useState("");
+
+  if (!prId) {
+    return (
+      <Page>
+        <EmptyState
+          title="Doc PR을 선택해 주세요"
+          description="Doc PR 상세에서 승인권자 지정으로 진입해 주세요."
+          actionLabel="Doc PR 목록"
+          onAction={() => (window.location.hash = "#/doc-pr")}
+        />
+      </Page>
+    );
+  }
 
   return (
     <Page>
@@ -66,21 +76,19 @@ export default function AssignApproverPage() {
         breadcrumb={[
           { label: "5IO주", href: "#/dashboard" },
           { label: "Doc PR", href: "#/doc-pr" },
-          { label: TARGET_PR.id, href: "#/doc-pr-detail" },
+          { label: pr.id ?? prId, href: `#/doc-pr-detail?prId=${encodeURIComponent(prId)}` },
           { label: "승인권자 지정" },
         ]}
         title="승인권자 지정"
-        description={`${TARGET_PR.id} · ${TARGET_PR.title} 하나에만 적용되는 대체 승인권자를 지정합니다.`}
+        description={`${pr.id ?? prId} · ${pr.title ?? ""}`}
         properties={[
-          { label: "상태", value: <StatusBadge variant="solid" status={TARGET_PR.status} size="sm" /> },
-          { label: "대상 문서", value: TARGET_PR.document },
-          { label: "기존 승인권자", value: `${TARGET_PR.previousApprover} (비활성)` },
+          { label: "상태", value: <StatusBadge variant="solid" status={pr.status ?? "needsReviewer"} size="sm" /> },
         ]}
         actions={
           <Button
             variant="secondary"
             className="rounded-sm"
-            onClick={() => (window.location.hash = "#/doc-pr-detail")}
+            onClick={() => (window.location.hash = `#/doc-pr-detail?prId=${encodeURIComponent(prId)}`)}
           >
             Doc PR 상세로
           </Button>
@@ -89,27 +97,6 @@ export default function AssignApproverPage() {
 
       <PermissionNotice className="mt-[20px]" allowed={editable} action="대체 승인권자 지정" />
 
-      {/* 팀원 관리와 기능이 겹쳐 보여 단위를 명시한다 */}
-      <p className="mt-[8px] text-[13px] font-medium leading-[19px] text-neutral-500">
-        여러 Doc PR의 승인권자를 한 번에 정리하려면{" "}
-        <a href="#/team-members" className="font-semibold text-main-500">
-          팀원 관리
-        </a>
-        에서 팀 단위로 처리할 수 있습니다.
-      </p>
-
-      {/* ── 주인공: 왜 지금 지정해야 하는가 (박스 없이 타이포로) ── */}
-      <section className="mt-[28px]">
-        <h2 className="text-[18px] font-bold leading-[26px] text-neutral-900">
-          지정된 승인권자({TARGET_PR.previousApprover})가 비활성 상태입니다
-        </h2>
-        <p className="mt-[6px] text-[14px] font-medium leading-[21px] text-neutral-700">
-          최소 한 명의 A 역할 승인권자가 필요합니다. 지정 전까지 이 Doc PR의 Merge가
-          차단됩니다.
-        </p>
-      </section>
-
-      {/* ── 지정 조건도 설명이라 Card가 아니다 ── */}
       <Section title="지정 조건">
         <ul className="flex flex-col gap-[8px]">
           {CONDITIONS.map((condition) => (
@@ -124,36 +111,42 @@ export default function AssignApproverPage() {
         </ul>
       </Section>
 
-      {/* ── 대체 승인권자 선택 ── */}
       <Section title="대체 승인권자 선택">
         <Card padding="md">
-          <ul className="flex flex-col gap-[8px]">
-            {CANDIDATES.map((candidate) => (
-              <li key={candidate.name}>
-                <label
-                  className={`flex items-center gap-[10px] rounded-sm border px-[12px] py-[10px] transition-colors ${
-                    candidate.disabled || !editable
-                      ? "cursor-not-allowed border-line bg-neutral-50 opacity-60"
-                      : approver === candidate.name
-                        ? "cursor-pointer border-main-500 bg-main-50"
-                        : "cursor-pointer border-line bg-neutral-0 hover:bg-neutral-50"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="approver"
-                    value={candidate.name}
-                    checked={approver === candidate.name}
-                    disabled={candidate.disabled || !editable}
-                    onChange={() => setApprover(candidate.name)}
-                    className="size-[15px] accent-main-500"
-                  />
-                  <RaciChip role={candidate.role} name={candidate.name} size="sm" />
-                  <span className="text-[13px] font-medium text-neutral-500">{candidate.note}</span>
-                </label>
-              </li>
-            ))}
-          </ul>
+          {candidates.length === 0 ? (
+            <EmptyState
+              compact
+              title="A 역할 후보가 없습니다"
+              description="팀원 중 A 역할을 가진 사람이 없습니다. 팀원 관리에서 역할을 지정해 주세요."
+            />
+          ) : (
+            <ul className="flex flex-col gap-[8px]">
+              {candidates.map((candidate) => (
+                <li key={candidate.name ?? candidate.id}>
+                  <label
+                    className={`flex items-center gap-[10px] rounded-sm border px-[12px] py-[10px] transition-colors ${
+                      !editable
+                        ? "cursor-not-allowed border-line bg-neutral-50 opacity-60"
+                        : approver === (candidate.name ?? candidate.id)
+                          ? "cursor-pointer border-main-500 bg-main-50"
+                          : "cursor-pointer border-line bg-neutral-0 hover:bg-neutral-50"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="approver"
+                      value={candidate.name ?? candidate.id}
+                      checked={approver === (candidate.name ?? candidate.id)}
+                      disabled={!editable}
+                      onChange={() => setApprover(candidate.name ?? candidate.id)}
+                      className="size-[15px] accent-main-500"
+                    />
+                    <RaciChip role="A" name={candidate.name ?? "—"} size="sm" />
+                  </label>
+                </li>
+              ))}
+            </ul>
+          )}
 
           <label className="mt-[16px] block">
             <span className="mb-[6px] block text-[13px] font-semibold text-neutral-700">
@@ -167,22 +160,19 @@ export default function AssignApproverPage() {
               placeholder="지정 사유를 입력하세요."
               className="w-full resize-none rounded-sm border-0 border-b border-line bg-neutral-50/60 px-[12px] py-[10px] font-sans text-[14px] font-medium leading-[21px] text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500 disabled:cursor-not-allowed disabled:text-neutral-500"
             />
-            <span className="mt-[4px] block text-right text-[12px] font-medium text-neutral-500">
-              {reason.length}/1000
-            </span>
           </label>
 
-          <div className="mt-[16px] flex items-center gap-[10px]">
+          <div className="mt-[16px]">
             <Button
               className="rounded-sm"
-              disabled={!editable || assign.pending}
-              onClick={() => assign.mutate()}
+              disabled={!editable || !approver || assign.pending}
+              onClick={async () => {
+                await assign.mutate();
+                window.location.hash = `#/doc-pr-detail?prId=${encodeURIComponent(prId)}`;
+              }}
             >
               {assign.pending ? "지정 중…" : "대체 승인권자 지정"}
             </Button>
-            <span className="text-[13px] font-medium text-neutral-500">
-              이 지정은 {TARGET_PR.id}에만 적용됩니다.
-            </span>
           </div>
         </Card>
       </Section>

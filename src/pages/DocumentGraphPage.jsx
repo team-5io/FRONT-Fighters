@@ -45,14 +45,10 @@ const PANEL_TABS = [
   { key: "owners", label: "담당" },
 ];
 
-const FOCUS_ID = "api-design";
+const FOCUS_ID = new URLSearchParams(window.location.hash.split("?")[1] ?? "").get("documentId") ?? "api-design";
 
-/** 그래프가 다른 기능의 기반 인프라라는 점 (기능명세서 · 1차 결과서) */
-const CONSUMERS = [
-  { name: "CIO 문서 충돌 검토", detail: "연결 문서와 상충하는 내용을 이 관계를 따라 확인", href: "#/ai-review", ai: true },
-  { name: "CIO 작성 도우미", detail: "연결 문서의 맥락을 인용해 제안", href: "#/write", ai: true },
-  { name: "관련 문서 연결", detail: "여기서 만든 관계가 그래프에 반영", href: "#/link-documents" },
-];
+/** 그래프가 다른 기능의 기반 인프라라는 점 */
+const CONSUMERS = [];
 
 export default function DocumentGraphPage() {
   const [selectedId, setSelectedId] = useState(FOCUS_ID);
