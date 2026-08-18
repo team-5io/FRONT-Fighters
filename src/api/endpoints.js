@@ -29,6 +29,7 @@ export const users = {
 /* ── 팀 (2.3) ── */
 export const teams = {
   create: (payload) => api.post("/teams", payload),
+  myTeams: () => api.get("/teams/me"),
   members: (teamId) => api.get(`/teams/${teamId}/members`),
   invite: (teamId, payload) => api.post(`/teams/${teamId}/invitations`, payload),
   removeMember: (teamId, memberId) => api.del(`/teams/${teamId}/members/${memberId}`),
