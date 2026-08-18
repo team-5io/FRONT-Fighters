@@ -40,12 +40,18 @@ export function isApiConfigured() {
   return BASE_URL.length > 0;
 }
 
-/* ── 토큰 보관: 메모리만 (새로고침 시 세션 끊김 허용) ── */
-let accessToken = null;
+/* ── 토큰 보관: localStorage (새로고침해도 세션 유지) ── */
+const STORAGE_KEY = "doc_pr_access_token";
+let accessToken = localStorage.getItem(STORAGE_KEY);
 let onUnauthorized = null;
 
 export function setAccessToken(token) {
   accessToken = token ?? null;
+  if (token) {
+    localStorage.setItem(STORAGE_KEY, token);
+  } else {
+    localStorage.removeItem(STORAGE_KEY);
+  }
 }
 export function getAccessToken() {
   return accessToken;
