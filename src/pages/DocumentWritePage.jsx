@@ -14,9 +14,9 @@ import {
 } from "../components/ui";
 import { createBlock } from "../data/blocks";
 import { IconGlobe, IconLink, IconSparkle } from "../components/icons";
-import { documents as documentsApi } from "../api/endpoints";
+import { documents as documentsApi, teams as teamsApi } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
-import { unwrap } from "../api/unwrap";
+import { unwrap, unwrapList } from "../api/unwrap";
 import { fromServerBlocks, normalizeDocument, toServerBlocks } from "../api/normalize";
 import { usePermissions } from "../hooks/usePermissions";
 import { useAuth } from "../auth/AuthContext";
@@ -63,6 +63,19 @@ const INITIAL_SUGGESTIONS = [];
 export default function DocumentWritePage() {
   const { user } = useAuth();
   const teamId = user.teamId ?? null;
+
+  // 팀원 목록 (Doc PR 생성 시 승인권자 드롭다운용)
+  const { data: membersResponse } = useApi(
+    () => teamsApi.members(teamId),
+    [teamId],
+    { enabled: Boolean(teamId) },
+  );
+  const teamMembers = unwrapList(membersResponse).map((m) => ({
+    userId: m.userId ?? m.memberId,
+    memberId: m.memberId ?? m.userId,
+    name: m.name ?? m.email ?? `#${m.userId ?? m.memberId}`,
+    email: m.email ?? "",
+  }));
 
   const [documentId, setDocumentId] = useState(getDocumentIdFromHash);
   const [title, setTitle] = useState("");
