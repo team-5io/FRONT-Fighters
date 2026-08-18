@@ -114,8 +114,9 @@ export default function DocumentsPage() {
   } = useApi(
     () => (keyword.trim()
       ? documentsApi.search(keyword.trim())
-      : documentsApi.list({ teamId })),
+      : documentsApi.list({ teamId: Number(teamId) })),
     [keyword, teamId],
+    { enabled: Boolean(teamId) },
   );
 
   // 응답: { status, data: { content: [...], totalElements, ... } }
