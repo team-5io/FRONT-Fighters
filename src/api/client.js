@@ -1,15 +1,15 @@
 /**
- * API 클라이언트 — 모든 요청이 여기를 통과한다 (API 연동 지시서 1.1).
+ * API 클라이언트 — 모든 요청이 여기를 통과한다.
  *
- * base URL은 환경변수로 뺀다. 실제 값은 리포에 없다 — `.env.example`을 복사해
- * `.env`에 백엔드 팀에서 받은 값을 채운다.
+ * base URL은 환경변수 `VITE_API_BASE_URL`로 설정한다.
+ * 요청마다 토큰을 `Authorization: Bearer`로 붙이고,
+ * 401은 로그인 화면으로, 그 외 4xx/5xx는 ApiError로 던진다.
  *
- * 요청마다 로그인에서 받은 토큰을 `Authorization: Bearer`로 붙이고,
- * 401은 토큰을 폐기하고 로그인 화면으로 보낸다. 그 외 4xx/5xx는 `ApiError`로
- * 던져 화면이 `EmptyState`로 표시하게 둔다.
+ * 서버가 응답하지 않는 경우를 대비해 10초 타임아웃을 건다.
  */
 
 const BASE_URL = (import.meta.env?.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+const REQUEST_TIMEOUT_MS = 10_000;
 
 export class ApiError extends Error {
   constructor(status, body, url) {
@@ -21,7 +21,6 @@ export class ApiError extends Error {
   }
 }
 
-/** base URL이 비어 있으면 연동이 아직 준비되지 않은 것 — 화면이 이걸 구분해야 한다 */
 export class ApiNotConfiguredError extends Error {
   constructor() {
     super("API 주소가 설정되지 않았습니다.");
@@ -29,11 +28,19 @@ export class ApiNotConfiguredError extends Error {
   }
 }
 
+export class ApiTimeoutError extends Error {
+  constructor(url) {
+    super("서버가 응답하지 않습니다. 네트워크 연결을 확인해 주세요.");
+    this.name = "ApiTimeoutError";
+    this.url = url;
+  }
+}
+
 export function isApiConfigured() {
   return BASE_URL.length > 0;
 }
 
-/* ── 토큰 보관: 메모리만 (지시서 1.2 — 새로고침 시 세션 끊김 허용) ── */
+/* ── 토큰 보관: 메모리만 (새로고침 시 세션 끊김 허용) ── */
 let accessToken = null;
 let onUnauthorized = null;
 
@@ -43,14 +50,13 @@ export function setAccessToken(token) {
 export function getAccessToken() {
   return accessToken;
 }
-/** 401을 받았을 때 앱이 할 일(로그아웃 + 로그인 화면 이동)을 등록한다 */
 export function setUnauthorizedHandler(handler) {
   onUnauthorized = handler;
 }
 
 /**
  * @param {string} path   `/documents` 처럼 base 뒤에 붙는 경로
- * @param {object} options  method · body(객체면 JSON 직렬화) · query · signal
+ * @param {object} options  method · body · query · signal
  */
 export async function request(path, { method = "GET", body, query, signal } = {}) {
   if (!isApiConfigured()) throw new ApiNotConfiguredError();
@@ -68,12 +74,31 @@ export async function request(path, { method = "GET", body, query, signal } = {}
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
-  const response = await fetch(url.toString(), {
-    method,
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-    signal,
-  });
+  // 타임아웃: 10초 안에 응답이 없으면 abort
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const mergedSignal = signal
+    ? composeAbortSignals(signal, controller.signal)
+    : controller.signal;
+
+  let response;
+  try {
+    response = await fetch(url.toString(), {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: mergedSignal,
+    });
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err.name === "AbortError") {
+      throw new ApiTimeoutError(url.toString());
+    }
+    // 네트워크 에러 (CORS, DNS, 서버 다운 등)
+    throw new ApiError(0, { message: `서버에 연결할 수 없습니다: ${err.message}` }, url.toString());
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (response.status === 401) {
     setAccessToken(null);
@@ -94,6 +119,16 @@ function safeJson(text) {
   } catch {
     return { message: text };
   }
+}
+
+/** 두 AbortSignal 중 하나라도 abort되면 abort하는 signal을 만든다 */
+function composeAbortSignals(a, b) {
+  const controller = new AbortController();
+  const onAbort = () => controller.abort();
+  a.addEventListener("abort", onAbort);
+  b.addEventListener("abort", onAbort);
+  if (a.aborted || b.aborted) controller.abort();
+  return controller.signal;
 }
 
 export const api = {
