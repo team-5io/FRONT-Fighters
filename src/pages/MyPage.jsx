@@ -99,10 +99,9 @@ export default function MyPage() {
     event.preventDefault();
     try {
       const result = await save({ name, timezone, language });
-      // 백엔드 응답: { status, code, message, data: { publicId, email, name, timezone, language } }
       const updated = result?.data ?? result ?? { name, timezone, language };
       updateUser({ name: updated.name, timezone: updated.timezone, language: updated.language });
-      setSaved(true);
+      window.location.reload();
     } catch {
       setSaved(false);
     }
