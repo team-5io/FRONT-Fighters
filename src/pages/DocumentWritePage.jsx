@@ -228,10 +228,11 @@ export default function DocumentWritePage() {
             팁 — 블록 맨 앞에서 <code className="font-mono text-neutral-700">#</code>{" "}
             <code className="font-mono text-neutral-700">-</code>{" "}
             <code className="font-mono text-neutral-700">1.</code>{" "}
-            <code className="font-mono text-neutral-700">&gt;</code>{" "}
-            <code className="font-mono text-neutral-700">[]</code> 뒤에 스페이스,{" "}
+            <code className="font-mono text-neutral-700">&quot;</code>(인용){" "}
+            <code className="font-mono text-neutral-700">&gt;</code>(토글){" "}
+            <code className="font-mono text-neutral-700">[]</code> 뒤에 스페이스.{" "}
             <code className="font-mono text-neutral-700">```</code>{" "}
-            <code className="font-mono text-neutral-700">---</code> 뒤에 Enter.{" "}
+            <code className="font-mono text-neutral-700">---</code> 는 치는 즉시 바뀝니다.{" "}
             <code className="font-mono text-neutral-700">/</code> 로 블록 고르기,{" "}
             <code className="font-mono text-neutral-700">Tab</code> /{" "}
             <code className="font-mono text-neutral-700">Shift+Tab</code> 으로 들여쓰기.
