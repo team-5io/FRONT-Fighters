@@ -126,8 +126,8 @@ export default function DocumentsPage() {
     try {
       await deleteDoc.mutate(docId);
       reload();
-    } catch {
-      // 에러는 콘솔에 이미 찍힘
+    } catch (err) {
+      window.alert(`삭제 실패: ${err.body?.message ?? err.message}`);
     }
   }
 
