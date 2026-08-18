@@ -78,6 +78,7 @@ export default function DashboardPage() {
                   type="button"
                   onClick={() => {
                     updateUser({ teamId: team.id, teamName: team.name });
+                    window.location.hash = `#/t/${team.id}/dashboard`;
                     window.location.reload();
                   }}
                   className={`rounded-md border px-[14px] py-[8px] text-[13px] font-medium transition-colors ${
@@ -119,9 +120,10 @@ function NoTeamView({ onCreated }) {
       const result = await createTeam.mutate({ name: teamName.trim() });
       // 응답: { status: 201, data: { id, name } }
       const team = result?.data ?? result;
-      const teamId = team?.id ?? team?.teamId;
-      updateUser({ teamId: teamId ?? "created", teamName: team?.name ?? teamName.trim() });
-      // 팀 목록 재조회 후 새로고침
+      const newTeamId = team?.id ?? team?.teamId;
+      updateUser({ teamId: newTeamId ?? "created", teamName: team?.name ?? teamName.trim() });
+      // 새 팀의 워크스페이스 URL로 이동
+      window.location.hash = newTeamId ? `#/t/${newTeamId}/dashboard` : "#/dashboard";
       window.location.reload();
     } catch {
       // 에러는 useMutation이 관리
