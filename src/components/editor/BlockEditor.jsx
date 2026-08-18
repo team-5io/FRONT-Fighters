@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ENTER_TRIGGERS,
+  INSTANT_TRIGGERS,
   SPACE_TRIGGERS,
   createBlock,
   flatten,
@@ -19,7 +20,8 @@ import { cx } from "../ui/cx";
  * 계층형 블록 마크다운 에디터 (2차 지시서 1장).
  *
  * 노션과 같은 방식으로 동작한다:
- *  - 마크다운 트리거(`#`, `-`, `>`, `1.`, `[]` + 스페이스 / ``` `---` + Enter)로 즉시 전환
+ *  - 마크다운 트리거: `#` `-` `1.` `"` `>` `[]` + 스페이스,
+ *    ``` 와 `---` 는 **마지막 글자를 치는 순간** 바로 전환(스페이스·Enter 불필요)
  *  - `/` 슬래시 명령으로 블록 타입 선택 삽입
  *  - `Tab`/`Shift+Tab`으로 들여쓰기·내어쓰기, 토글 블록은 접기/펼치기
  *
@@ -207,6 +209,14 @@ export default function BlockEditor({ blocks, onChange, className = "" }) {
   const setBlocks = useCallback((next) => onChange(next), [onChange]);
 
   function handleChange(id, value) {
+    // 입력하는 순간 전환되는 트리거 (``` / ---) — 스페이스도 Enter도 기다리지 않는다
+    const instant = INSTANT_TRIGGERS[value];
+    if (instant) {
+      closeSlash();
+      applyType(id, instant);
+      return;
+    }
+
     setBlocks(updateBlock(blocks, id, { content: value }));
 
     // 슬래시 메뉴: 블록이 '/'로 시작하는 동안만 열어 둔다

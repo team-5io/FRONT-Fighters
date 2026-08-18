@@ -16,13 +16,18 @@ export const BLOCK_TYPES = {
   bulleted: { label: "글머리 기호 목록", hint: "• 로 시작하는 목록", markdown: "-" },
   numbered: { label: "번호 매기기 목록", hint: "1. 로 시작하는 목록", markdown: "1." },
   todo: { label: "할 일 목록", hint: "체크박스가 있는 목록", markdown: "[]" },
-  toggle: { label: "토글 목록", hint: "접었다 펼 수 있는 목록", markdown: null },
-  quote: { label: "인용", hint: "인용문", markdown: ">" },
+  toggle: { label: "토글 목록", hint: "접었다 펼 수 있는 목록", markdown: ">" },
+  quote: { label: "인용", hint: "인용문", markdown: '"' },
   code: { label: "코드", hint: "코드 블록 (번역 시 원문 보존)", markdown: "```" },
   divider: { label: "구분선", hint: "가로 줄", markdown: "---" },
 };
 
-/** 스페이스로 전환되는 마크다운 트리거 (2차 지시서 1.2 표) */
+/**
+ * 스페이스로 전환되는 마크다운 트리거.
+ *
+ * 인용은 `"`(따옴표), 토글은 `>`를 쓴다 — `>`가 인용이던 것을 바꿨다.
+ * 화살표 모양이 "펼친다"는 토글의 동작과 더 가깝고, 인용은 따옴표가 직관적이다.
+ */
 export const SPACE_TRIGGERS = {
   "#": "heading1",
   "##": "heading2",
@@ -30,16 +35,27 @@ export const SPACE_TRIGGERS = {
   "-": "bulleted",
   "*": "bulleted",
   "1.": "numbered",
-  ">": "quote",
+  '"': "quote",
+  ">": "toggle",
   "[]": "todo",
   "[ ]": "todo",
 };
 
-/** Enter로 전환되는 트리거 */
-export const ENTER_TRIGGERS = {
+/**
+ * 입력하는 순간 바로 전환되는 트리거 — 스페이스도 Enter도 필요 없다.
+ *
+ * 코드 블록과 구분선은 뒤에 따라올 문자가 없어서(``` 다음에 스페이스를 치지 않는다)
+ * 노션도 마지막 글자를 치는 순간 바꾼다. 예전에는 Enter를 눌러야만 바뀌어서
+ * "구현이 안 된 것"처럼 보였다.
+ */
+export const INSTANT_TRIGGERS = {
   "```": "code",
   "---": "divider",
+  "***": "divider",
 };
+
+/** Enter로도 전환되게 남겨 둔다 (즉시 전환을 놓친 경우의 보완) */
+export const ENTER_TRIGGERS = INSTANT_TRIGGERS;
 
 /** 하위 블록을 가질 수 있는 타입 (Tab 들여쓰기 대상) */
 const CONTAINER_TYPES = new Set(["bulleted", "numbered", "todo", "toggle", "paragraph"]);
