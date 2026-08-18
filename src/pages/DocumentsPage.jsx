@@ -13,7 +13,7 @@ import {
 } from "../components/ui";
 import { IconGlobe, IconPaper } from "../components/icons";
 import { documents as documentsApi } from "../api/endpoints";
-import { useApi } from "../hooks/useApi";
+import { useApi, useMutation } from "../hooks/useApi";
 import { useAuth } from "../auth/AuthContext";
 import { DOCUMENT_STATUS } from "../data/status";
 
@@ -62,7 +62,7 @@ function TranslationTag({ languages }) {
   );
 }
 
-const COLUMNS = [
+const COLUMNS_BASE = [
   {
     key: "title",
     label: "문서명",
@@ -119,6 +119,44 @@ export default function DocumentsPage() {
     { enabled: Boolean(teamId) },
   );
 
+  const deleteDoc = useMutation((docId) => documentsApi.remove(docId));
+
+  async function handleDelete(docId, docTitle) {
+    if (!window.confirm(`"${docTitle}" 문서를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+    try {
+      await deleteDoc.mutate(docId);
+      reload();
+    } catch {
+      // 에러는 콘솔에 이미 찍힘
+    }
+  }
+
+  // 삭제 컬럼 추가
+  const columns = [
+    ...COLUMNS_BASE,
+    {
+      key: "actions",
+      label: "",
+      width: 48,
+      align: "center",
+      render: (row) => (
+        <button
+          type="button"
+          title="문서 삭제"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDelete(row.id, row.title);
+          }}
+          className="flex size-[28px] items-center justify-center rounded-sm text-neutral-400 opacity-0 transition-all hover:bg-error-tint hover:text-error-text group-hover/row:opacity-100"
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2 4h12M5.33 4V2.67a1.33 1.33 0 0 1 1.34-1.34h2.66a1.33 1.33 0 0 1 1.34 1.34V4M6.67 7.33v4M9.33 7.33v4M12.67 4v9.33a1.33 1.33 0 0 1-1.34 1.34H4.67a1.33 1.33 0 0 1-1.34-1.34V4" />
+          </svg>
+        </button>
+      ),
+    },
+  ];
+
   // 응답: { status, data: { content: [...], totalElements, ... } }
   const responseData = rows?.data ?? rows;
   const content = Array.isArray(responseData?.content) ? responseData.content : (Array.isArray(responseData) ? responseData : []);
@@ -170,7 +208,7 @@ export default function DocumentsPage() {
           />
           <DataTable
             className="mt-[12px]"
-            columns={COLUMNS}
+            columns={columns}
             loading={loading}
             rows={list}
             onRowClick={(row) => {
