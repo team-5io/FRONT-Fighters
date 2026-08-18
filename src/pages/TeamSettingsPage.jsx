@@ -110,9 +110,11 @@ export default function TeamSettingsPage() {
 
 /* ─────────────────────── 팀 정보 ─────────────────────── */
 function TeamInfoPanel({ teamName, memberCount, editable, members, teamId, reload }) {
+  const { user } = useAuth();
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteError, setInviteError] = useState(null);
   const invite = useMutation((email) => teamsApi.invite(teamId, { email }));
+  const removeMember = useMutation((memberId) => teamsApi.removeMember(teamId, memberId));
 
   async function handleInvite(e) {
     e.preventDefault();
@@ -124,6 +126,18 @@ function TeamInfoPanel({ teamName, memberCount, editable, members, teamId, reloa
       reload();
     } catch (err) {
       setInviteError(err.body?.message ?? err.message);
+    }
+  }
+
+  async function handleRemove(member) {
+    const id = member.memberId ?? member.userId;
+    const name = member.name ?? member.email ?? `#${id}`;
+    if (!window.confirm(`"${name}"님을 팀에서 내보내시겠습니까?`)) return;
+    try {
+      await removeMember.mutate(id);
+      reload();
+    } catch (err) {
+      window.alert(`추방 실패: ${err.body?.message ?? err.message}`);
     }
   }
 
@@ -172,13 +186,17 @@ function TeamInfoPanel({ teamName, memberCount, editable, members, teamId, reloa
                 <th className="px-[14px] py-[8px] text-[12px] font-semibold text-neutral-500">팀원</th>
                 <th className="px-[14px] py-[8px] text-[12px] font-semibold text-neutral-500">역할</th>
                 <th className="px-[14px] py-[8px] text-[12px] font-semibold text-neutral-500">합류일</th>
+                {editable && <th className="px-[14px] py-[8px] text-[12px] font-semibold text-neutral-500"></th>}
               </tr>
             </thead>
             <tbody>
-              {members.map((member) => (
-                <tr key={member.memberId} className="border-b border-line last:border-b-0 hover:bg-neutral-50/50">
+              {members.map((member) => {
+                const isSelf = String(member.userId) === String(user.id);
+                return (
+                <tr key={member.memberId ?? member.userId} className="group/row border-b border-line last:border-b-0 hover:bg-neutral-50/50">
                   <td className="px-[14px] py-[10px] text-[13px] font-medium text-neutral-900">
                     {member.name}
+                    {isSelf && <span className="ml-[4px] text-[11px] text-main-500">(나)</span>}
                     <span className="ml-[6px] text-[12px] font-normal text-neutral-500">
                       {member.email}
                     </span>
@@ -196,8 +214,21 @@ function TeamInfoPanel({ teamName, memberCount, editable, members, teamId, reloa
                   <td className="px-[14px] py-[10px] text-[12px] text-neutral-500">
                     {member.joinedAt ? new Date(member.joinedAt).toLocaleDateString("ko-KR") : "—"}
                   </td>
+                  {editable && (
+                    <td className="px-[14px] py-[10px] text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleRemove(member)}
+                        disabled={removeMember.pending}
+                        className="rounded-sm px-[8px] py-[4px] text-[12px] font-medium text-neutral-400 opacity-0 transition-all hover:bg-error-tint hover:text-error-text group-hover/row:opacity-100 disabled:opacity-50"
+                      >
+                        {isSelf ? "탈퇴" : "내보내기"}
+                      </button>
+                    </td>
+                  )}
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
