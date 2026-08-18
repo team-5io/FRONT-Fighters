@@ -12,8 +12,7 @@ import {
   StatusBadge,
   cx,
 } from "../components/ui";
-import { INITIAL_DOCUMENT, createBlock } from "../data/blocks";
-import { relatedDocuments } from "../data/graph";
+import { createBlock } from "../data/blocks";
 import { IconGlobe, IconLink, IconSparkle } from "../components/icons";
 import { documents as documentsApi } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
@@ -50,6 +49,12 @@ function getDocumentIdFromHash() {
   return params.get("documentId") ?? params.get("id") ?? null;
 }
 
+/** 새 문서의 초기 블록 (빈 상태) */
+const EMPTY_BLOCKS = [createBlock("paragraph", "")];
+
+/**
+ * AI 작성 보조 제안 — AI 엔드포인트가 아직 "시작 전"이라 mock 유지 (지시서 1.3).
+ */
 const INITIAL_SUGGESTIONS = [
   {
     id: "s1",
@@ -83,7 +88,7 @@ const INITIAL_SUGGESTIONS = [
 export default function DocumentWritePage() {
   const [documentId, setDocumentId] = useState(getDocumentIdFromHash);
   const [title, setTitle] = useState("");
-  const [blocks, setBlocks] = useState(INITIAL_DOCUMENT);
+  const [blocks, setBlocks] = useState(EMPTY_BLOCKS);
   const [suggestions, setSuggestions] = useState(INITIAL_SUGGESTIONS);
   const [savedAt, setSavedAt] = useState(null);
   // `#/ai-structure` 딥링크로 들어오면 패널을 펼친 상태로 시작한다
@@ -100,14 +105,10 @@ export default function DocumentWritePage() {
   }, []);
 
   // 기존 문서 로딩 — documentId가 있으면 서버에서 불러온다.
-  // 백엔드 미설정이면 fallback mock이 쓰인다.
   const { data: loaded, loading: docLoading } = useApi(
     () => documentsApi.list({ id: documentId }),
     [documentId],
-    {
-      enabled: Boolean(documentId),
-      fallback: { title: "API 설계 원칙", blocks: INITIAL_DOCUMENT },
-    },
+    { enabled: Boolean(documentId) },
   );
 
   // 서버에서 문서를 불러왔으면 편집기에 반영한다
@@ -124,11 +125,10 @@ export default function DocumentWritePage() {
   useEffect(() => {
     if (!documentId) {
       setTitle("");
-      setBlocks(INITIAL_DOCUMENT);
+      setBlocks(EMPTY_BLOCKS);
     }
   }, [documentId]);
 
-  const related = relatedDocuments(documentId ?? "api-design");
   const permissions = usePermissions(documentId);
 
   // 새 문서 생성 (POST /documents)
@@ -175,7 +175,6 @@ export default function DocumentWritePage() {
     {
       label: "관련 문서 연결",
       icon: <IconLink size={14} className="text-neutral-500" />,
-      count: related.length,
       run: () => (window.location.hash = documentId
         ? `#/link-documents?documentId=${encodeURIComponent(documentId)}`
         : "#/link-documents"),
@@ -354,25 +353,10 @@ export default function DocumentWritePage() {
 
         {/* ── 우측: 문서 속성 (AI는 플로팅 패널로 빠졌다) ── */}
         <aside className="w-[260px] shrink-0">
-          {/* 작성 중엔 본문이 주인공 — 연결 문서는 접어 둔다 (원칙 B) */}
-          <Disclosure title="연결된 문서" count={related.length} caption="변경 시 영향을 받습니다">
-            <ul className="flex flex-col gap-[2px]">
-              {related.map((item) => (
-                <li key={item.node.id}>
-                  <a
-                    href="#/graph"
-                    className="flex items-center gap-[8px] rounded-sm py-[6px] transition-colors hover:bg-neutral-50/70"
-                  >
-                    <span className="truncate text-[13px] font-medium text-neutral-700">
-                      {item.node.locked ? "열람 권한 없음" : item.node.title}
-                    </span>
-                    <span className="ml-auto shrink-0 font-mono text-[11px] text-neutral-500">
-                      {item.direction === "in" ? "←" : "→"}
-                    </span>
-                  </a>
-                </li>
-              ))}
-            </ul>
+          <Disclosure title="연결된 문서" caption="변경 시 영향을 받습니다">
+            <p className="text-[13px] text-neutral-500">
+              관련 문서 연결은 더보기 메뉴에서 할 수 있습니다.
+            </p>
             <a href="#/graph" className="mt-[8px] block text-[12px] font-semibold text-main-500">
               그래프에서 보기 →
             </a>

@@ -48,21 +48,7 @@ function normalizeMember(raw, index) {
   };
 }
 
-const MEMBERS = [
-  { id: "m1", name: "고나영", role: "A", membership: "팀 관리자", email: "gonayoung@5io.team", docs: 4 },
-  { id: "m2", name: "김성민", role: "C", membership: "일반 팀원", email: "kimsungmin@5io.team", docs: 3 },
-  { id: "m3", name: "김민섭", role: "R", membership: "일반 팀원", email: "kimminsub@5io.team", docs: 5 },
-  { id: "m4", name: "김재원", role: "R", membership: "일반 팀원", email: "kimjaewon@5io.team", docs: 2 },
-  { id: "m5", name: "김준한", role: "I", membership: "일반 팀원", email: "kimjunhan@5io.team", docs: 1 },
-];
-
-const BLOCKED_DOC_PRS = [
-  { id: "PR #36", title: "보안 정책 문서 2024-Q4", reason: "승인권자 미지정" },
-  { id: "PR #33", title: "개인정보 처리방침 개정", reason: "승인권자 미지정" },
-];
-
-const APPROVER_CANDIDATES = MEMBERS.filter((member) => member.role === "A");
-
+const BLOCKED_DOC_PRS = [];
 
 const MEMBER_COLUMNS = [
   {
@@ -110,15 +96,16 @@ export default function TeamMembersPage() {
   const editable = canManageTeam(user);
   const teamId = user.teamId ?? "me";
 
-  const membersQuery = useApi(() => teamsApi.members(teamId), [teamId], { fallback: MEMBERS });
-  const rawMembers = Array.isArray(membersQuery.data) ? membersQuery.data : MEMBERS;
+  const membersQuery = useApi(() => teamsApi.members(teamId), [teamId]);
+  const rawMembers = Array.isArray(membersQuery.data) ? membersQuery.data : [];
   const members = rawMembers.map(normalizeMember);
 
   const invite = useMutation((email) => teamsApi.invite(teamId, { email }));
   const assignApprover = useMutation((prId, name) => docPrs.setApprover(prId, { approver: name }));
 
-  const [targetPr, setTargetPr] = useState(BLOCKED_DOC_PRS[0].id);
-  const [approver, setApprover] = useState(APPROVER_CANDIDATES[0]?.name ?? "");
+  const approverCandidates = members.filter((member) => member.role === "A");
+  const [targetPr, setTargetPr] = useState(BLOCKED_DOC_PRS[0]?.id ?? "");
+  const [approver, setApprover] = useState("");
   const [reason, setReason] = useState("");
 
   const selectClass =
@@ -135,7 +122,7 @@ export default function TeamMembersPage() {
         title="팀원 관리"
         properties={[
           { label: "구성원", value: `${members.length}명` },
-          { label: "승인권자", value: `${APPROVER_CANDIDATES.length}명` },
+          { label: "승인권자", value: `${approverCandidates.length}명` },
           { label: "승인권자 부재 Doc PR", value: `${BLOCKED_DOC_PRS.length}건` },
         ]}
         actions={
@@ -217,7 +204,7 @@ export default function TeamMembersPage() {
                 disabled={!editable}
                 className={selectClass}
               >
-                {APPROVER_CANDIDATES.map((member) => (
+                {approverCandidates.map((member) => (
                   <option key={member.name} value={member.name}>
                     {member.name} — A 역할 (승인 책임)
                   </option>

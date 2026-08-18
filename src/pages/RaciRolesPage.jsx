@@ -42,54 +42,7 @@ const FILTERS = [
   { label: "상태", value: "전체" },
 ];
 
-const DOCUMENT_ROLES = [
-  {
-    id: "doc-1",
-    name: "API 설계 원칙",
-    type: "기술 명세",
-    status: "official",
-    counts: { R: 3, A: 1, C: 4, I: 2 },
-  },
-  {
-    id: "doc-2",
-    name: "온보딩 가이드라인",
-    type: "가이드라인",
-    status: "draft",
-    counts: { R: 2, A: 1, C: 3, I: 1 },
-  },
-  {
-    id: "doc-3",
-    name: "배포 체크리스트",
-    type: "체크리스트",
-    status: "draft",
-    counts: { R: 1, A: 1, C: 1, I: 1 },
-  },
-  {
-    id: "doc-4",
-    name: "보안 정책",
-    type: "정책",
-    status: "inReview",
-    counts: { R: 3, A: 0, C: 2, I: 3 },
-  },
-  {
-    id: "doc-5",
-    name: "운영 모니터링",
-    type: "운영 문서",
-    status: "official",
-    counts: { R: 1, A: 1, C: 3, I: 1 },
-  },
-];
-
-const MEMBERS = [
-  { name: "고나영", roles: ["A"] },
-  { name: "김성민", roles: ["A", "C"] },
-  { name: "김민섭", roles: ["R", "C"] },
-  { name: "김재원", roles: ["R", "C"] },
-  { name: "김준한", roles: ["I"] },
-];
-
 /** A(승인 책임)가 비어 있는 문서 — Merge가 차단된다 */
-const MISSING_APPROVER = DOCUMENT_ROLES.filter((doc) => doc.counts.A === 0);
 
 const COLUMNS = [
   {
@@ -132,9 +85,9 @@ export default function RaciRolesPage() {
   const { user } = useAuth();
   const teamId = user.teamId ?? "me";
 
-  // 문서 목록과 팀원 목록을 API에서 가져온다 (fallback: mock)
-  const docsQuery = useApi(() => documentsApi.list(), [], { fallback: DOCUMENT_ROLES });
-  const membersQuery = useApi(() => teamsApi.members(teamId), [teamId], { fallback: MEMBERS });
+  // 문서 목록과 팀원 목록을 API에서 가져온다
+  const docsQuery = useApi(() => documentsApi.list(), []);
+  const membersQuery = useApi(() => teamsApi.members(teamId), [teamId]);
 
   const documentRoles = Array.isArray(docsQuery.data) ? docsQuery.data.map((doc) => ({
     id: doc.id ?? doc.documentId,
@@ -142,15 +95,17 @@ export default function RaciRolesPage() {
     type: doc.type ?? doc.documentType ?? "—",
     status: doc.status ?? "draft",
     counts: doc.counts ?? doc.raci ?? { R: 0, A: 0, C: 0, I: 0 },
-  })) : DOCUMENT_ROLES;
+  })) : [];
+
+  const MISSING_APPROVER = documentRoles.filter((doc) => doc.counts.A === 0);
 
   // 첫 문서 기준으로 권한을 받아 화면 전체의 편집 가능 여부를 정한다
   const permissions = usePermissions(documentRoles[0]?.id);
   const editable = permissions.canManage;
   const saveRaci = useMutation((documentId, payload) => documentsApi.setRaci(documentId, payload));
 
-  const rawMembers = Array.isArray(membersQuery.data) ? membersQuery.data : MEMBERS;
-  const [members, setMembers] = useState(MEMBERS);
+  const rawMembers = Array.isArray(membersQuery.data) ? membersQuery.data : [];
+  const [members, setMembers] = useState([]);
 
   const counts = RACI_ORDER.reduce((acc, role) => {
     acc[role] = members.filter((member) => member.roles.includes(role)).length;

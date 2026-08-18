@@ -41,21 +41,21 @@ function prIdFromHash() {
   return query ? new URLSearchParams(query).get("prId") : null;
 }
 
-const DOC_PR = {
-  id: "PR #42",
-  title: "온보딩 가이드 v2 개정안",
-  document: "온보딩 가이드",
+const DOC_PR_EMPTY = {
+  id: "—",
+  title: "",
+  document: "",
   status: "humanReview",
-  createdAt: "2026-08-10",
-  author: { name: "김성민", role: "R" },
-  approver: { name: "고나영", role: "A" },
-  reviewers: [
-    { name: "김준한", role: "C", done: true },
-    { name: "김재원", role: "C", done: false },
-  ],
+  createdAt: "",
+  author: { name: "—", role: "R" },
+  approver: { name: "—", role: "A" },
+  reviewers: [],
   minApprovals: 1,
 };
 
+/**
+ * AI 피드백 — AI 엔드포인트가 "시작 전"이라 mock 유지 (지시서 1.3).
+ */
 const AI_FEEDBACK = [
   "섹션 2의 단계 순서를 다른 가이드와 맞추는 편이 좋습니다.",
   "표 2건의 항목 유효성 확인이 필요합니다.",
@@ -63,32 +63,23 @@ const AI_FEEDBACK = [
 ];
 
 const INITIAL_CHECKLIST = [
-  { id: "terms", label: "용어 일관성 확인", checked: true },
+  { id: "terms", label: "용어 일관성 확인", checked: false },
   { id: "links", label: "외부 링크 유효성 확인", checked: false },
-  { id: "version", label: "버전 기록 일치 규칙 준수", checked: true },
+  { id: "version", label: "버전 기록 일치 규칙 준수", checked: false },
   { id: "raci", label: "RACI 참여자 검토 완료", checked: false },
 ];
 
-const HISTORY = [
-  { at: "2026-08-08", actor: "human", by: "김성민", text: "Doc PR을 제출했습니다.", status: "created" },
-  { at: "2026-08-09", actor: "ai", by: "CIO", text: "1차 검토를 완료했습니다. 반려 권고는 없습니다.", status: "aiReview" },
-  { at: "2026-08-10", actor: "human", by: "고나영", text: "사람 리뷰를 시작했습니다.", status: "humanReview" },
-  { at: "2026-08-11", actor: "human", by: "김준한", text: "리뷰 의견을 등록했습니다.", status: "humanReview" },
-];
-
-const OPEN_BLOCKERS = ["reviewIncomplete"];
-
 export default function HumanReviewPage() {
   const { user } = useAuth();
-  const prId = prIdFromHash() ?? DOC_PR.id;
+  const prId = prIdFromHash();
 
   // Doc PR 상세/이력/리뷰를 실제 API에서 가져온다
-  const detailQuery = useApi(() => docPrs.detail(prId), [prId], { fallback: DOC_PR });
-  const historyQuery = useApi(() => docPrs.history(prId), [prId], { fallback: HISTORY });
-  const reviewsQuery = useApi(() => docPrs.reviews(prId), [prId], { fallback: [] });
+  const detailQuery = useApi(() => docPrs.detail(prId), [prId], { enabled: Boolean(prId) });
+  const historyQuery = useApi(() => docPrs.history(prId), [prId], { enabled: Boolean(prId) });
+  const reviewsQuery = useApi(() => docPrs.reviews(prId), [prId], { enabled: Boolean(prId) });
 
-  const pr = detailQuery.data ?? DOC_PR;
-  const prHistory = Array.isArray(historyQuery.data) ? historyQuery.data : HISTORY;
+  const pr = detailQuery.data ?? DOC_PR_EMPTY;
+  const prHistory = Array.isArray(historyQuery.data) ? historyQuery.data : [];
 
   const myRole = RACI_ROLES[user.role];
   const canDecide = user.role === "A";
@@ -101,7 +92,7 @@ export default function HumanReviewPage() {
   const approve = useMutation(() => docPrs.approve(prId));
   const reject = useMutation(() => docPrs.reject(prId, { reason: comment || "재검토 요청" }));
 
-  const reviewers = pr.reviewers ?? DOC_PR.reviewers;
+  const reviewers = pr.reviewers ?? [];
   const pending = reviewers.filter((reviewer) => !reviewer.done);
   const doneCount = reviewers.length - pending.length;
 
