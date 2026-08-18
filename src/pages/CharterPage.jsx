@@ -44,26 +44,7 @@ const LINK_TARGETS = [
   { value: "merge", label: "Merge 조건" },
 ];
 
-const INITIAL_RULES = [
-  {
-    id: "rule-1",
-    title: "초안 공유 시점",
-    body: "초안은 작성 완료 즉시 공유한다. 완성도를 이유로 공유를 미루지 않는다.",
-    linkedTo: "aiReview",
-  },
-  {
-    id: "rule-2",
-    title: "응답 속도 기준",
-    body: "리뷰 요청에는 근무일 기준 24시간 안에 응답한다. 시차가 있으면 인수인계 메모를 남긴다.",
-    linkedTo: "humanReview",
-  },
-  {
-    id: "rule-3",
-    title: "리뷰어 지정 원칙",
-    body: "문서마다 A 역할 승인권자 1명과 C 역할 리뷰어 1명 이상을 지정한다.",
-    linkedTo: "merge",
-  },
-];
+const INITIAL_RULES = [];
 
 const LINKED_EFFECTS = [
   "채택된 규칙은 Doc PR의 CIO 1차 검토와 사람 리뷰의 판단 기준으로 자동 적용됩니다.",

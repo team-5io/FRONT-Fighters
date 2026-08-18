@@ -54,13 +54,9 @@ const DOC_PR_EMPTY = {
 };
 
 /**
- * AI 피드백 — AI 엔드포인트가 "시작 전"이라 mock 유지 (지시서 1.3).
+ * AI 피드백 — AI 엔드포인트가 아직 준비되지 않아 빈 배열.
  */
-const AI_FEEDBACK = [
-  "섹션 2의 단계 순서를 다른 가이드와 맞추는 편이 좋습니다.",
-  "표 2건의 항목 유효성 확인이 필요합니다.",
-  "외부 링크 3건은 출처를 함께 적어 두길 권장합니다.",
-];
+const AI_FEEDBACK = [];
 
 const INITIAL_CHECKLIST = [
   { id: "terms", label: "용어 일관성 확인", checked: false },

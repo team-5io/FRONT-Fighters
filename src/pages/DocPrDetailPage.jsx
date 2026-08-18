@@ -49,28 +49,9 @@ function prIdFromHash() {
 }
 
 /**
- * AI 검토 결과 — AI 엔드포인트가 "시작 전"이라 mock 유지 (지시서 1.3).
+ * AI 검토 결과 — AI 엔드포인트가 아직 준비되지 않아 빈 배열.
  */
-const AI_FINDINGS = [
-  {
-    level: "reject",
-    label: "협업 규칙 위반",
-    detail: "피드백 반영 여부가 확인되지 않았습니다.",
-    evidence: "채택된 협업 규칙 · 반려 시 72시간 내 재제출",
-  },
-  {
-    level: "warn",
-    label: "문서 구조 이상",
-    detail: "섹션 순서가 팀 협업 규칙 기준과 일치하지 않습니다.",
-    evidence: "채택된 협업 규칙 · 초안 공유 시점",
-  },
-  {
-    level: "pass",
-    label: "정합성 확인",
-    detail: "연결 문서와 충돌하는 내용이 없습니다.",
-    evidence: "Document Graph · 연결 문서 3건 대조",
-  },
-];
+const AI_FINDINGS = [];
 
 const FINDING_TONE = {
   reject: { tone: "error", text: "반려 권장" },

@@ -53,37 +53,9 @@ function getDocumentIdFromHash() {
 const EMPTY_BLOCKS = [createBlock("paragraph", "")];
 
 /**
- * AI 작성 보조 제안 — AI 엔드포인트가 아직 "시작 전"이라 mock 유지 (지시서 1.3).
+ * AI 작성 보조 제안 — AI 엔드포인트가 아직 준비되지 않아 빈 배열.
  */
-const INITIAL_SUGGESTIONS = [
-  {
-    id: "s1",
-    kind: "missing",
-    title: "`오류 처리` 섹션이 비어 있습니다",
-    detail: "같은 유형의 문서 3건은 모두 오류 코드 표를 두고 있습니다.",
-    apply: () => [createBlock("heading2", "오류 처리"), createBlock("paragraph", "")],
-  },
-  {
-    id: "s2",
-    kind: "structure",
-    title: "인증 방식에 만료 시간이 빠져 있습니다",
-    detail: "연결 문서 `보안 정책 문서`가 토큰 만료 정책을 정의하고 있습니다.",
-    preview: "액세스 토큰은 발급 후 30분간 유효하다.",
-    apply: () => [createBlock("paragraph", "액세스 토큰은 발급 후 30분간 유효하다.")],
-  },
-  {
-    id: "s3",
-    kind: "next",
-    title: "예제 요청/응답 블록을 덧붙일 수 있습니다",
-    detail: "코드 블록은 번역할 때도 원문 그대로 보존됩니다.",
-    preview: 'GET /documents?cursor=… → { "data": [...], "cursor": "…" }',
-    apply: () => [
-      createBlock("code", 'GET /documents?cursor=abc\n\n{ "data": [], "cursor": null }', {
-        language: "http",
-      }),
-    ],
-  },
-];
+const INITIAL_SUGGESTIONS = [];
 
 export default function DocumentWritePage() {
   const [documentId, setDocumentId] = useState(getDocumentIdFromHash);
