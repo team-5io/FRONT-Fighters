@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Page from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
 import {
@@ -7,30 +8,52 @@ import {
 } from "../components/ui";
 import { useAuth } from "../auth/AuthContext";
 import { teams as teamsApi } from "../api/endpoints";
-import { useMutation } from "../hooks/useApi";
-import { useState } from "react";
+import { useApi, useMutation } from "../hooks/useApi";
 
 /**
  * 대시보드(홈) — `#/dashboard`
  *
+ * GET /teams/me로 소속 팀 목록을 조회한다.
  * 팀이 없으면 팀 생성 화면만 보여준다.
  * 팀이 있으면 빠른 진입점을 제공한다.
  */
 
 export default function DashboardPage() {
   const { user, updateUser } = useAuth();
-  const hasTeam = Boolean(user.teamId);
+
+  // 소속 팀 목록 조회
+  const { data: teamsResult, loading, reload } = useApi(() => teamsApi.myTeams(), []);
+  const myTeamList = Array.isArray(teamsResult?.data) ? teamsResult.data : (Array.isArray(teamsResult) ? teamsResult : []);
+
+  // 팀이 있으면 첫 번째 팀을 활성 팀으로 설정 (localStorage에도 반영)
+  const activeTeam = myTeamList[0] ?? null;
+  if (activeTeam && !user.teamId) {
+    updateUser({ teamId: activeTeam.id, teamName: activeTeam.name });
+  }
+
+  const hasTeam = Boolean(activeTeam) || Boolean(user.teamId);
+
+  if (loading) {
+    return (
+      <Page>
+        <p className="mt-[32px] text-center text-[14px] font-medium text-neutral-500">불러오는 중…</p>
+      </Page>
+    );
+  }
 
   if (!hasTeam) {
-    return <NoTeamView />;
+    return <NoTeamView onCreated={reload} />;
   }
+
+  const teamName = activeTeam?.name ?? user.teamName ?? "내 팀";
 
   return (
     <Page>
       <PageHeader
-        breadcrumb={[{ label: user.teamName ?? "내 팀" }, { label: "대시보드" }]}
+        breadcrumb={[{ label: teamName }, { label: "대시보드" }]}
         title={`${user.name}님, 환영합니다`}
         properties={[
+          { label: "팀", value: teamName },
           { label: "내 역할", value: <RoleChip scope="이 팀" /> },
         ]}
         actions={
@@ -43,6 +66,33 @@ export default function DashboardPage() {
           </Button>
         }
       />
+
+      {/* 소속 팀이 여러 개면 목록으로 표시 */}
+      {myTeamList.length > 1 && (
+        <div className="mt-[16px]">
+          <p className="text-[13px] font-medium text-neutral-500">소속된 팀 {myTeamList.length}개</p>
+          <ul className="mt-[8px] flex flex-wrap gap-[8px]">
+            {myTeamList.map((team) => (
+              <li key={team.id}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    updateUser({ teamId: team.id, teamName: team.name });
+                    window.location.reload();
+                  }}
+                  className={`rounded-md border px-[14px] py-[8px] text-[13px] font-medium transition-colors ${
+                    team.id === (activeTeam?.id ?? user.teamId)
+                      ? "border-main-500 bg-main-50 text-main-700"
+                      : "border-line text-neutral-700 hover:border-main-300"
+                  }`}
+                >
+                  {team.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="mt-[32px] grid grid-cols-1 gap-[16px] sm:grid-cols-2 lg:grid-cols-3">
         <QuickLink href="#/documents" title="문서" description="팀의 모든 문서를 확인하세요" />
@@ -57,8 +107,8 @@ export default function DashboardPage() {
 }
 
 /** 팀이 없을 때 보여주는 화면 */
-function NoTeamView() {
-  const { user, updateUser } = useAuth();
+function NoTeamView({ onCreated }) {
+  const { updateUser } = useAuth();
   const [teamName, setTeamName] = useState("");
   const createTeam = useMutation((payload) => teamsApi.create(payload));
 
@@ -71,9 +121,10 @@ function NoTeamView() {
       const team = result?.data ?? result;
       const teamId = team?.id ?? team?.teamId;
       updateUser({ teamId: teamId ?? "created", teamName: team?.name ?? teamName.trim() });
+      // 팀 목록 재조회 후 새로고침
       window.location.reload();
     } catch {
-      // 에러는 useMutation이 관리 — 화면에 error.message 표시
+      // 에러는 useMutation이 관리
     }
   }
 
