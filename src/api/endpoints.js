@@ -22,6 +22,7 @@ export const auth = {
 };
 
 export const users = {
+  getMe: () => api.get("/users/me"),
   updateMe: (payload) => api.patch("/users/me", payload),
 };
 

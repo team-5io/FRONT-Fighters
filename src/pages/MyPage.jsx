@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Page, { Section } from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
 import { Button, EmptyState, RaciChip } from "../components/ui";
 import { RACI_ROLES } from "../data/raci";
 import { useAuth } from "../auth/AuthContext";
 import { users } from "../api/endpoints";
-import { useMutation } from "../hooks/useApi";
+import { useApi, useMutation } from "../hooks/useApi";
 
 /**
  * 마이페이지 — `#/me` (4차 지시서 3장)
@@ -73,12 +73,26 @@ function Row({ label, hint, children }) {
 
 export default function MyPage() {
   const { user, signOut, updateUser } = useAuth();
+
+  // GET /users/me로 서버에서 최신 프로필을 불러온다
+  const { data: profile, loading: profileLoading } = useApi(() => users.getMe(), []);
+  const me = profile?.data ?? profile ?? user;
+
   const [name, setName] = useState(user.name);
   const [timezone, setTimezone] = useState(user.timezone ?? "Asia/Seoul");
   const [language, setLanguage] = useState(user.language ?? "ko");
   const [saved, setSaved] = useState(false);
 
-  const teams = myTeams(user);
+  // 서버에서 프로필을 불러오면 폼을 최신값으로 갱신
+  useEffect(() => {
+    if (me && me !== user) {
+      setName(me.name ?? user.name);
+      setTimezone(me.timezone ?? "Asia/Seoul");
+      setLanguage(me.language ?? "ko");
+    }
+  }, [me]);
+
+  const teams = myTeams(me);
   const { mutate: save, pending, error } = useMutation((payload) => users.updateMe(payload));
 
   async function submit(event) {
@@ -100,7 +114,7 @@ export default function MyPage() {
         title="내 계정"
         description="이름과 시간대, 선호 언어를 설정합니다. 시간대는 Follow-the-Sun 인수인계에서 참고됩니다."
         properties={[
-          { label: "이메일", value: user.email ?? "—" },
+          { label: "이메일", value: me.email ?? "—" },
           { label: "소속 팀", value: `${teams.length}개` },
         ]}
       />
@@ -121,7 +135,7 @@ export default function MyPage() {
           </Row>
 
           <Row label="이메일" hint="이메일은 변경할 수 없습니다.">
-            <input value={user.email ?? ""} readOnly aria-label="이메일" className={UNDERLINE} />
+            <input value={me.email ?? ""} readOnly aria-label="이메일" className={UNDERLINE} />
           </Row>
 
           <Row label="시간대">
