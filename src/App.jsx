@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import AppShell from "./components/layout/AppShell";
+import { useAuth } from "./auth/AuthContext";
 import AiReviewPage from "./pages/AiReviewPage";
 import AssignApproverPage from "./pages/AssignApproverPage";
 import CharterPage from "./pages/CharterPage";
@@ -58,6 +59,8 @@ const ROUTES = {
 
 export default function App() {
   const [hash, setHash] = useState(() => window.location.hash || "#/login");
+  const { user } = useAuth();
+  const hasTeam = Boolean(user.teamId);
 
   useEffect(() => {
     const onHashChange = () => setHash(window.location.hash || "#/login");
@@ -67,8 +70,19 @@ export default function App() {
 
   const { page: Page, activeNav, bare } = ROUTES[hash] ?? ROUTES["#/login"];
 
-  // 인증/온보딩 화면은 아직 팀에 소속되기 전이라 사이드바·상단바를 띄우지 않는다
+  // 인증/온보딩 화면은 사이드바·상단바를 띄우지 않는다
   if (bare) return <Page />;
+
+  // 팀이 없으면 대시보드와 마이페이지만 접근 가능 — 나머지는 대시보드로 이동
+  const allowedWithoutTeam = ["#/dashboard", "#/me", "#/team-invite", "#/team-reset"];
+  if (!hasTeam && !allowedWithoutTeam.includes(hash)) {
+    window.location.hash = "#/dashboard";
+    return (
+      <AppShell activeNav="대시보드">
+        <DashboardPage />
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell activeNav={activeNav}>

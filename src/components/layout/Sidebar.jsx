@@ -65,6 +65,7 @@ function NavLink({ item, active, depth = 0 }) {
 
 export default function Sidebar({ active }) {
   const { user } = useAuth();
+  const hasTeam = Boolean(user.teamId);
   const settingsOpen =
     active === SETTINGS_ITEM.label ||
     SETTINGS_ITEM.children.some((child) => child.label === active);
@@ -84,34 +85,44 @@ export default function Sidebar({ active }) {
             Doc PR
           </span>
           <span className="block truncate text-[12px] font-medium leading-[16px] text-neutral-500">
-            5IO주 · {user.name}
+            {user.teamName ?? "팀이 없음"} · {user.name}
           </span>
         </span>
       </a>
 
       <nav className="mt-[16px] flex-1 overflow-y-auto px-[12px]">
-        <ul className="flex flex-col gap-[2px]">
-          {NAV_ITEMS.map((item) => (
-            <li key={item.label}>
-              <NavLink item={item} active={item.label === active} />
-            </li>
-          ))}
-        </ul>
-      </nav>
-
-      {/* 하단 설정 진입점 */}
-      <div className="border-t border-line px-[12px] py-[12px]">
-        <NavLink item={SETTINGS_ITEM} active={SETTINGS_ITEM.label === active} />
-        {settingsOpen && (
-          <ul className="mt-[2px] flex flex-col gap-[2px]">
-            {SETTINGS_ITEM.children.map((child) => (
-              <li key={child.label}>
-                <NavLink item={child} active={child.label === active} depth={1} />
+        {hasTeam ? (
+          <ul className="flex flex-col gap-[2px]">
+            {NAV_ITEMS.map((item) => (
+              <li key={item.label}>
+                <NavLink item={item} active={item.label === active} />
               </li>
             ))}
           </ul>
+        ) : (
+          <ul className="flex flex-col gap-[2px]">
+            <li>
+              <NavLink item={{ label: "대시보드", href: "#/dashboard", icon: <IconHome size={16} /> }} active={active === "대시보드"} />
+            </li>
+          </ul>
         )}
-      </div>
+      </nav>
+
+      {/* 하단 설정 진입점 — 팀 소속일 때만 */}
+      {hasTeam && (
+        <div className="border-t border-line px-[12px] py-[12px]">
+          <NavLink item={SETTINGS_ITEM} active={SETTINGS_ITEM.label === active} />
+          {settingsOpen && (
+            <ul className="mt-[2px] flex flex-col gap-[2px]">
+              {SETTINGS_ITEM.children.map((child) => (
+                <li key={child.label}>
+                  <NavLink item={child} active={child.label === active} depth={1} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </aside>
   );
 }
