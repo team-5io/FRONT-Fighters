@@ -84,8 +84,10 @@ export default function MyPage() {
   async function submit(event) {
     event.preventDefault();
     try {
-      await save({ name, timezone, language });
-      updateUser({ name, timezone, language });
+      const result = await save({ name, timezone, language });
+      // 백엔드 응답: { status, code, message, data: { publicId, email, name, timezone, language } }
+      const updated = result?.data ?? result ?? { name, timezone, language };
+      updateUser({ name: updated.name, timezone: updated.timezone, language: updated.language });
       setSaved(true);
     } catch {
       setSaved(false);
