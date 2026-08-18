@@ -4,74 +4,50 @@ import PageHeader from "../components/layout/PageHeader";
 import {
   Button,
   Disclosure,
+  EmptyState,
   RaciChip,
   StatusBadge,
   cx,
 } from "../components/ui";
-import { canManageTeam } from "../data/raci";
+import { RACI_ORDER, RACI_ROLES, canManageTeam } from "../data/raci";
 import { useAuth } from "../auth/AuthContext";
-import { teams as teamsApi } from "../api/endpoints";
-import { useApi } from "../hooks/useApi";
+import { documents as documentsApi, teams as teamsApi } from "../api/endpoints";
+import { useApi, useMutation } from "../hooks/useApi";
+import { usePermissions } from "../hooks/usePermissions";
 import { IconPaper, IconShield, IconTeam, IconText } from "../components/icons";
 
 /**
- * 팀 설정 — `#/settings`
+ * 팀 설정 — `#/t/{teamId}/settings`
  *
- * 1차 정상화(지시서 5.L): 섹션 라벨 오기 `문서 제목` → `팀 정보`, 자리표시 막대 제거.
- *
- * 2차 지시서 4.2: 설정 카드 그리드를 **노션 설정 페이지처럼 좌측 메뉴 + 우측 단일 패널**
- * 구조로 재편했다. 카드를 층층이 쌓지 않고 한 번에 한 항목만 보여 준다.
+ * 좌측 메뉴 + 우측 패널 구조. 하위 섹션은 모두 이 페이지의 state로 관리한다.
+ * - 팀 정보
+ * - RACI 역할
+ * - 협업 규칙 (Charter)
+ * - 팀 용어집
+ * - 팀원 관리
  */
 
-const SECTIONS = [
-  {
-    key: "team",
-    icon: <IconTeam size={15} />,
-    label: "팀 정보",
-    summary: "이름 · 구성원",
-  },
-  {
-    key: "raci",
-    icon: <IconShield size={14} />,
-    label: "RACI 역할",
-    summary: "역할과 권한 정의",
-    page: "raci-roles",
-  },
-  {
-    key: "charter",
-    icon: <IconPaper size={14} />,
-    label: "협업 규칙 (Charter)",
-    summary: "CIO 검토의 근거",
-    page: "charter",
-  },
-  {
-    key: "glossary",
-    icon: <IconText size={14} />,
-    label: "팀 용어집",
-    summary: "검토·번역의 표기 기준",
-    page: "glossary",
-  },
-  {
-    key: "members",
-    icon: <IconTeam size={15} />,
-    label: "팀원 관리",
-    summary: "초대 · 역할 배정 · 대체 승인권자",
-    page: "team-members",
-  },
+const TABS = [
+  { key: "team", icon: <IconTeam size={15} />, label: "팀 정보" },
+  { key: "raci", icon: <IconShield size={14} />, label: "RACI 역할" },
+  { key: "charter", icon: <IconPaper size={14} />, label: "협업 규칙" },
+  { key: "glossary", icon: <IconText size={14} />, label: "팀 용어집" },
+  { key: "members", icon: <IconTeam size={15} />, label: "팀원 관리" },
 ];
 
 export default function TeamSettingsPage() {
   const { user } = useAuth();
-  const [active, setActive] = useState("team");
   const editable = canManageTeam(user);
   const teamId = user.teamId ?? "me";
   const teamName = user.teamName ?? "내 팀";
 
-  // 팀원 목록을 가져와서 실제 인원 수를 반영한다
-  const membersQuery = useApi(() => teamsApi.members(teamId), [teamId]);
-  const memberCount = Array.isArray(membersQuery.data) ? membersQuery.data.length : 0;
+  // URL의 ?tab= 에서 초기 탭을 읽는다
+  const initialTab = new URLSearchParams(window.location.hash.split("?")[1] ?? "").get("tab") ?? "team";
+  const [active, setActive] = useState(initialTab);
 
-  const current = SECTIONS.find((section) => section.key === active);
+  // 팀원 목록
+  const membersQuery = useApi(() => teamsApi.members(teamId), [teamId]);
+  const members = Array.isArray(membersQuery.data) ? membersQuery.data : [];
 
   return (
     <Page>
@@ -80,96 +56,289 @@ export default function TeamSettingsPage() {
         title="팀 설정"
         properties={[
           { label: "팀", value: teamName },
-          { label: "구성원", value: `${memberCount}명` },
-          { label: "내 역할", value: <RaciChip role={user.role} showLabel size="sm" /> },
+          { label: "구성원", value: `${members.length}명` },
         ]}
       />
 
       <div className="mt-[24px] flex gap-[32px]">
         {/* ── 좌: 설정 메뉴 ── */}
-        <nav aria-label="설정 항목" className="w-[200px] shrink-0">
+        <nav aria-label="설정 항목" className="w-[180px] shrink-0">
           <ul className="flex flex-col gap-[2px]">
-            {SECTIONS.map((section) => (
-              <li key={section.key}>
+            {TABS.map((tab) => (
+              <li key={tab.key}>
                 <button
                   type="button"
-                  onClick={() =>
-                    section.page
-                      ? (window.location.hash = `#/t/${teamId}/${section.page}`)
-                      : setActive(section.key)
-                  }
-                  aria-current={active === section.key ? "true" : undefined}
+                  onClick={() => setActive(tab.key)}
+                  aria-current={active === tab.key ? "true" : undefined}
                   className={cx(
                     "flex w-full items-center gap-[8px] rounded-sm px-[10px] py-[7px] text-left text-[14px] transition-colors",
-                    active === section.key
+                    active === tab.key
                       ? "bg-main-50 font-semibold text-main-700"
                       : "text-neutral-700 hover:bg-neutral-75",
                   )}
                 >
                   <span className="flex w-[16px] shrink-0 items-center justify-center text-neutral-500">
-                    {section.icon}
+                    {tab.icon}
                   </span>
-                  <span className="truncate">{section.label}</span>
+                  <span className="truncate">{tab.label}</span>
                 </button>
               </li>
             ))}
           </ul>
-
-          <button
-            type="button"
-            onClick={() => (window.location.hash = `#/t/${teamId}/team-reset`)}
-            className="mt-[16px] w-full rounded-sm border-t border-line px-[10px] pt-[12px] text-left text-[13px] font-medium text-neutral-500 hover:text-error-text"
-          >
-            팀 설정 초기화
-          </button>
         </nav>
 
-        {/* ── 우: 단일 패널 ── */}
+        {/* ── 우: 탭 내용 ── */}
         <div className="min-w-0 flex-1">
-          <h2 className="text-[16px] font-semibold leading-[24px] text-neutral-900">
-            {current.label}
-          </h2>
-          <p className="mt-[4px] text-[13px] font-medium text-neutral-500">{current.summary}</p>
-
-          <dl className="mt-[16px] flex flex-col gap-[2px]">
-            {[
-              { label: "팀 이름", value: teamName },
-              { label: "구성원", value: `${memberCount}명` },
-            ].map((row) => (
-              <div
-                key={row.label}
-                className="flex items-center gap-[16px] border-b border-line py-[10px] last:border-b-0"
-              >
-                <dt className="w-[100px] shrink-0 text-[13px] font-medium text-neutral-500">
-                  {row.label}
-                </dt>
-                <dd className="text-[14px] font-medium text-neutral-700">{row.value}</dd>
-              </div>
-            ))}
-          </dl>
-
-          {editable && (
-            <Button variant="secondary" size="sm" className="mt-[16px] rounded-sm">
-              팀 정보 수정
-            </Button>
-          )}
-
-          <div className="mt-[28px]">
-            <Disclosure title="공개 범위" caption="팀 구성원 전체 공개">
-              <div className="flex items-center gap-[10px]">
-                <StatusBadge status="official" kind="document" size="sm" />
-                <span className="text-[13px] font-medium text-neutral-700">
-                  현재 팀 문서는 팀 구성원 전체에게 공개되어 있습니다.
-                </span>
-              </div>
-              <p className="mt-[8px] text-[13px] font-medium leading-[19px] text-neutral-500">
-                지정 참여자 전용 문서는 RACI 참여자와 팀 관리자만 열람할 수 있습니다.
-                문서별 공개 범위와 자동 권한 조정은 후속 단계 범위입니다.
-              </p>
-            </Disclosure>
-          </div>
+          {active === "team" && <TeamInfoPanel teamName={teamName} memberCount={members.length} editable={editable} />}
+          {active === "raci" && <RaciPanel teamId={teamId} editable={editable} />}
+          {active === "charter" && <CharterPanel teamId={teamId} editable={editable} />}
+          {active === "glossary" && <GlossaryPanel />}
+          {active === "members" && <MembersPanel teamId={teamId} members={members} editable={editable} reload={membersQuery.reload} />}
         </div>
       </div>
     </Page>
+  );
+}
+
+/* ─────────────────────── 팀 정보 ─────────────────────── */
+function TeamInfoPanel({ teamName, memberCount, editable }) {
+  return (
+    <div>
+      <h2 className="text-[16px] font-semibold text-neutral-900">팀 정보</h2>
+      <dl className="mt-[16px] flex flex-col gap-[2px]">
+        <Row label="팀 이름" value={teamName} />
+        <Row label="구성원" value={`${memberCount}명`} />
+      </dl>
+      {editable && (
+        <Button variant="secondary" size="sm" className="mt-[16px] rounded-sm">
+          팀 정보 수정
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────── RACI 역할 ─────────────────────── */
+function RaciPanel({ teamId, editable }) {
+  const docsQuery = useApi(() => documentsApi.list(), []);
+  const membersQuery = useApi(() => teamsApi.members(teamId), [teamId]);
+  const rawMembers = Array.isArray(membersQuery.data) ? membersQuery.data : [];
+  const documentRoles = Array.isArray(docsQuery.data) ? docsQuery.data.map((doc) => ({
+    id: doc.id ?? doc.documentId,
+    name: doc.title ?? doc.name ?? "—",
+    counts: doc.counts ?? doc.raci ?? { R: 0, A: 0, C: 0, I: 0 },
+  })) : [];
+
+  const missingApprover = documentRoles.filter((doc) => doc.counts.A === 0);
+
+  return (
+    <div>
+      <h2 className="text-[16px] font-semibold text-neutral-900">RACI 역할</h2>
+      <p className="mt-[4px] text-[13px] text-neutral-500">누가 어떤 문서를 쓰고, 검토하고, 승인하는지 정합니다.</p>
+
+      {rawMembers.length === 0 && documentRoles.length === 0 ? (
+        <EmptyState
+          compact
+          className="mt-[16px]"
+          title="데이터가 없습니다"
+          description="팀원을 초대하고 문서를 만들면 역할을 지정할 수 있습니다."
+        />
+      ) : (
+        <>
+          {missingApprover.length > 0 && (
+            <div className="mt-[16px] rounded-sm border border-warning/30 bg-warning-tint px-[12px] py-[10px]">
+              <p className="text-[13px] font-medium text-warning-text">
+                A 역할(승인 책임)이 없는 문서가 {missingApprover.length}건 있습니다. Merge가 차단됩니다.
+              </p>
+            </div>
+          )}
+
+          <div className="mt-[16px]">
+            <h3 className="text-[14px] font-semibold text-neutral-700">역할 기준</h3>
+            <dl className="mt-[8px] grid grid-cols-2 gap-[12px]">
+              {RACI_ORDER.map((role) => (
+                <div key={role} className="flex items-start gap-[8px]">
+                  <RaciChip role={role} size="sm" />
+                  <span className="text-[12px] text-neutral-500">{RACI_ROLES[role].summary}</span>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────── 협업 규칙 ─────────────────────── */
+function CharterPanel({ teamId, editable }) {
+  const [rules, setRules] = useState([]);
+  const saveCharter = useMutation((payload) => teamsApi.saveCharter(teamId, payload));
+
+  function addRule() {
+    setRules((prev) => [...prev, { id: `rule-${Date.now()}`, title: "", body: "" }]);
+  }
+
+  function updateRule(id, patch) {
+    setRules((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  }
+
+  function removeRule(id) {
+    setRules((prev) => prev.filter((r) => r.id !== id));
+  }
+
+  async function save() {
+    await saveCharter.mutate({ rules, adopted: true });
+  }
+
+  return (
+    <div>
+      <h2 className="text-[16px] font-semibold text-neutral-900">협업 규칙 (Charter)</h2>
+      <p className="mt-[4px] text-[13px] text-neutral-500">CIO가 Doc PR을 검토할 때 근거로 삼는 팀 협업 규칙입니다.</p>
+
+      {rules.length === 0 ? (
+        <EmptyState
+          compact
+          className="mt-[16px]"
+          title="아직 규칙이 없습니다"
+          description="규칙을 추가하면 CIO 검토의 기준이 됩니다."
+          actionLabel={editable ? "규칙 추가" : undefined}
+          onAction={addRule}
+        />
+      ) : (
+        <ul className="mt-[16px] flex flex-col gap-[12px]">
+          {rules.map((rule) => (
+            <li key={rule.id} className="rounded-sm border border-line p-[12px]">
+              <input
+                value={rule.title}
+                onChange={(e) => updateRule(rule.id, { title: e.target.value })}
+                placeholder="규칙 제목"
+                disabled={!editable}
+                className="w-full border-0 bg-transparent text-[14px] font-semibold text-neutral-900 outline-none placeholder:text-neutral-400"
+              />
+              <textarea
+                value={rule.body}
+                onChange={(e) => updateRule(rule.id, { body: e.target.value })}
+                placeholder="규칙 내용을 작성하세요"
+                disabled={!editable}
+                rows={2}
+                className="mt-[6px] w-full resize-none border-0 bg-transparent text-[13px] text-neutral-700 outline-none placeholder:text-neutral-400"
+              />
+              {editable && (
+                <button type="button" onClick={() => removeRule(rule.id)} className="mt-[4px] text-[12px] text-error-text">
+                  삭제
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {editable && (
+        <div className="mt-[12px] flex gap-[8px]">
+          <Button variant="secondary" size="sm" className="rounded-sm" onClick={addRule}>
+            규칙 추가
+          </Button>
+          {rules.length > 0 && (
+            <Button size="sm" className="rounded-sm" disabled={saveCharter.pending} onClick={save}>
+              {saveCharter.pending ? "저장 중…" : "저장 및 채택"}
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────── 팀 용어집 ─────────────────────── */
+function GlossaryPanel() {
+  return (
+    <div>
+      <h2 className="text-[16px] font-semibold text-neutral-900">팀 용어집</h2>
+      <p className="mt-[4px] text-[13px] text-neutral-500">검토·번역의 표기 기준입니다.</p>
+      <EmptyState
+        compact
+        className="mt-[16px]"
+        title="용어집 API가 준비 중입니다"
+        description="백엔드에서 용어집 엔드포인트가 추가되면 사용할 수 있습니다."
+      />
+    </div>
+  );
+}
+
+/* ─────────────────────── 팀원 관리 ─────────────────────── */
+function MembersPanel({ teamId, members, editable, reload }) {
+  const invite = useMutation((email) => teamsApi.invite(teamId, { email }));
+  const removeMember = useMutation((memberId) => teamsApi.removeMember(teamId, memberId));
+
+  return (
+    <div>
+      <h2 className="text-[16px] font-semibold text-neutral-900">팀원 관리</h2>
+      <p className="mt-[4px] text-[13px] text-neutral-500">초대 · 역할 배정 · 추방</p>
+
+      {editable && (
+        <Button
+          variant="secondary"
+          size="sm"
+          className="mt-[12px] rounded-sm"
+          disabled={invite.pending}
+          onClick={async () => {
+            const email = window.prompt("초대할 이메일을 입력하세요.");
+            if (email) {
+              await invite.mutate(email);
+              reload();
+            }
+          }}
+        >
+          {invite.pending ? "초대 중…" : "팀원 초대"}
+        </Button>
+      )}
+
+      {members.length === 0 ? (
+        <EmptyState
+          compact
+          className="mt-[16px]"
+          title="팀원이 없습니다"
+          description="이메일로 팀원을 초대해 보세요."
+        />
+      ) : (
+        <ul className="mt-[16px] flex flex-col">
+          {members.map((member) => {
+            const id = member.id ?? member.publicId ?? member.email;
+            return (
+              <li key={id} className="flex items-center gap-[12px] border-b border-line py-[10px] last:border-b-0">
+                <span className="text-[14px] font-medium text-neutral-900">{member.name ?? member.email}</span>
+                {member.role && <RaciChip role={member.role} size="sm" />}
+                <span className="ml-auto text-[12px] text-neutral-500">{member.email}</span>
+                {editable && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (window.confirm(`${member.name ?? member.email}님을 내보내시겠습니까?`)) {
+                        await removeMember.mutate(id);
+                        reload();
+                      }
+                    }}
+                    className="text-[12px] text-error-text"
+                  >
+                    내보내기
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────── 유틸 ─────────────────────── */
+function Row({ label, value }) {
+  return (
+    <div className="flex items-center gap-[16px] border-b border-line py-[10px] last:border-b-0">
+      <dt className="w-[100px] shrink-0 text-[13px] font-medium text-neutral-500">{label}</dt>
+      <dd className="text-[14px] font-medium text-neutral-700">{value}</dd>
+    </div>
   );
 }
