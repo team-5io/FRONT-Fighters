@@ -14,6 +14,7 @@ import {
 import { IconGlobe, IconPaper } from "../components/icons";
 import { documents as documentsApi } from "../api/endpoints";
 import { useApi } from "../hooks/useApi";
+import { useAuth } from "../auth/AuthContext";
 import { DOCUMENT_STATUS } from "../data/status";
 
 /**
@@ -101,6 +102,8 @@ const COLUMNS = [
 ];
 
 export default function DocumentsPage() {
+  const { user } = useAuth();
+  const teamId = user.teamId;
   const [keyword, setKeyword] = useState("");
 
   const {
@@ -109,12 +112,17 @@ export default function DocumentsPage() {
     error,
     reload,
   } = useApi(
-    () => (keyword.trim() ? documentsApi.search(keyword.trim()) : documentsApi.list()),
-    [keyword],
+    () => (keyword.trim()
+      ? documentsApi.search(keyword.trim())
+      : documentsApi.list({ teamId })),
+    [keyword, teamId],
   );
 
-  const rawList = Array.isArray(rows) ? rows : (rows?.items ?? []);
-  const list = rawList.map(normalizeDocument);
+  // 응답: { status, data: { content: [...], totalElements, ... } }
+  const responseData = rows?.data ?? rows;
+  const content = Array.isArray(responseData?.content) ? responseData.content : (Array.isArray(responseData) ? responseData : []);
+  const list = content.map(normalizeDocument);
+  const totalElements = responseData?.totalElements ?? list.length;
   const selected = list[0] ?? null;
 
   // 우측 "최근 변경" — 선택 문서의 버전 이력
