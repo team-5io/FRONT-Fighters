@@ -1,6 +1,8 @@
+import { useState } from "react";
 import Page from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
 import {
+  Button,
   DataTable,
   Disclosure,
   EmptyState,
@@ -10,6 +12,9 @@ import {
   StatusBadge,
 } from "../components/ui";
 import { IconGlobe, IconPaper } from "../components/icons";
+import { documents as documentsApi } from "../api/endpoints";
+import { useApi } from "../hooks/useApi";
+import { DOCUMENT_STATUS } from "../data/status";
 
 /**
  * 문서 목록 — `#/documents`
@@ -26,7 +31,32 @@ import { IconGlobe, IconPaper } from "../components/icons";
  *
  * 5차 지시서 원칙 B·C: 보조 패널도 "주인공 하나" 규칙을 받는다. 요약만 펼쳐 두고
  * 최근 변경·연결된 Doc PR은 접었다. 반복되던 권한 배너는 헤더의 인라인 칩으로 내렸다.
+ *
+ * API 연동 지시서 2.4: 목록은 `GET /documents`, 검색은 `GET /documents/search`,
+ * 우측 "최근 변경"은 `GET /documents/{id}/versions`.
+ *
+ * **"연결된 Doc PR"만 mock으로 남긴다** — 이 서브 섹션을 뒷받침할 전용 API가 없다.
+ * `/graph`·`/impact`는 문서 간 관계를 주지 문서에 달린 Doc PR을 주지 않아 대체가
+ * 안 된다. Doc PR 목록 API 부재(지시서 0장)와 같은 뿌리다.
  */
+
+/** 백엔드 응답의 키가 달라도 화면이 쓰는 모양으로 맞춘다 */
+function normalizeDocument(raw) {
+  const status = DOCUMENT_STATUS[raw.status] ? raw.status : "draft";
+  return {
+    id: raw.id ?? raw.documentId,
+    title: raw.title ?? "제목 없음",
+    type: raw.type ?? raw.documentType ?? "—",
+    status,
+    version: raw.version ?? "—",
+    owner: {
+      name: raw.owner?.name ?? raw.author?.name ?? "—",
+      role: raw.owner?.role ?? raw.author?.role ?? "R",
+    },
+    updated: raw.updatedAt ?? raw.updated ?? "—",
+    translations: raw.translations ?? [],
+  };
+}
 
 const FILTERS = [
   { label: "상태", value: "전체" },
@@ -175,31 +205,81 @@ const COLUMNS = [
 ];
 
 export default function DocumentsPage() {
+  const [keyword, setKeyword] = useState("");
+
+  // 검색어가 있으면 search, 없으면 목록. 백엔드 미설정이면 mock으로 떨어진다.
+  const {
+    data: rows,
+    loading,
+    error,
+    reload,
+  } = useApi(
+    () => (keyword.trim() ? documentsApi.search(keyword.trim()) : documentsApi.list()),
+    [keyword],
+    { fallback: DOCUMENTS },
+  );
+
+  const list = Array.isArray(rows) ? rows.map(normalizeDocument) : (rows?.items ?? DOCUMENTS).map(normalizeDocument);
+  const selected = list[0] ?? null;
+
+  // 우측 "최근 변경" — 선택 문서의 버전 이력
+  const { data: versions } = useApi(
+    () => documentsApi.versions(selected.id),
+    [selected?.id],
+    { fallback: SELECTED_CHANGES, enabled: Boolean(selected?.id) },
+  );
+  const changes = (Array.isArray(versions) ? versions : SELECTED_CHANGES).slice(0, 3).map((v) => ({
+    at: v.at ?? v.createdAt ?? "—",
+    by: v.by ?? v.author?.name ?? "—",
+    text: v.text ?? v.summary ?? v.title ?? "변경 내용",
+  }));
+
   return (
     <Page>
       <PageHeader
         breadcrumb={[{ label: "5IO주", href: "#/dashboard" }, { label: "문서" }]}
         title="문서"
         description="팀의 모든 문서를 한눈에 확인하고 관리하세요."
-        actions={<RoleChip scope="이 팀" />}
+        actions={
+          <>
+            <RoleChip scope="이 팀" />
+            <Button
+              size="sm"
+              className="rounded-sm"
+              onClick={() => (window.location.hash = "#/write")}
+            >
+              새 문서
+            </Button>
+          </>
+        }
       />
 
       <div className="mt-[24px] flex gap-[24px]">
         {/* ── 좌: 목록 ── */}
         <div className="min-w-0 flex-1">
-          <ListFilterBar filters={FILTERS} searchLabel="문서 검색" searchPlaceholder="문서명·내용 검색" />
+          <ListFilterBar
+            filters={FILTERS}
+            searchLabel="문서 검색"
+            searchPlaceholder="문서명·내용 검색"
+            value={keyword}
+            onSearch={setKeyword}
+          />
           <DataTable
             className="mt-[12px]"
             columns={COLUMNS}
-            rows={DOCUMENTS}
-            onRowClick={() => {}}
+            loading={loading}
+            rows={list}
+            onRowClick={(row) => {
+              window.location.hash = `#/write?documentId=${encodeURIComponent(row.id)}`;
+            }}
             empty={{
-              title: "아직 문서가 없습니다",
-              description:
-                "이 팀에 등록된 문서가 없습니다. 첫 문서를 작성하면 여기에서 상태와 버전을 함께 볼 수 있습니다.",
-              actionLabel: "문서 작성하기",
+              title: error ? "문서를 불러오지 못했습니다" : "아직 문서가 없습니다",
+              description: error
+                ? error.message
+                : "이 팀에 등록된 문서가 없습니다. 첫 문서를 작성하면 여기에서 상태와 버전을 함께 볼 수 있습니다.",
+              actionLabel: error ? "다시 시도" : "문서 작성하기",
               icon: <IconPaper size={20} />,
-              onAction: () => (window.location.hash = "#/write"),
+              onAction: () => (error ? reload() : (window.location.hash = "#/write")),
             }}
           />
         </div>
@@ -208,12 +288,12 @@ export default function DocumentsPage() {
         <aside className="w-[280px] shrink-0">
           <div className="flex items-start gap-[8px]">
             <h2 className="min-w-0 flex-1 text-[15px] font-bold leading-[22px] text-neutral-900">
-              {SELECTED.title}
+              {selected?.title}
             </h2>
-            <StatusBadge status={SELECTED.status} kind="document" size="sm" />
+            <StatusBadge status={selected?.status} kind="document" size="sm" />
           </div>
           <p className="mt-[4px] text-[13px] font-medium text-neutral-500">
-            {SELECTED.type} · {SELECTED.version}
+            {selected?.type} · {selected?.version}
           </p>
           <p className="mt-[10px] text-[13px] font-medium leading-[20px] text-neutral-700">
             팀이 API를 설계할 때 지켜야 할 명명·인증·오류 응답 규칙을 정리한 문서입니다.
@@ -223,14 +303,14 @@ export default function DocumentsPage() {
             <div className="flex items-center gap-[10px]">
               <dt className="w-[52px] shrink-0 text-[12px] font-medium text-neutral-500">담당</dt>
               <dd>
-                <RaciChip role={SELECTED.owner.role} name={SELECTED.owner.name} size="sm" />
+                <RaciChip role={selected?.owner.role} name={selected?.owner.name} size="sm" />
               </dd>
             </div>
             <div className="flex items-center gap-[10px]">
               <dt className="w-[52px] shrink-0 text-[12px] font-medium text-neutral-500">번역본</dt>
               <dd>
-                {SELECTED.translations.length > 0 ? (
-                  <TranslationTag languages={SELECTED.translations} />
+                {(selected?.translations ?? []).length > 0 ? (
+                  <TranslationTag languages={(selected?.translations ?? [])} />
                 ) : (
                   <span className="text-[13px] text-neutral-500">없음</span>
                 )}
@@ -240,9 +320,9 @@ export default function DocumentsPage() {
 
           {/* 나머지 정보 그룹은 접어 둔다 (원칙 B) */}
           <div className="mt-[16px]">
-            <Disclosure title="최근 변경" count={SELECTED_CHANGES.length}>
+            <Disclosure title="최근 변경" count={changes.length}>
               <ul className="flex flex-col gap-[10px]">
-                {SELECTED_CHANGES.map((change) => (
+                {changes.map((change) => (
                   <li key={change.at} className="text-[13px] leading-[19px]">
                     <p className="font-medium text-neutral-700">{change.text}</p>
                     <p className="mt-[2px] text-neutral-500">

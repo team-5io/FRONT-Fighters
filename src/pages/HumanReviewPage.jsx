@@ -13,7 +13,10 @@ import {
   tone,
 } from "../components/ui";
 import { ACTOR_META, MERGE_BLOCKERS } from "../data/status";
-import { CURRENT_USER, RACI_ROLES } from "../data/raci";
+import { RACI_ROLES } from "../data/raci";
+import { docPrs } from "../api/endpoints";
+import { useApi, useMutation } from "../hooks/useApi";
+import { useAuth } from "../auth/AuthContext";
 
 /**
  * 사람 리뷰 — `#/human-review`
@@ -26,7 +29,17 @@ import { CURRENT_USER, RACI_ROLES } from "../data/raci";
  *    Section / DefinitionRows / Disclosure로 내렸다.
  *  - Card로 남긴 것은 독립 단위 셋뿐 — CIO 참고(AI 산출물), 리뷰 의견 입력, 최종 결정.
  *  - 상태색 틴트로 채우던 경고 박스를 제거하고 텍스트로 바꿨다(2.2 색 사용 기준).
+ *
+ * API 연동 지시서 2.8: 2.7과 같은 리뷰 API를 이 화면 UI에 맞게 재사용한다 —
+ * `GET /doc-prs/{prId}/reviews`, `POST .../human-reviews`, `.../approve`, `.../reject`.
+ * CIO 참고 사항 카드는 계속 mock이다(1.3).
  */
+
+/** URL에서 prId를 읽는다 */
+function prIdFromHash() {
+  const query = window.location.hash.split("?")[1];
+  return query ? new URLSearchParams(query).get("prId") : null;
+}
 
 const DOC_PR = {
   id: "PR #42",
@@ -66,15 +79,31 @@ const HISTORY = [
 const OPEN_BLOCKERS = ["reviewIncomplete"];
 
 export default function HumanReviewPage() {
-  const myRole = RACI_ROLES[CURRENT_USER.role];
-  const canDecide = CURRENT_USER.role === "A";
-  const canComment = CURRENT_USER.role === "A" || CURRENT_USER.role === "C";
+  const { user } = useAuth();
+  const prId = prIdFromHash() ?? DOC_PR.id;
+
+  // Doc PR 상세/이력/리뷰를 실제 API에서 가져온다
+  const detailQuery = useApi(() => docPrs.detail(prId), [prId], { fallback: DOC_PR });
+  const historyQuery = useApi(() => docPrs.history(prId), [prId], { fallback: HISTORY });
+  const reviewsQuery = useApi(() => docPrs.reviews(prId), [prId], { fallback: [] });
+
+  const pr = detailQuery.data ?? DOC_PR;
+  const prHistory = Array.isArray(historyQuery.data) ? historyQuery.data : HISTORY;
+
+  const myRole = RACI_ROLES[user.role];
+  const canDecide = user.role === "A";
+  const canComment = user.role === "A" || user.role === "C";
 
   const [checklist, setChecklist] = useState(INITIAL_CHECKLIST);
   const [comment, setComment] = useState("");
 
-  const pending = DOC_PR.reviewers.filter((reviewer) => !reviewer.done);
-  const doneCount = DOC_PR.reviewers.length - pending.length;
+  const addReview = useMutation(() => docPrs.addReview(prId, { body: comment }));
+  const approve = useMutation(() => docPrs.approve(prId));
+  const reject = useMutation(() => docPrs.reject(prId, { reason: comment || "재검토 요청" }));
+
+  const reviewers = pr.reviewers ?? DOC_PR.reviewers;
+  const pending = reviewers.filter((reviewer) => !reviewer.done);
+  const doneCount = reviewers.length - pending.length;
 
   return (
     <Page>
@@ -97,7 +126,7 @@ export default function HumanReviewPage() {
             label: "승인자",
             value: <RaciChip role={DOC_PR.approver.role} name={DOC_PR.approver.name} size="sm" />,
           },
-          { label: "내 역할", value: <RaciChip role={CURRENT_USER.role} showLabel size="sm" /> },
+          { label: "내 역할", value: <RaciChip role={user.role} showLabel size="sm" /> },
         ]}
       />
 
@@ -236,10 +265,15 @@ export default function HumanReviewPage() {
             <Button
               variant="secondary"
               size="sm"
-              disabled={!canComment || !comment.trim()}
+              disabled={!canComment || !comment.trim() || addReview.pending}
               className="rounded-sm"
+              onClick={async () => {
+                await addReview.mutate();
+                setComment("");
+                reviewsQuery.reload();
+              }}
             >
-              의견 등록
+              {addReview.pending ? "등록 중…" : "의견 등록"}
             </Button>
           </div>
         </Card>
@@ -261,11 +295,20 @@ export default function HumanReviewPage() {
               : "모든 조건이 충족되었습니다."}
           </p>
           <div className="flex shrink-0 items-center gap-[8px]">
-            <Button variant="secondary" disabled={!canDecide} className="rounded-sm">
-              반려
+            <Button
+              variant="secondary"
+              disabled={!canDecide || reject.pending}
+              className="rounded-sm"
+              onClick={() => reject.mutate()}
+            >
+              {reject.pending ? "반려 중…" : "반려"}
             </Button>
-            <Button disabled={!canDecide} className="rounded-sm">
-              승인
+            <Button
+              disabled={!canDecide || approve.pending}
+              className="rounded-sm"
+              onClick={() => approve.mutate()}
+            >
+              {approve.pending ? "승인 중…" : "승인"}
             </Button>
           </div>
         </Card>

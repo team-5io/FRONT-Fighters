@@ -9,7 +9,10 @@ import {
   cx,
   tone,
 } from "../components/ui";
-import { CURRENT_USER, canManageTeam } from "../data/raci";
+import { canManageTeam } from "../data/raci";
+import { useAuth } from "../auth/AuthContext";
+import { teams as teamsApi } from "../api/endpoints";
+import { useApi } from "../hooks/useApi";
 import { IconPaper, IconShield, IconTeam, IconText } from "../components/icons";
 
 /**
@@ -70,8 +73,15 @@ const SECTIONS = [
 ];
 
 export default function TeamSettingsPage() {
+  const { user } = useAuth();
   const [active, setActive] = useState("team");
-  const editable = canManageTeam();
+  const editable = canManageTeam(user);
+  const teamId = user.teamId ?? "me";
+
+  // 팀원 목록을 가져와서 실제 인원 수를 반영한다
+  const membersQuery = useApi(() => teamsApi.members(teamId), [teamId], { fallback: [] });
+  const memberCount = Array.isArray(membersQuery.data) ? membersQuery.data.length : TEAM.memberCount;
+
   const current = SECTIONS.find((section) => section.key === active);
 
   return (
@@ -82,7 +92,7 @@ export default function TeamSettingsPage() {
         properties={[
           { label: "팀", value: TEAM.name },
           { label: "구성원", value: `${TEAM.memberCount}명` },
-          { label: "내 역할", value: <RaciChip role={CURRENT_USER.role} showLabel size="sm" /> },
+          { label: "내 역할", value: <RaciChip role={user.role} showLabel size="sm" /> },
         ]}
       />
 

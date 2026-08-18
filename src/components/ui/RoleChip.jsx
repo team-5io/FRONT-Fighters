@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { CURRENT_USER, RACI_ROLES } from "../../data/raci";
+import { RACI_ROLES } from "../../data/raci";
+import { useAuth } from "../../auth/AuthContext";
 import RaciChip from "./RaciChip";
 import { cx } from "./cx";
 
@@ -16,7 +17,8 @@ import { cx } from "./cx";
  * `MyRoleBar`는 지우지 않는다 — RACI 역할 관리·마이페이지처럼 이 정보가 화면의
  * 주인공인 곳은 그대로 쓴다(원칙 C는 "반복되는 부차 정보"에만 적용).
  */
-export default function RoleChip({ role = CURRENT_USER.role, scope, className = "" }) {
+export default function RoleChip({ role, scope, className = "" }) {
+  const { user } = useAuth();
   const meta = RACI_ROLES[role];
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -72,7 +74,7 @@ export default function RoleChip({ role = CURRENT_USER.role, scope, className = 
             <br />
             {meta.hidden.join(" · ")}
           </span>
-          {CURRENT_USER.isTeamAdmin && (
+          {user.isTeamAdmin && (
             <span className="mt-[8px] block border-t border-line pt-[8px] font-mono text-[11px] font-bold text-neutral-500">
               팀 관리자
             </span>

@@ -1,8 +1,11 @@
 import { useState } from "react";
 import Page, { Section } from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
-import { Button, RaciChip } from "../components/ui";
-import { CURRENT_USER, RACI_ROLES } from "../data/raci";
+import { Button, EmptyState, RaciChip } from "../components/ui";
+import { RACI_ROLES } from "../data/raci";
+import { useAuth } from "../auth/AuthContext";
+import { users } from "../api/endpoints";
+import { useMutation } from "../hooks/useApi";
 
 /**
  * 마이페이지 — `#/me` (4차 지시서 3장)
@@ -18,10 +21,22 @@ import { CURRENT_USER, RACI_ROLES } from "../data/raci";
  * 강조 버튼은 저장 하나.
  */
 
-/** 소속 팀 — `GET /teams/{teamId}/members`의 역할 정보를 raci.js에서 재사용 */
-const MY_TEAMS = [
-  { id: "5io", name: "5IO주", role: CURRENT_USER.role, isAdmin: CURRENT_USER.isTeamAdmin, joinedAt: "2026-08-01" },
-];
+/**
+ * 소속 팀 — 로그인 세션의 팀·역할에서 만든다.
+ * 모듈 최상위에서 사용자를 읽지 않는다(import 시점엔 세션이 없다).
+ * 팀이 여러 개인 경우는 스펙에 없어 하나만 다룬다.
+ */
+function myTeams(user) {
+  if (!user.teamId && !user.teamName) return [];
+  return [
+    {
+      id: user.teamId ?? "team",
+      name: user.teamName ?? "내 팀",
+      role: user.role,
+      isAdmin: user.isTeamAdmin,
+    },
+  ];
+}
 
 const TIMEZONES = [
   { value: "Asia/Seoul", label: "(UTC+9) 서울" },
@@ -57,14 +72,24 @@ function Row({ label, hint, children }) {
 }
 
 export default function MyPage() {
-  const [name, setName] = useState(CURRENT_USER.name);
-  const [timezone, setTimezone] = useState("Asia/Seoul");
-  const [language, setLanguage] = useState("ko");
+  const { user, signOut, updateUser } = useAuth();
+  const [name, setName] = useState(user.name);
+  const [timezone, setTimezone] = useState(user.timezone ?? "Asia/Seoul");
+  const [language, setLanguage] = useState(user.language ?? "ko");
   const [saved, setSaved] = useState(false);
 
-  function save(event) {
+  const teams = myTeams(user);
+  const { mutate: save, pending, error } = useMutation((payload) => users.updateMe(payload));
+
+  async function submit(event) {
     event.preventDefault();
-    setSaved(true);
+    try {
+      await save({ name, timezone, language });
+      updateUser({ name, timezone, language });
+      setSaved(true);
+    } catch {
+      setSaved(false);
+    }
   }
 
   return (
@@ -73,14 +98,14 @@ export default function MyPage() {
         title="내 계정"
         description="이름과 시간대, 선호 언어를 설정합니다. 시간대는 Follow-the-Sun 인수인계에서 참고됩니다."
         properties={[
-          { label: "이메일", value: "gonayoung@5io.team" },
-          { label: "소속 팀", value: `${MY_TEAMS.length}개` },
+          { label: "이메일", value: user.email ?? "—" },
+          { label: "소속 팀", value: `${teams.length}개` },
         ]}
       />
 
       {/* ── 기본 정보 (PATCH /users/me) ── */}
       <Section title="기본 정보">
-        <form onSubmit={save}>
+        <form onSubmit={submit}>
           <Row label="이름">
             <input
               value={name}
@@ -94,7 +119,7 @@ export default function MyPage() {
           </Row>
 
           <Row label="이메일" hint="이메일은 변경할 수 없습니다.">
-            <input value="gonayoung@5io.team" readOnly aria-label="이메일" className={UNDERLINE} />
+            <input value={user.email ?? ""} readOnly aria-label="이메일" className={UNDERLINE} />
           </Row>
 
           <Row label="시간대">
@@ -135,20 +160,38 @@ export default function MyPage() {
 
           <div className="mt-[16px] flex items-center gap-[12px]">
             {/* 이 화면의 유일한 강조 버튼 */}
-            <Button type="submit" className="rounded-sm">
-              저장
+            <Button type="submit" className="rounded-sm" disabled={pending}>
+              {pending ? "저장 중…" : "저장"}
             </Button>
-            {saved && (
+            {saved && !error && (
               <span className="text-[13px] font-medium text-success-text">저장되었습니다.</span>
             )}
           </div>
+          {error && (
+            <EmptyState
+              compact
+              title="저장하지 못했습니다"
+              description={error.message}
+              actionLabel="다시 시도"
+              onAction={submit}
+            />
+          )}
         </form>
       </Section>
 
       {/* ── 소속 팀 ── */}
       <Section title="소속 팀" caption="팀에서 맡은 RACI 역할입니다.">
+        {teams.length === 0 && (
+          <EmptyState
+            compact
+            title="소속된 팀이 없습니다"
+            description="팀을 만들거나 초대를 수락하면 여기에 표시됩니다."
+            actionLabel="팀 생성 또는 참여"
+            onAction={() => (window.location.hash = "#/team-invite")}
+          />
+        )}
         <ul className="flex flex-col">
-          {MY_TEAMS.map((team) => (
+          {teams.map((team) => (
             <li
               key={team.id}
               className="flex flex-wrap items-center gap-x-[12px] gap-y-[6px] border-b border-line py-[12px] last:border-b-0"
@@ -163,9 +206,7 @@ export default function MyPage() {
               {team.isAdmin && (
                 <span className="font-mono text-[12px] font-bold text-neutral-500">팀 관리자</span>
               )}
-              <span className="ml-auto text-[13px] font-medium text-neutral-500">
-                {team.joinedAt} 합류
-              </span>
+
             </li>
           ))}
         </ul>
@@ -173,11 +214,7 @@ export default function MyPage() {
 
       {/* ── 로그아웃 (POST /auth/logout — 실제 호출은 하지 않는다) ── */}
       <Section title="세션">
-        <Button
-          variant="ghost"
-          className="rounded-sm px-0 text-error-text"
-          onClick={() => (window.location.hash = "#/login")}
-        >
+        <Button variant="ghost" className="rounded-sm px-0 text-error-text" onClick={signOut}>
           로그아웃
         </Button>
       </Section>

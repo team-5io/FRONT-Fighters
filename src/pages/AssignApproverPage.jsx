@@ -9,6 +9,9 @@ import {
   StatusBadge,
 } from "../components/ui";
 import { canManageTeam } from "../data/raci";
+import { docPrs } from "../api/endpoints";
+import { useMutation } from "../hooks/useApi";
+import { useAuth } from "../auth/AuthContext";
 
 /**
  * 승인권자 지정 — `#/assign-approver`
@@ -25,6 +28,8 @@ import { canManageTeam } from "../data/raci";
  * 3차 지시서 2.1: 부재 상태 안내와 지정 조건은 같은 대상의 설명이라 독립 단위가
  * 아니다. Card를 걷어내고 타이포 위계로만 나눴다 (카드 4 → 1, 선택 폼만 남음).
  * 상태색 틴트 배경도 제거했다(2.2).
+ *
+ * API 연동 지시서 2.7: `PATCH /doc-prs/{prId}/approver`.
  */
 
 const TARGET_PR = {
@@ -47,7 +52,11 @@ const CONDITIONS = [
 ];
 
 export default function AssignApproverPage() {
-  const editable = canManageTeam();
+  const { user } = useAuth();
+  const editable = canManageTeam(user);
+  const assign = useMutation(() =>
+    docPrs.setApprover(TARGET_PR.id, { approver, reason: reason || undefined }),
+  );
   const [approver, setApprover] = useState("고나영");
   const [reason, setReason] = useState("");
 
@@ -164,8 +173,12 @@ export default function AssignApproverPage() {
           </label>
 
           <div className="mt-[16px] flex items-center gap-[10px]">
-            <Button className="rounded-sm" disabled={!editable}>
-              대체 승인권자 지정
+            <Button
+              className="rounded-sm"
+              disabled={!editable || assign.pending}
+              onClick={() => assign.mutate()}
+            >
+              {assign.pending ? "지정 중…" : "대체 승인권자 지정"}
             </Button>
             <span className="text-[13px] font-medium text-neutral-500">
               이 지정은 {TARGET_PR.id}에만 적용됩니다.

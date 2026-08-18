@@ -8,7 +8,8 @@ import {
   DataTable,
   PermissionNotice,
 } from "../components/ui";
-import { CURRENT_USER, canManageTeam } from "../data/raci";
+import { canManageTeam } from "../data/raci";
+import { useAuth } from "../auth/AuthContext";
 import { IconText } from "../components/icons";
 
 /**
@@ -32,7 +33,8 @@ const INITIAL_TERMS = [];
 const PAGE_SIZE = 10;
 
 export default function GlossaryPage() {
-  const editable = canManageTeam();
+  const { user } = useAuth();
+  const editable = canManageTeam(user);
   const [terms, setTerms] = useState(INITIAL_TERMS);
   const [form, setForm] = useState({ source: "", target: "", note: "", category: CATEGORIES[0] });
 
@@ -46,7 +48,7 @@ export default function GlossaryPage() {
       {
         id: `term-${Date.now()}`,
         ...form,
-        author: CURRENT_USER.name,
+        author: user.name,
         createdAt: new Date().toISOString().slice(0, 10),
       },
       ...prev,

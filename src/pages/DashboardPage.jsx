@@ -11,7 +11,7 @@ import {
   tone,
 } from "../components/ui";
 import { ACTOR_META, MERGE_BLOCKERS } from "../data/status";
-import { CURRENT_USER } from "../data/raci";
+import { useAuth } from "../auth/AuthContext";
 
 /**
  * 대시보드(홈) — `#/dashboard`
@@ -92,13 +92,14 @@ const RECENT_DOCS = [
 ];
 
 export default function DashboardPage() {
+  const { user } = useAuth();
   const actionable = MY_QUEUE.filter((item) => !item.waiting);
 
   return (
     <Page>
       <PageHeader
         breadcrumb={[{ label: "5IO주" }, { label: "대시보드" }]}
-        title={`${CURRENT_USER.name}님, 오늘 처리할 일이 ${actionable.length}건 있습니다`}
+        title={`${user.name}님, 오늘 처리할 일이 ${actionable.length}건 있습니다`}
         properties={[
           // 강조는 '지금 내가 처리해야 할 것' 하나만. 나머지는 같은 회색조 (원칙 D)
           {

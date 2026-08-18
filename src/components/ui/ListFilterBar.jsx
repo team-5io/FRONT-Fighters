@@ -15,6 +15,8 @@ export default function ListFilterBar({
   filters = [],
   searchLabel,
   searchPlaceholder = "검색",
+  value,
+  onSearch,
   right,
   className = "",
 }) {
@@ -26,6 +28,8 @@ export default function ListFilterBar({
           type="search"
           placeholder={searchPlaceholder}
           aria-label={searchLabel}
+          value={value}
+          onChange={onSearch ? (event) => onSearch(event.target.value) : undefined}
           className="w-full bg-transparent text-[13px] font-medium text-neutral-900 outline-none placeholder:text-neutral-500"
         />
       </label>

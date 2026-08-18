@@ -1,4 +1,5 @@
-import { CURRENT_USER, RACI_ROLES } from "../../data/raci";
+import { RACI_ROLES } from "../../data/raci";
+import { useAuth } from "../../auth/AuthContext";
 import RaciChip from "./RaciChip";
 import { cx } from "./cx";
 
@@ -10,10 +11,11 @@ import { cx } from "./cx";
  * 1차 구현은 20개 화면 어디에도 현재 사용자의 역할이 없었다.
  */
 export default function MyRoleBar({
-  role = CURRENT_USER.role,
+  role,
   scope,
   className = "",
 }) {
+  const { user } = useAuth();
   const meta = RACI_ROLES[role];
   if (!meta) return null;
 
@@ -27,12 +29,12 @@ export default function MyRoleBar({
       <span className="text-[13px] font-medium text-neutral-500">
         {scope ? `${scope}에서 내 역할` : "내 역할"}
       </span>
-      <RaciChip role={role} name={`${CURRENT_USER.name} · ${meta.label}`} size="sm" />
+      <RaciChip role={role} name={`${user.name} · ${meta.label}`} size="sm" />
       <span className="text-[13px] font-medium text-neutral-500">
         할 수 있는 것 —{" "}
         <span className="font-semibold text-neutral-700">{meta.can.join(" · ")}</span>
       </span>
-      {CURRENT_USER.isTeamAdmin && (
+      {user.isTeamAdmin && (
         <span className="ml-auto shrink-0 rounded-full border border-line bg-neutral-0 px-[9px] py-[3px] font-mono text-[12px] font-bold text-neutral-700">
           팀 관리자
         </span>
@@ -74,7 +76,7 @@ export function PermissionNotice({
       </span>
       <span>
         {allowed
-          ? `${CURRENT_USER.name}님은 팀 관리자입니다. ${action}을 수행할 수 있습니다.`
+          ? `${user.name}님은 팀 관리자입니다. ${action}을 수행할 수 있습니다.`
           : `${action}은 팀 관리자만 수행할 수 있습니다. 내용은 열람만 가능합니다.`}
         {detail ? ` ${detail}` : ""}
       </span>
