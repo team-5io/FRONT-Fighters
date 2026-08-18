@@ -1,226 +1,204 @@
 import { useState } from "react";
 import Page from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
-import GraphCanvas from "../components/graph/GraphCanvas";
 import {
   Button,
-  CioMark,
-  RaciChip,
+  EmptyState,
   StatusBadge,
   cx,
-  tone,
 } from "../components/ui";
-import {
-  GRAPH_EDGES,
-  GRAPH_NODES,
-  RELATION_LABEL,
-  impactOf,
-  nodeById,
-} from "../data/graph";
-import { IconLock } from "../components/icons";
 import { documents as documentsApi } from "../api/endpoints";
 import { useApi } from "../hooks/useApi";
 
 /**
  * Document Graph — `#/graph`
  *
- * 2차 지시서 3장: 카드/목록에 가깝던 화면을 옵시디언식 노드-엣지 네트워크로 바꿨다.
- * 캔버스가 주인공이고 선택한 노드의 정보는 우측 얇은 패널로 내렸다(4.1 원칙).
- *
- * 데이터는 `src/data/graph.js` 단일 출처 — AI 작성 보조 패널의 "연결 문서 인용",
- * 작성 화면의 "연결된 문서"가 같은 곳을 읽는다.
- *
- * 5차 지시서 원칙 B: 우측 패널이 노드 정보 + 액션 + 영향 문서 4항목 + 사용처 2항목 +
- * 담당 칩까지 다섯 그룹을 동시에 펼쳐 보여줬다. 기본 노출은 노드 요약 하나로 줄이고
- * 나머지는 **탭 하나만 열리도록** 바꿨다.
- *
- * API 연동 지시서 2.6: 캔버스는 `GET /documents/{id}/graph`,
- * 우측 "영향받는 문서"는 `GET /documents/{id}/impact`.
- * 백엔드 미설정이면 `src/data/graph.js` mock으로 떨어진다.
+ * API: `GET /documents/{id}/graph` (노드/엣지), `GET /documents/{id}/impact` (영향 문서)
+ * API 응답이 없으면 빈 상태를 안내한다.
  */
 
-const PANEL_TABS = [
-  { key: "impact", label: "영향받는 문서" },
-  { key: "consumers", label: "쓰는 곳" },
-  { key: "owners", label: "담당" },
-];
-
-const FOCUS_ID = new URLSearchParams(window.location.hash.split("?")[1] ?? "").get("documentId") ?? "api-design";
-
-/** 그래프가 다른 기능의 기반 인프라라는 점 */
-const CONSUMERS = [];
+function getDocumentIdFromHash() {
+  const params = new URLSearchParams(window.location.hash.split("?")[1] ?? "");
+  return params.get("documentId") ?? params.get("id") ?? null;
+}
 
 export default function DocumentGraphPage() {
-  const [selectedId, setSelectedId] = useState(FOCUS_ID);
-  const [tab, setTab] = useState("impact");
+  const [documentId] = useState(getDocumentIdFromHash);
+  const [selectedId, setSelectedId] = useState(documentId);
 
-  // 그래프 데이터를 실제 API에서 가져온다.
-  const graphQuery = useApi(() => documentsApi.graph(FOCUS_ID), [FOCUS_ID]);
-  const impactQuery = useApi(() => documentsApi.impact(selectedId), [selectedId]);
+  // 그래프 데이터를 API에서 가져온다
+  const graphQuery = useApi(
+    () => documentsApi.graph(documentId),
+    [documentId],
+    { enabled: Boolean(documentId) },
+  );
+  const impactQuery = useApi(
+    () => documentsApi.impact(selectedId ?? documentId),
+    [selectedId],
+    { enabled: Boolean(selectedId ?? documentId) },
+  );
 
-  // API가 노드/엣지를 직접 줬으면 그걸, 아니면 data/graph.js의 로컬 데이터
-  const graphNodes = graphQuery.data?.nodes ?? GRAPH_NODES;
-  const graphEdges = graphQuery.data?.edges ?? GRAPH_EDGES;
+  const nodes = Array.isArray(graphQuery.data?.nodes) ? graphQuery.data.nodes : [];
+  const edges = Array.isArray(graphQuery.data?.edges) ? graphQuery.data.edges : [];
+  const impacts = Array.isArray(impactQuery.data) ? impactQuery.data : [];
+  const selectedNode = nodes.find((n) => (n.id ?? n.documentId) === selectedId) ?? null;
 
-  const selected = nodeById(selectedId);
-  const impacts = Array.isArray(impactQuery.data) ? impactQuery.data : impactOf(selectedId);
+  // 데이터가 없으면 빈 상태
+  if (!documentId || (graphQuery.data === null && !graphQuery.loading && !graphQuery.error)) {
+    return (
+      <Page>
+        <PageHeader
+          breadcrumb={[{ label: "그래프" }]}
+          title="Document Graph"
+        />
+        <div className="mt-[32px]">
+          <EmptyState
+            title="표시할 그래프가 없습니다"
+            description="문서를 선택한 뒤 그래프를 열거나, 문서 간 관계를 먼저 연결해 주세요."
+            actionLabel="문서 목록"
+            onAction={() => (window.location.hash = "#/documents")}
+          />
+        </div>
+      </Page>
+    );
+  }
 
   return (
-    <Page fullBleed>
+    <Page>
       <PageHeader
-        breadcrumb={[{ label: "5IO주", href: "#/dashboard" }, { label: "그래프" }]}
+        breadcrumb={[{ label: "그래프" }]}
         title="Document Graph"
-        description="문서 사이의 관계와 변경 영향을 봅니다. CIO의 검토와 작성 보조가 같은 관계 데이터를 참조합니다."
+        description="문서 사이의 관계와 변경 영향을 봅니다."
         properties={[
-          { label: "문서", value: `${GRAPH_NODES.length}개` },
-          { label: "관계", value: `${GRAPH_EDGES.length}개` },
-          {
-            label: "열람 제한",
-            value: `${GRAPH_NODES.filter((node) => node.locked).length}개`,
-          },
+          { label: "문서", value: `${nodes.length}개` },
+          { label: "관계", value: `${edges.length}개` },
         ]}
       />
 
-      <div className="mt-[20px] flex gap-[20px]">
-        {/* ── 캔버스가 주인공 ── */}
-        <div className="min-w-0 flex-1">
-          <GraphCanvas focusId={FOCUS_ID} selectedId={selectedId} onSelect={setSelectedId} />
+      {graphQuery.loading && (
+        <p className="mt-[24px] text-[14px] font-medium text-neutral-500">그래프를 불러오는 중…</p>
+      )}
+
+      {graphQuery.error && (
+        <div className="mt-[24px]">
+          <EmptyState
+            title="그래프를 불러오지 못했습니다"
+            description={graphQuery.error.message}
+            actionLabel="다시 시도"
+            onAction={() => graphQuery.reload()}
+          />
         </div>
+      )}
 
-        {/* ── 우: 선택 노드 정보 (얇게) ── */}
-        <aside className="w-[300px] shrink-0">
-          {selected?.locked ? (
-            <div className="rounded-md border border-line bg-neutral-50 p-[16px]">
-              <div className="flex items-center gap-[8px]">
-                <IconLock height={16} className="shrink-0 text-neutral-500" />
-                <p className="text-[14px] font-semibold text-neutral-500">
-                  열람 권한이 없는 문서
-                </p>
-              </div>
-              <p className="mt-[8px] text-[13px] font-medium leading-[19px] text-neutral-500">
-                제목·관계·이력이 모두 숨겨집니다. 열람이 필요하면 팀 관리자에게 RACI 참여자
-                지정을 요청하세요.
+      {!graphQuery.loading && !graphQuery.error && nodes.length === 0 && (
+        <div className="mt-[24px]">
+          <EmptyState
+            title="연결된 문서가 없습니다"
+            description="문서 간 관계를 먼저 연결하면 그래프가 표시됩니다."
+            actionLabel="관련 문서 연결"
+            onAction={() => (window.location.hash = `#/link-documents?documentId=${encodeURIComponent(documentId)}`)}
+          />
+        </div>
+      )}
+
+      {nodes.length > 0 && (
+        <div className="mt-[20px] flex gap-[20px]">
+          {/* ── 좌: 노드 목록 (캔버스 대체 — 실제 그래프 렌더링은 노드/엣지 API 응답 구조에 맞춰 추후 구현) ── */}
+          <div className="min-w-0 flex-1">
+            <div className="rounded-md border border-line bg-neutral-50/50 p-[16px]">
+              <p className="mb-[12px] text-[13px] font-medium text-neutral-500">
+                문서 노드 {nodes.length}개 · 관계 {edges.length}개
               </p>
-            </div>
-          ) : (
-            <>
-              <div>
-                <div className="flex items-start gap-[8px]">
-                  <h2 className="min-w-0 flex-1 text-[16px] font-bold leading-[24px] text-neutral-900">
-                    {selected?.title}
-                  </h2>
-                  <StatusBadge status={selected?.status} kind="document" size="sm" />
-                </div>
-                <p className="mt-[4px] text-[13px] font-medium text-neutral-500">
-                  {selected?.type} · {selected?.version}
-                </p>
-                <div className="mt-[10px] flex gap-[6px]">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="rounded-sm"
-                    onClick={() => (window.location.hash = "#/documents")}
-                  >
-                    문서 열기
-                  </Button>
-                  {selectedId === FOCUS_ID && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="rounded-sm"
-                      onClick={() => (window.location.hash = "#/link-documents")}
-                    >
-                      관계 편집
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {/* 세 그룹을 동시에 펼치지 않는다 — 탭으로 하나만 (원칙 B) */}
-              <div className="mt-[20px] flex gap-[2px] border-b border-line">
-                {PANEL_TABS.map((item) => (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => setTab(item.key)}
-                    aria-selected={tab === item.key}
-                    role="tab"
-                    className={cx(
-                      "-mb-px h-[30px] border-b-2 px-[8px] text-[13px] font-semibold transition-colors",
-                      tab === item.key
-                        ? "border-main-500 text-main-700"
-                        : "border-transparent text-neutral-500 hover:text-neutral-700",
-                    )}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-
-              {tab === "impact" && (
-                <ul className="mt-[10px] flex flex-col gap-[2px]">
-                  {impacts.map((item) => (
-                    <li key={item.node.id}>
+              <ul className="flex flex-wrap gap-[8px]">
+                {nodes.map((node) => {
+                  const id = node.id ?? node.documentId;
+                  const isSelected = id === selectedId;
+                  return (
+                    <li key={id}>
                       <button
                         type="button"
-                        onClick={() => setSelectedId(item.node.id)}
-                        className="flex w-full items-center gap-[8px] rounded-sm py-[6px] text-left transition-colors hover:bg-neutral-50/70"
+                        onClick={() => setSelectedId(id)}
+                        className={cx(
+                          "rounded-md border px-[12px] py-[8px] text-[13px] font-medium transition-colors",
+                          isSelected
+                            ? "border-main-500 bg-main-50 text-main-700"
+                            : "border-line bg-neutral-0 text-neutral-700 hover:border-main-300",
+                        )}
                       >
-                        <span className="truncate text-[13px] font-medium text-neutral-700">
-                          {item.node.locked ? "열람 권한 없음" : item.node.title}
-                        </span>
-                        <span
-                          className={cx(
-                            "ml-auto shrink-0 font-mono text-[10px] font-bold",
-                            item.impact === "direct" ? "text-error-text" : "text-info-text",
-                          )}
-                        >
-                          {item.impact === "direct" ? "직접" : "간접"}
-                        </span>
+                        {node.title ?? id}
                       </button>
                     </li>
-                  ))}
-                  {impacts.length === 0 && (
-                    <li className="py-[6px] text-[13px] font-medium text-neutral-500">
-                      연결된 문서가 없습니다.
-                    </li>
-                  )}
-                </ul>
-              )}
+                  );
+                })}
+              </ul>
+            </div>
+          </div>
 
-              {tab === "consumers" && (
-                <ul className="mt-[10px] flex flex-col gap-[2px]">
-                  {CONSUMERS.map((consumer) => (
-                    <li key={consumer.name}>
-                      <a
-                        href={consumer.href}
-                        className="flex items-start gap-[8px] rounded-sm py-[6px] transition-colors hover:bg-neutral-50/70"
-                      >
-                        {consumer.ai && <CioMark size={12} className="mt-[3px] shrink-0 text-info" />}
-                        <span className="min-w-0">
-                          <span className="block truncate text-[13px] font-medium text-neutral-700">
-                            {consumer.name}
-                          </span>
-                          <span className="block truncate text-[12px] text-neutral-500">
-                            {consumer.detail}
-                          </span>
-                        </span>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
+          {/* ── 우: 선택 노드 정보 ── */}
+          {selectedNode && (
+            <aside className="w-[300px] shrink-0">
+              <div className="flex items-start gap-[8px]">
+                <h2 className="min-w-0 flex-1 text-[16px] font-bold leading-[24px] text-neutral-900">
+                  {selectedNode.title}
+                </h2>
+                {selectedNode.status && (
+                  <StatusBadge status={selectedNode.status} kind="document" size="sm" />
+                )}
+              </div>
+              {selectedNode.type && (
+                <p className="mt-[4px] text-[13px] font-medium text-neutral-500">
+                  {selectedNode.type}
+                </p>
               )}
+              <div className="mt-[10px] flex gap-[6px]">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="rounded-sm"
+                  onClick={() => (window.location.hash = `#/write?documentId=${encodeURIComponent(selectedId)}`)}
+                >
+                  문서 열기
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="rounded-sm"
+                  onClick={() => (window.location.hash = `#/link-documents?documentId=${encodeURIComponent(selectedId)}`)}
+                >
+                  관계 편집
+                </Button>
+              </div>
 
-              {tab === "owners" && (
-                <div className="mt-[12px] flex flex-wrap gap-[8px]">
-                  <RaciChip role="R" name="김민섭" size="sm" />
-                  <RaciChip role="A" name="고나영" size="sm" />
-                </div>
-              )}
-            </>
+              {/* 영향받는 문서 */}
+              <div className="mt-[20px]">
+                <h3 className="text-[13px] font-semibold text-neutral-700">영향받는 문서</h3>
+                {impacts.length > 0 ? (
+                  <ul className="mt-[8px] flex flex-col gap-[4px]">
+                    {impacts.map((item, i) => {
+                      const impactNode = item.node ?? item;
+                      return (
+                        <li key={impactNode.id ?? i}>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedId(impactNode.id ?? impactNode.documentId)}
+                            className="flex w-full items-center gap-[8px] rounded-sm py-[5px] text-left transition-colors hover:bg-neutral-50/70"
+                          >
+                            <span className="truncate text-[13px] font-medium text-neutral-700">
+                              {impactNode.title ?? impactNode.id}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="mt-[6px] text-[13px] text-neutral-500">영향받는 문서가 없습니다.</p>
+                )}
+              </div>
+            </aside>
           )}
-        </aside>
-      </div>
+        </div>
+      )}
     </Page>
   );
 }

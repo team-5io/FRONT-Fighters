@@ -14,9 +14,10 @@ import {
 } from "../components/ui";
 import { createBlock } from "../data/blocks";
 import { IconGlobe, IconLink, IconSparkle } from "../components/icons";
-import { documents as documentsApi } from "../api/endpoints";
+import { documents as documentsApi, teams as teamsApi } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
 import { usePermissions } from "../hooks/usePermissions";
+import { useAuth } from "../auth/AuthContext";
 
 /**
  * 문서 작성/편집 — `#/write` (딥링크 `#/ai-structure`도 이 화면으로 온다)
@@ -100,6 +101,12 @@ export default function DocumentWritePage() {
       setBlocks(EMPTY_BLOCKS);
     }
   }, [documentId]);
+
+  const { user } = useAuth();
+  const teamId = user.teamId ?? "me";
+  const { data: membersData } = useApi(() => teamsApi.members(teamId), [teamId]);
+  const teamMembers = Array.isArray(membersData) ? membersData : [];
+  const [author, setAuthor] = useState(null); // null = 자기 자신
 
   const permissions = usePermissions(documentId);
 
@@ -199,7 +206,7 @@ export default function DocumentWritePage() {
             <ol className="flex flex-wrap items-center gap-[6px] text-[13px] font-medium text-neutral-500">
               <li>
                 <a href="#/dashboard" className="hover:text-main-500">
-                  5IO주
+                  {user.teamName ?? "내 팀"}
                 </a>
               </li>
               <li aria-hidden className="text-neutral-300">
@@ -229,8 +236,28 @@ export default function DocumentWritePage() {
             className="mt-[12px]"
             items={[
               { label: "상태", value: <StatusBadge variant="solid" status="draft" kind="document" size="sm" /> },
-              { label: "작성자", value: <RaciChip role="R" name="김민섭" size="sm" /> },
-              { label: "버전", value: <span className="font-mono text-[12px]">v3.3 (작성중)</span> },
+              {
+                label: "작성자",
+                value: teamMembers.length > 0 ? (
+                  <select
+                    value={author ?? user.name}
+                    onChange={(e) => setAuthor(e.target.value)}
+                    aria-label="작성자 선택"
+                    className="h-[24px] rounded-sm border border-line bg-transparent px-[6px] text-[13px] font-medium text-neutral-900 outline-none focus:border-main-500"
+                  >
+                    <option value={user.name}>{user.name} (나)</option>
+                    {teamMembers
+                      .filter((m) => (m.name ?? m.email) !== user.name)
+                      .map((m) => (
+                        <option key={m.id ?? m.name} value={m.name ?? m.email}>
+                          {m.name ?? m.email}
+                        </option>
+                      ))}
+                  </select>
+                ) : (
+                  <RaciChip role="R" name={user.name} size="sm" />
+                ),
+              },
               { label: "내 역할", value: <RoleChip scope="이 문서" /> },
             ]}
           />
