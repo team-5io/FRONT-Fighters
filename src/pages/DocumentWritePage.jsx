@@ -253,6 +253,7 @@ export default function DocumentWritePage() {
   }, [title, blocks, documentId, teamId, isOfficial]);
 
   const [menuOpen, setMenuOpen] = useState(false);
+  const [docPrModalOpen, setDocPrModalOpen] = useState(false);
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -461,35 +462,8 @@ export default function DocumentWritePage() {
               <Button
                 size="sm"
                 className="rounded-sm"
-                disabled={!canWrite || createDocPr.pending}
-                onClick={async () => {
-                  // 승인권자 ID 입력 (필수)
-                  const approverIdStr = window.prompt("승인권자(A)의 유저 ID를 입력하세요.\n(팀원 목록에서 확인할 수 있습니다)");
-                  if (!approverIdStr) return;
-                  const approverId = Number(approverIdStr);
-                  if (!approverId || isNaN(approverId)) {
-                    window.alert("유효한 숫자 ID를 입력해 주세요.");
-                    return;
-                  }
-                  // 제안 내용 입력 (필수)
-                  const proposedContent = window.prompt("이 Doc PR이 제안하는 변경 내용을 입력하세요.");
-                  if (!proposedContent?.trim()) {
-                    window.alert("제안 내용은 필수입니다.");
-                    return;
-                  }
-                  try {
-                    const docId = await ensureDocument();
-                    if (!docId) return;
-                    await saveDraft.mutate(docId);
-                    const created = unwrap(await createDocPr.mutate(docId, { approverId, proposedContent: proposedContent.trim() }));
-                    const prId = created?.id ?? created?.prId ?? created?.docPrId;
-                    window.location.hash = prId
-                      ? `#/doc-pr-detail?prId=${encodeURIComponent(prId)}`
-                      : "#/doc-pr";
-                  } catch (err) {
-                    window.alert(`Doc PR 생성 실패: ${err.body?.message ?? err.message}`);
-                  }
-                }}
+                disabled={isOfficial || createDocPr.pending}
+                onClick={() => setDocPrModalOpen(true)}
               >
                 {createDocPr.pending ? "생성 중…" : "Doc PR 생성"}
               </Button>
@@ -542,6 +516,147 @@ export default function DocumentWritePage() {
         onAccept={acceptSuggestion}
         onReject={(item) => setSuggestions((prev) => prev.filter((row) => row.id !== item.id))}
       />
+
+      {/* Doc PR 생성 모달 */}
+      {docPrModalOpen && (
+        <DocPrModal
+          teamMembers={teamMembers}
+          pending={createDocPr.pending}
+          onClose={() => setDocPrModalOpen(false)}
+          onSubmit={async ({ approverId, proposedContent }) => {
+            try {
+              const docId = await ensureDocument();
+              if (!docId) return;
+              await saveDraft.mutate(docId);
+              const created = unwrap(await createDocPr.mutate(docId, { approverId, proposedContent }));
+              const prId = created?.id ?? created?.prId ?? created?.docPrId;
+              setDocPrModalOpen(false);
+              window.location.hash = prId
+                ? `#/doc-pr-detail?prId=${encodeURIComponent(prId)}`
+                : "#/doc-pr";
+            } catch (err) {
+              window.alert(`Doc PR 생성 실패: ${err.body?.message ?? err.message}`);
+            }
+          }}
+        />
+      )}
     </Page>
+  );
+}
+
+/** Doc PR 생성 모달 — 승인권자 드롭다운 + 제안 내용 입력 */
+function DocPrModal({ teamMembers, pending, onClose, onSubmit }) {
+  const [approverId, setApproverId] = useState(null);
+  const [proposedContent, setProposedContent] = useState("");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const selected = teamMembers.find((m) => (m.userId ?? m.memberId) === approverId);
+  const canSubmit = approverId && proposedContent.trim();
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40" onClick={onClose}>
+      <div
+        className="w-full max-w-[480px] rounded-lg border border-line bg-neutral-0 p-[24px] shadow-[0_8px_32px_rgba(0,0,0,0.12)]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-[18px] font-bold text-neutral-900">Doc PR 생성</h2>
+        <p className="mt-[4px] text-[13px] text-neutral-500">
+          문서 변경사항을 리뷰받기 위해 승인권자를 지정하고 제안 내용을 작성하세요.
+        </p>
+
+        {/* 승인권자 선택 */}
+        <div className="mt-[20px]">
+          <label className="block text-[13px] font-semibold text-neutral-700">승인권자 (A)</label>
+          <div className="relative mt-[6px]">
+            <button
+              type="button"
+              onClick={() => setDropdownOpen((prev) => !prev)}
+              className="flex h-[40px] w-full items-center gap-[10px] rounded-sm border border-line bg-neutral-0 px-[12px] text-left text-[14px] font-medium text-neutral-900 transition-colors hover:border-main-300 focus:border-main-500 focus:outline-none"
+            >
+              {selected ? (
+                <>
+                  <MemberAvatar name={selected.name} />
+                  <span>{selected.name}</span>
+                  <span className="text-[12px] text-neutral-500">{selected.email}</span>
+                </>
+              ) : (
+                <span className="text-neutral-500">팀원을 선택하세요</span>
+              )}
+              <span className="ml-auto text-[10px] text-neutral-400">{dropdownOpen ? "▲" : "▼"}</span>
+            </button>
+
+            {dropdownOpen && (
+              <ul className="absolute left-0 right-0 top-full z-10 mt-[4px] max-h-[200px] overflow-y-auto rounded-md border border-line bg-neutral-0 p-[4px] shadow-[0_4px_16px_rgba(0,0,0,0.08)]">
+                {teamMembers.length === 0 && (
+                  <li className="px-[10px] py-[8px] text-[13px] text-neutral-500">팀원이 없습니다</li>
+                )}
+                {teamMembers.map((member) => {
+                  const id = member.userId ?? member.memberId;
+                  const isSelected = id === approverId;
+                  return (
+                    <li key={id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setApproverId(id);
+                          setDropdownOpen(false);
+                        }}
+                        className={`flex w-full items-center gap-[10px] rounded-sm px-[10px] py-[8px] text-left transition-colors ${
+                          isSelected ? "bg-main-50" : "hover:bg-neutral-50"
+                        }`}
+                      >
+                        <MemberAvatar name={member.name} />
+                        <div className="min-w-0">
+                          <p className="truncate text-[13px] font-medium text-neutral-900">{member.name}</p>
+                          <p className="truncate text-[12px] text-neutral-500">{member.email}</p>
+                        </div>
+                        {isSelected && <span className="ml-auto text-[12px] text-main-500">✓</span>}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
+
+        {/* 제안 내용 */}
+        <div className="mt-[16px]">
+          <label className="block text-[13px] font-semibold text-neutral-700">제안 내용</label>
+          <textarea
+            value={proposedContent}
+            onChange={(e) => setProposedContent(e.target.value)}
+            placeholder="이 Doc PR이 제안하는 변경 내용을 작성하세요"
+            rows={4}
+            className="mt-[6px] w-full resize-none rounded-sm border border-line bg-neutral-0 px-[12px] py-[10px] text-[14px] font-medium text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500"
+          />
+        </div>
+
+        {/* 버튼 */}
+        <div className="mt-[20px] flex items-center justify-end gap-[8px]">
+          <Button variant="secondary" size="sm" className="rounded-sm" onClick={onClose}>
+            취소
+          </Button>
+          <Button
+            size="sm"
+            className="rounded-sm"
+            disabled={!canSubmit || pending}
+            onClick={() => onSubmit({ approverId, proposedContent: proposedContent.trim() })}
+          >
+            {pending ? "생성 중…" : "Doc PR 생성"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** 성씨 아바타 */
+function MemberAvatar({ name }) {
+  const initial = (name ?? "?").charAt(0);
+  return (
+    <span className="flex size-[28px] shrink-0 items-center justify-center rounded-full bg-main-100 text-[12px] font-bold text-main-700">
+      {initial}
+    </span>
   );
 }
