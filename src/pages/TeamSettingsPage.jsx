@@ -3,19 +3,16 @@ import Page from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
 import {
   Button,
-  Disclosure,
   EmptyState,
-  RaciChip,
-  StatusBadge,
   cx,
 } from "../components/ui";
-import { RACI_ORDER, RACI_ROLES, TEAM_ROLES, canManageTeam } from "../data/raci";
+import { TEAM_ROLES, canManageTeam } from "../data/raci";
 import { useAuth } from "../auth/AuthContext";
-import { documents as documentsApi, teams as teamsApi } from "../api/endpoints";
+import { teams as teamsApi } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
 import { unwrapList } from "../api/unwrap";
-import { normalizeDocument, normalizeMember } from "../api/normalize";
-import { IconPaper, IconShield, IconTeam, IconText } from "../components/icons";
+import { normalizeMember } from "../api/normalize";
+import { IconPaper, IconTeam, IconText } from "../components/icons";
 
 /**
  * 팀 설정 — `#/t/{teamId}/settings`
@@ -30,7 +27,6 @@ import { IconPaper, IconShield, IconTeam, IconText } from "../components/icons";
 
 const TABS = [
   { key: "team", icon: <IconTeam size={15} />, label: "팀 정보" },
-  { key: "raci", icon: <IconShield size={14} />, label: "RACI 역할" },
   { key: "charter", icon: <IconPaper size={14} />, label: "협업 규칙" },
   { key: "glossary", icon: <IconText size={14} />, label: "팀 용어집" },
   { key: "members", icon: <IconTeam size={15} />, label: "팀원 관리" },
@@ -98,7 +94,6 @@ export default function TeamSettingsPage() {
         {/* ── 우: 탭 내용 ── */}
         <div className="min-w-0 flex-1">
           {active === "team" && <TeamInfoPanel teamName={teamName} memberCount={members.length} editable={isAdmin} members={members} teamId={teamId} reload={membersQuery.reload} />}
-          {active === "raci" && <RaciPanel teamId={teamId} editable={isAdmin} />}
           {active === "charter" && <CharterPanel teamId={teamId} editable={isAdmin} />}
           {active === "glossary" && <GlossaryPanel />}
           {active === "members" && <MembersPanel teamId={teamId} members={members} editable={isAdmin} reload={membersQuery.reload} />}
@@ -232,79 +227,6 @@ function TeamInfoPanel({ teamName, memberCount, editable, members, teamId, reloa
             </tbody>
           </table>
         </div>
-      )}
-    </div>
-  );
-}
-
-/* ─────────────────────── RACI 역할 ─────────────────────── */
-function RaciPanel({ teamId, editable }) {
-  const docsQuery = useApi(
-    () => documentsApi.list({ teamId: Number(teamId) }),
-    [teamId],
-    { enabled: Boolean(teamId) },
-  );
-  const membersQuery = useApi(() => teamsApi.members(teamId), [teamId], {
-    enabled: Boolean(teamId),
-  });
-  const rawMembers = unwrapList(membersQuery.data);
-  const documentRoles = unwrapList(docsQuery.data).map(normalizeDocument);
-
-  /**
-   * 문서별 RACI 배정 현황을 주는 조회 엔드포인트가 없다 (`PUT .../raci`만 있다).
-   * 대신 `restricted`가 RACI 배정 여부를 알려준다 — 하나라도 배정하면 true가 된다
-   * (my-permissions 문서의 "RACI를 하나라도 배정하면 restricted=true" 주석).
-   */
-  const unassigned = documentRoles.filter((doc) => !doc.restricted);
-
-  return (
-    <div>
-      <div className="flex items-start gap-[12px]">
-        <div className="min-w-0 flex-1">
-          <h2 className="text-[16px] font-semibold text-neutral-900">RACI 역할</h2>
-          <p className="mt-[4px] text-[13px] text-neutral-500">누가 어떤 문서를 쓰고, 검토하고, 승인하는지 정합니다.</p>
-        </div>
-        {/* 실제 지정·저장(PUT /documents/{id}/raci)은 전용 화면에서 한다 */}
-        <Button
-          variant="secondary"
-          size="sm"
-          className="shrink-0 rounded-sm"
-          onClick={() => (window.location.hash = "#/raci-roles")}
-        >
-          역할 지정하기
-        </Button>
-      </div>
-
-      {rawMembers.length === 0 && documentRoles.length === 0 ? (
-        <EmptyState
-          compact
-          className="mt-[16px]"
-          title="데이터가 없습니다"
-          description="팀원을 초대하고 문서를 만들면 역할을 지정할 수 있습니다."
-        />
-      ) : (
-        <>
-          {unassigned.length > 0 && (
-            <div className="mt-[16px] rounded-sm border border-warning/30 bg-warning-tint px-[12px] py-[10px]">
-              <p className="text-[13px] font-medium text-warning-text">
-                RACI가 아직 배정되지 않은 문서가 {unassigned.length}건 있습니다. 배정 전에는 팀원
-                전체가 열람할 수 있습니다.
-              </p>
-            </div>
-          )}
-
-          <div className="mt-[16px]">
-            <h3 className="text-[14px] font-semibold text-neutral-700">역할 기준</h3>
-            <dl className="mt-[8px] grid grid-cols-2 gap-[12px]">
-              {RACI_ORDER.map((role) => (
-                <div key={role} className="flex items-start gap-[8px]">
-                  <RaciChip role={role} size="sm" />
-                  <span className="text-[12px] text-neutral-500">{RACI_ROLES[role].summary}</span>
-                </div>
-              ))}
-            </dl>
-          </div>
-        </>
       )}
     </div>
   );
