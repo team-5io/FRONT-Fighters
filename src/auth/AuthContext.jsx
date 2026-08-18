@@ -31,11 +31,12 @@ export function AuthProvider({ children }) {
 
   const signIn = useCallback(async (credentials) => {
     const result = await authApi.login(credentials);
-    // 응답 형태가 백엔드마다 다를 수 있어 흔한 키를 모두 받아 준다
-    const nextToken = result?.accessToken ?? result?.token ?? result?.access_token ?? null;
+    // 백엔드 응답: { status, code, message, data: { publicId, email, name, accessToken } }
+    const payload = result?.data ?? result;
+    const nextToken = payload?.accessToken ?? payload?.token ?? payload?.access_token ?? null;
     setAccessToken(nextToken);
     setToken(nextToken);
-    setUser(normalizeUser(result?.user ?? result));
+    setUser(normalizeUser(payload?.user ?? payload));
     return result;
   }, []);
 
