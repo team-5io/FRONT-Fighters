@@ -13,12 +13,12 @@ import {
   cx,
   tone,
 } from "../components/ui";
-import { ACTOR_META, MERGE_BLOCKERS } from "../data/status";
-import { RACI_ROLES } from "../data/raci";
+import { DOC_PR_STATUS, isApproved } from "../data/status";
 import { docPrs } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
 import { unwrap, unwrapList } from "../api/unwrap";
-import { useAuth } from "../auth/AuthContext";
+import { normalizeDocPr, normalizeMergeCheck } from "../api/normalize";
+import { usePermissions } from "../hooks/usePermissions";
 
 /**
  * 사람 리뷰 — `#/human-review`
@@ -68,7 +68,6 @@ const INITIAL_CHECKLIST = [
 ];
 
 export default function HumanReviewPage() {
-  const { user } = useAuth();
   const prId = prIdFromHash();
 
   // Doc PR 상세/이력/리뷰를 실제 API에서 가져온다
@@ -77,23 +76,27 @@ export default function HumanReviewPage() {
   const reviewsQuery = useApi(() => docPrs.reviews(prId), [prId], { enabled: Boolean(prId) });
   const mergeCheckQuery = useApi(() => docPrs.mergeCheck(prId), [prId], { enabled: Boolean(prId) });
 
-  const pr = unwrap(detailQuery.data) ?? DOC_PR_EMPTY;
+  const pr = { ...DOC_PR_EMPTY, ...normalizeDocPr(unwrap(detailQuery.data) ?? {}) };
   const prHistory = unwrapList(historyQuery.data);
   const humanReviews = unwrapList(reviewsQuery.data);
 
-  // 남은 Merge 조건 — `GET /doc-prs/{prId}/merge-check`의 미충족 항목
-  const mergeCheckBody = unwrap(mergeCheckQuery.data);
-  const checks = Array.isArray(mergeCheckBody)
-    ? mergeCheckBody
-    : unwrapList(mergeCheckBody?.checks ?? mergeCheckBody);
-  const openBlockers = checks
-    .filter((check) => !check.met)
-    .map((check) => check.key)
-    .filter((key) => MERGE_BLOCKERS[key]);
+  /**
+   * Merge 가능 여부 — `{ mergeable, reason }`. 조건 배열이 아니다.
+   * 승인권자(A)가 아니면 403이라, 그때는 상태로 근사한다.
+   */
+  const mergeState = normalizeMergeCheck(unwrap(mergeCheckQuery.data));
+  const mergeForbidden = mergeCheckQuery.error?.status === 403;
+  const mergeable = mergeState.known ? mergeState.mergeable : isApproved(pr.status);
+  const blockReason = mergeState.known ? mergeState.reason : null;
 
-  const myRole = RACI_ROLES[user.role];
-  const canDecide = user.role === "A";
-  const canComment = user.role === "A" || user.role === "C";
+  /**
+   * RACI 역할은 **문서마다** 다르다 — 로그인 응답에는 없다.
+   * `GET /documents/{id}/my-permissions`의 `role`로 판단한다.
+   */
+  const permissions = usePermissions(pr.documentId);
+  const myRoleLabel = permissions.role ?? "미배정";
+  const canDecide = permissions.canApprove;
+  const canComment = permissions.canComment;
 
   const [checklist, setChecklist] = useState(INITIAL_CHECKLIST);
   const [comment, setComment] = useState("");
@@ -102,9 +105,16 @@ export default function HumanReviewPage() {
   const approve = useMutation(() => docPrs.approve(prId));
   const reject = useMutation(() => docPrs.reject(prId, { reason: comment || "재검토 요청" }));
 
-  const reviewers = pr.reviewers ?? [];
-  const pending = reviewers.filter((reviewer) => !reviewer.done);
-  const doneCount = reviewers.length - pending.length;
+  /**
+   * Doc PR 응답에는 "지정된 리뷰어 명단"이 없다 (id/documentId/requesterId/
+   * approverId/proposedContent/status/mergedAt이 전부다). 그래서 **등록된 리뷰
+   * 의견**으로 진행 상황을 보여준다 — 없는 필드를 지어내지 않는다.
+   */
+  const reviewerCount = new Set(
+    humanReviews.map(
+      (review) => review.reviewerId ?? review.reviewer?.name ?? review.author?.name,
+    ),
+  ).size;
 
   return (
     <Page>
@@ -112,89 +122,97 @@ export default function HumanReviewPage() {
         breadcrumb={[
           { label: "5IO주", href: "#/dashboard" },
           { label: "Doc PR", href: "#/doc-pr" },
-          { label: pr.id ?? "—", href: "#/doc-pr-detail" },
+          {
+            label: `#${prId ?? "—"}`,
+            href: `#/doc-pr-detail?prId=${encodeURIComponent(prId ?? "")}`,
+          },
           { label: "사람 리뷰" },
         ]}
-        title={`${pr.id ?? "—"} · ${pr.title ?? ""}`}
+        title={`Doc PR #${prId ?? "—"} 사람 리뷰`}
         properties={[
           { label: "상태", value: <StatusBadge variant="solid" status={pr.status} size="sm" /> },
-          { label: "문서", value: pr.document ?? pr.targetDoc ?? "—" },
           {
-            label: "작성자",
-            value: <RaciChip role={pr.author?.role ?? "R"} name={pr.author?.name ?? "—"} size="sm" />,
+            label: "대상 문서",
+            value: pr.documentId ? (
+              <a
+                href={`#/write?documentId=${encodeURIComponent(pr.documentId)}`}
+                className="font-semibold text-main-500"
+              >
+                문서 #{pr.documentId}
+              </a>
+            ) : (
+              "—"
+            ),
           },
           {
-            label: "승인자",
-            value: <RaciChip role={pr.approver?.role ?? "A"} name={pr.approver?.name ?? "미지정"} size="sm" />,
+            label: "요청자",
+            value: <RaciChip role="R" name={`#${pr.requesterId ?? "—"}`} size="sm" />,
           },
-          { label: "내 역할", value: <RaciChip role={user.role} showLabel size="sm" /> },
+          {
+            label: "승인권자",
+            value: (
+              <RaciChip role="A" name={pr.approverId ? `#${pr.approverId}` : "미지정"} size="sm" />
+            ),
+          },
+          {
+            label: "내 역할",
+            value: permissions.role ? (
+              <RaciChip role={permissions.role} showLabel size="sm" />
+            ) : (
+              <span className="text-[13px] text-neutral-500">미배정</span>
+            ),
+          },
         ]}
       />
 
       {/* ── 주인공: 지금 리뷰가 어디까지 왔는가 (박스 없이 타이포로) ── */}
       <section className="mt-[28px]">
         <h2 className="text-[18px] font-bold leading-[26px] text-neutral-900">
-          리뷰어 {reviewers.length}명 중 {doneCount}명이 의견을 남겼습니다
+          {humanReviews.length > 0
+            ? `${reviewerCount}명이 리뷰 의견 ${humanReviews.length}건을 남겼습니다`
+            : "아직 등록된 리뷰 의견이 없습니다"}
         </h2>
         <p className="mt-[6px] text-[14px] font-medium leading-[21px] text-neutral-700">
-          {pending.length > 0
-            ? `${pending.map((r) => r.name).join(" · ")}님의 리뷰가 아직 등록되지 않아 Merge 조건이 충족되지 않았습니다.`
-            : "모든 리뷰어가 의견을 남겼습니다. 승인하면 Merge할 수 있습니다."}
+          {mergeable
+            ? "승인이 끝나 Merge할 수 있는 상태입니다."
+            : "승인권자(A)가 승인해야 Merge할 수 있습니다."}
         </p>
 
         <DefinitionRows
           className="mt-[16px]"
           rows={[
             {
-              label: "리뷰어",
+              label: "제안 내용",
               value: (
-                <span className="flex flex-wrap items-center gap-[10px]">
-                  {reviewers.map((reviewer) => (
-                    <span key={reviewer.name} className="flex items-center gap-[5px]">
-                      <RaciChip role={reviewer.role} name={reviewer.name} size="sm" />
-                      <span
-                        className={cx(
-                          "font-mono text-[11px] font-bold",
-                          reviewer.done ? "text-success-text" : "text-neutral-500",
-                        )}
-                      >
-                        {reviewer.done ? "제출" : "대기"}
-                      </span>
-                    </span>
-                  ))}
+                <span className="whitespace-pre-wrap text-neutral-700">
+                  {pr.proposedContent || "—"}
                 </span>
               ),
             },
-            { label: "최소 승인", value: `${pr.minApprovals ?? 1}명 이상` },
             {
-              label: "남은 Merge 조건",
+              label: "Merge 가능 여부",
               value: (
                 <span className="flex flex-wrap items-center gap-[6px]">
-                  {openBlockers.length === 0 && (
-                    <span className="text-neutral-500">남은 조건이 없습니다</span>
+                  <span className={mergeable ? "text-success-text" : "text-neutral-700"}>
+                    {mergeCheckQuery.loading
+                      ? "확인 중…"
+                      : mergeable
+                        ? "Merge 가능"
+                        : "아직 불가"}
+                  </span>
+                  {blockReason && <span className="text-neutral-500">— {blockReason}</span>}
+                  {mergeForbidden && (
+                    <span className="text-neutral-500">
+                      (승인권자만 확인 가능 — 상태 {DOC_PR_STATUS[pr.status]?.label ?? pr.status}로 표시)
+                    </span>
                   )}
-                  {openBlockers.map((key) => {
-                    const blocker = MERGE_BLOCKERS[key];
-                    const actor = ACTOR_META[blocker.actor];
-                    return (
-                      <span key={key} className="flex items-center gap-[6px]">
-                        <span className="text-neutral-700">{blocker.label}</span>
-                        <span
-                          className={cx(
-                            "flex h-[20px] items-center gap-[4px] rounded-full border px-[6px] font-mono text-[10px] font-bold",
-                            tone(actor.tone).chip,
-                          )}
-                        >
-                          {blocker.actor === "ai" && <CioMark size={9} />}
-                          {actor.label}
-                        </span>
-                      </span>
-                    );
-                  })}
                 </span>
               ),
             },
-            { label: "생성일", value: pr.createdAt ?? "—" },
+            {
+              label: "Merge 시각",
+              value: pr.mergedAt ? String(pr.mergedAt).replace("T", " ").slice(0, 16) : "미병합",
+            },
           ]}
         />
       </section>
@@ -262,7 +280,7 @@ export default function HumanReviewPage() {
         caption={
           canComment
             ? "확인한 항목을 체크하고 의견을 남기세요."
-            : `의견 등록은 A·C 역할만 할 수 있습니다. 현재 역할은 ${myRole.key}입니다.`
+            : `의견 등록은 A·C 역할만 할 수 있습니다. 이 문서에서 내 역할은 ${myRoleLabel}입니다.`
         }
       >
         <Card padding="md">
@@ -327,7 +345,7 @@ export default function HumanReviewPage() {
         caption={
           canDecide
             ? "승인·반려는 A 역할인 회원님이 결정합니다."
-            : `승인·반려는 A 역할만 할 수 있습니다. 현재 역할은 ${myRole.key}입니다.`
+            : `승인·반려는 A 역할만 할 수 있습니다. 이 문서에서 내 역할은 ${myRoleLabel}입니다.`
         }
       >
         <Card padding="md" className="flex flex-wrap items-center gap-[12px]">

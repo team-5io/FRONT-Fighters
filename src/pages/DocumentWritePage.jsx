@@ -14,9 +14,10 @@ import {
 } from "../components/ui";
 import { createBlock } from "../data/blocks";
 import { IconGlobe, IconLink, IconSparkle } from "../components/icons";
-import { documents as documentsApi, teams as teamsApi } from "../api/endpoints";
+import { documents as documentsApi } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
-import { unwrap, unwrapList } from "../api/unwrap";
+import { unwrap } from "../api/unwrap";
+import { fromServerBlocks, normalizeDocument, toServerBlocks } from "../api/normalize";
 import { usePermissions } from "../hooks/usePermissions";
 import { useAuth } from "../auth/AuthContext";
 
@@ -60,11 +61,19 @@ const EMPTY_BLOCKS = [createBlock("paragraph", "")];
 const INITIAL_SUGGESTIONS = [];
 
 export default function DocumentWritePage() {
+  const { user } = useAuth();
+  const teamId = user.teamId ?? null;
+
   const [documentId, setDocumentId] = useState(getDocumentIdFromHash);
   const [title, setTitle] = useState("");
   const [blocks, setBlocks] = useState(EMPTY_BLOCKS);
   const [suggestions, setSuggestions] = useState(INITIAL_SUGGESTIONS);
   const [savedAt, setSavedAt] = useState(null);
+  /** 문서 상태 — `DRAFT`가 아니면 서버가 편집을 400으로 막는다 (PATCH 실패 코드 표) */
+  const [docStatus, setDocStatus] = useState("draft");
+  const [autoSaveError, setAutoSaveError] = useState(null);
+  /** 서버가 정해 준 작성자. 새 문서라면 나 자신이 된다 */
+  const [assigneeName, setAssigneeName] = useState(user.name);
   // `#/ai-structure` 딥링크로 들어오면 패널을 펼친 상태로 시작한다
   const [panelOpen, setPanelOpen] = useState(
     () => window.location.hash === "#/ai-structure",
@@ -78,29 +87,27 @@ export default function DocumentWritePage() {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
-  // 기존 문서 로딩 — documentId가 있으면 서버에서 불러온다.
+  /**
+   * 기존 문서 로딩 — `GET /documents/{documentId}` (PR #100 신규).
+   * 예전에는 단건 조회가 없어 `GET /documents`로 받아 배열에서 골라 썼다.
+   * 본문 `blocks`는 **단건 조회에서만** 채워진다(목록·검색은 항상 `[]`).
+   */
   const { data: loaded, loading: docLoading } = useApi(
-    () => documentsApi.list({ id: documentId }),
+    () => documentsApi.detail(documentId),
     [documentId],
     { enabled: Boolean(documentId) },
   );
 
-  /**
-   * 서버에서 문서를 불러왔으면 편집기에 반영한다.
-   *
-   * 단건 조회 엔드포인트가 스펙에 없어 `GET /documents`로 받아 오므로
-   * 응답은 목록 봉투다 — 배열에서 이 documentId를 찾아 써야 한다.
-   */
+  // 서버에서 문서를 불러왔으면 편집기에 반영한다
   useEffect(() => {
     if (!documentId) return;
-    const list = unwrapList(loaded);
-    const doc =
-      list.find((item) => String(item.id ?? item.documentId) === String(documentId)) ??
-      (list.length === 1 ? list[0] : null) ??
-      unwrap(loaded);
-    if (!doc || Array.isArray(doc)) return;
-    setTitle(doc.title ?? "");
-    if (Array.isArray(doc.blocks) && doc.blocks.length > 0) setBlocks(doc.blocks);
+    const body = unwrap(loaded);
+    if (!body) return;
+    const doc = normalizeDocument(body);
+    setTitle(doc.title);
+    setBlocks(doc.blocks.length > 0 ? fromServerBlocks(doc.blocks) : EMPTY_BLOCKS);
+    setDocStatus(doc.status);
+    setAssigneeName(doc.assignee.name);
   }, [loaded, documentId]);
 
   // 새 문서 모드일 때 기본값
@@ -108,16 +115,15 @@ export default function DocumentWritePage() {
     if (!documentId) {
       setTitle("");
       setBlocks(EMPTY_BLOCKS);
+      setDocStatus("draft");
+      setAssigneeName(user.name);
     }
-  }, [documentId]);
-
-  const { user } = useAuth();
-  const teamId = user.teamId ?? null;
-  const { data: membersData } = useApi(() => teamsApi.members(teamId), [teamId], { enabled: Boolean(teamId) });
-  const teamMembers = unwrapList(membersData);
-  const [author, setAuthor] = useState(null); // null = 자기 자신
+  }, [documentId, user.name]);
 
   const permissions = usePermissions(documentId);
+  /** 초안 상태의 문서만 편집할 수 있다 (PATCH 실패 코드 `DOCUMENT_400_1`) */
+  const isOfficial = docStatus === "official";
+  const canWrite = permissions.canEdit && !isOfficial;
 
   // 새 문서 생성 (POST /documents)
   const createDocument = useMutation((payload) => documentsApi.create(payload));
@@ -131,11 +137,10 @@ export default function DocumentWritePage() {
    */
   const saveDraft = useMutation(async (targetId = documentId) => {
     if (!targetId) return null;
-    const content = blocks.map((b) => b.content ?? b.text ?? "").filter(Boolean).join("\n");
+    // PATCH는 title·blocks만 받는다. blocks가 null이면 400 (PR #102)
     return documentsApi.update(targetId, {
-      teamId: Number(teamId) || teamId,
       title: title || "제목 없음",
-      content,
+      blocks: toServerBlocks(blocks),
     });
   });
 
@@ -150,18 +155,13 @@ export default function DocumentWritePage() {
   /** 아직 서버에 문서가 없으면 먼저 생성한다 */
   async function ensureDocument() {
     if (documentId) return documentId;
-    // POST /documents — teamId, title 필수, content 선택
-    const content = blocks
-      .map((b) => b.content ?? b.text ?? "")
-      .filter(Boolean)
-      .join("\n");
+    // POST /documents — teamId·title·blocks 전부 필수. blocks는 비어도 [] 를 보낸다 (PR #102)
     const result = await createDocument.mutate({
-      teamId: Number(teamId) || teamId,
+      teamId: Number(teamId),
       title: title || "제목 없음",
-      content: content || undefined,
+      blocks: toServerBlocks(blocks),
     });
-    const doc = unwrap(result);
-    const newId = doc?.id ?? doc?.documentId;
+    const newId = unwrap(result)?.id;
     if (newId) {
       setDocumentId(newId);
       window.history.replaceState(null, "", `#/write?documentId=${encodeURIComponent(newId)}`);
@@ -172,23 +172,24 @@ export default function DocumentWritePage() {
   // 자동 저장 — 제목이나 내용이 변하면 3초 후 서버에 저장
   const saveTimerRef = useRef(null);
   useEffect(() => {
-    if (!documentId || !teamId) return;
+    if (!documentId || !teamId || isOfficial) return;
     clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(async () => {
       try {
-        const content = blocks.map((b) => b.content ?? b.text ?? "").filter(Boolean).join("\n");
         await documentsApi.update(documentId, {
-          teamId: Number(teamId),
           title: title || "제목 없음",
-          content,
+          blocks: toServerBlocks(blocks),
         });
         setSavedAt("방금 전");
+        setAutoSaveError(null);
       } catch (err) {
-        console.error("[자동저장 실패]", err.message);
+        // 초안이 아닌 문서(OFFICIAL)는 400 DOCUMENT_400_1로 거절된다 — 조용히 멈춘다
+        console.error("[자동저장 실패]", err.body?.code ?? "", err.message);
+        setAutoSaveError(err.body?.message ?? err.message);
       }
     }, 3000);
     return () => clearTimeout(saveTimerRef.current);
-  }, [title, blocks, documentId, teamId]);
+  }, [title, blocks, documentId, teamId, isOfficial]);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -291,28 +292,18 @@ export default function DocumentWritePage() {
           <PropertyRow
             className="mt-[12px]"
             items={[
-              { label: "상태", value: <StatusBadge variant="solid" status="draft" kind="document" size="sm" /> },
               {
+                label: "상태",
+                value: <StatusBadge variant="solid" status={docStatus} kind="document" size="sm" />,
+              },
+              {
+                /**
+                 * 작성자는 고를 수 없다 — `POST /documents`는 작성자 필드를 받지 않고
+                 * 생성 요청자를 R로 자동 등록한다(명세서 성공코드 주석).
+                 * 예전 화면의 작성자 선택 셀렉트는 서버에 아무 영향이 없었다.
+                 */
                 label: "작성자",
-                value: teamMembers.length > 0 ? (
-                  <select
-                    value={author ?? user.name}
-                    onChange={(e) => setAuthor(e.target.value)}
-                    aria-label="작성자 선택"
-                    className="h-[24px] rounded-sm border border-line bg-transparent px-[6px] text-[13px] font-medium text-neutral-900 outline-none focus:border-main-500"
-                  >
-                    <option value={user.name}>{user.name} (나)</option>
-                    {teamMembers
-                      .filter((m) => (m.name ?? m.email) !== user.name)
-                      .map((m) => (
-                        <option key={m.id ?? m.name} value={m.name ?? m.email}>
-                          {m.name ?? m.email}
-                        </option>
-                      ))}
-                  </select>
-                ) : (
-                  <RaciChip role="R" name={user.name} size="sm" />
-                ),
+                value: <RaciChip role="R" name={assigneeName} size="sm" />,
               },
               { label: "내 역할", value: <RoleChip scope="이 문서" /> },
             ]}
@@ -356,16 +347,41 @@ export default function DocumentWritePage() {
             </div>
 
             {/* 저장 상태 */}
-            <span className="text-[12px] font-medium text-neutral-500">
-              {saveDraft.pending || createDocument.pending ? "저장 중…" : savedAt ? `${savedAt} 저장됨` : documentId ? "불러옴" : "새 문서"}
+            <span
+              className={cx(
+                "text-[12px] font-medium",
+                autoSaveError ? "text-error-text" : "text-neutral-500",
+              )}
+            >
+              {autoSaveError
+                ? `저장 실패 — ${autoSaveError}`
+                : saveDraft.pending || createDocument.pending
+                  ? "저장 중…"
+                  : savedAt
+                    ? `${savedAt} 저장됨`
+                    : documentId
+                      ? "불러옴"
+                      : "새 문서"}
             </span>
+
+            {/* 공식 문서는 편집할 수 없다 — 서버가 DOCUMENT_400_1로 거절한다 */}
+            {isOfficial && (
+              <span className="rounded-full border border-warning/30 bg-warning-tint px-[8px] py-[2px] text-[11px] font-bold text-warning-text">
+                공식 문서 · 편집 불가
+              </span>
+            )}
 
             {/* 수동 초안 저장 버튼 */}
             <Button
               variant="secondary"
               size="sm"
               className="rounded-sm"
-              disabled={saveDraft.pending || createDocument.pending || (!title.trim() && !documentId)}
+              disabled={
+                saveDraft.pending ||
+                createDocument.pending ||
+                isOfficial ||
+                (!title.trim() && !documentId)
+              }
               onClick={async () => {
                 try {
                   const docId = await ensureDocument();
@@ -384,7 +400,7 @@ export default function DocumentWritePage() {
               <Button
                 size="sm"
                 className="rounded-sm"
-                disabled={!permissions.canEdit || createDocPr.pending}
+                disabled={!canWrite || createDocPr.pending}
                 onClick={async () => {
                   try {
                     const docId = await ensureDocument();

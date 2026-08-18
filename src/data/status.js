@@ -25,6 +25,11 @@ export const DOC_PR_STATUS = {
     tone: "main",
     description: "지정된 리뷰어(C)와 승인권자(A)가 검토 중입니다.",
   },
+  approved: {
+    label: "승인됨",
+    tone: "success",
+    description: "A 역할이 승인했습니다. 이제 Merge할 수 있습니다.",
+  },
   rejected: { label: "반려", tone: "error", description: "반려되었습니다. R 역할이 재제출할 수 있습니다." },
   resubmitted: { label: "재제출", tone: "warning", description: "수정 후 다시 제출되었습니다." },
   merged: { label: "확정", tone: "success", description: "Merge되어 공식 문서가 되었습니다." },
@@ -80,3 +85,50 @@ export const ACTOR_META = {
   org: { label: "조직", tone: "warning" },
   system: { label: "시스템", tone: "neutral" },
 };
+
+
+/* ──────────────────────────────────────────────────────────────
+ * 서버 enum ↔ 화면 상태 키
+ *
+ * 백엔드는 대문자 스네이크(`HUMAN_REVIEW`), 화면은 카멜(`humanReview`)을 쓴다.
+ * 매핑을 화면마다 반복하지 않도록 여기 한 곳에 둔다.
+ * 근거: `GET /doc-prs/{prId}` 응답 필드 표 (CREATED/AI_REVIEW/HUMAN_REVIEW/
+ * APPROVED/REJECTED/RESUBMITTED/REVIEWER_NEEDED/MERGED)와
+ * `GET /documents/{documentId}` (DRAFT/OFFICIAL).
+ * ────────────────────────────────────────────────────────────── */
+
+const DOC_PR_STATUS_BY_SERVER = {
+  CREATED: "created",
+  AI_REVIEW: "aiReview",
+  HUMAN_REVIEW: "humanReview",
+  APPROVED: "approved",
+  REJECTED: "rejected",
+  RESUBMITTED: "resubmitted",
+  REVIEWER_NEEDED: "needsReviewer",
+  MERGED: "merged",
+};
+
+const DOCUMENT_STATUS_BY_SERVER = {
+  DRAFT: "draft",
+  OFFICIAL: "official",
+  IN_REVIEW: "inReview",
+};
+
+/** 서버가 준 Doc PR 상태를 화면 키로. 모르는 값이면 `created`로 떨어진다 */
+export function docPrStatusOf(raw) {
+  if (!raw) return "created";
+  if (DOC_PR_STATUS[raw]) return raw; // 이미 화면 키
+  return DOC_PR_STATUS_BY_SERVER[String(raw).toUpperCase()] ?? "created";
+}
+
+/** 서버가 준 문서 상태를 화면 키로. 모르는 값이면 `draft`로 떨어진다 */
+export function documentStatusOf(raw) {
+  if (!raw) return "draft";
+  if (DOCUMENT_STATUS[raw]) return raw;
+  return DOCUMENT_STATUS_BY_SERVER[String(raw).toUpperCase()] ?? "draft";
+}
+
+/** Doc PR이 Merge 가능한 상태인가 — merge-check를 못 부르는 역할에서 쓰는 근사치 */
+export function isApproved(statusKey) {
+  return statusKey === "approved";
+}

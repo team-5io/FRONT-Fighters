@@ -12,14 +12,13 @@ import {
   cx,
   tone,
 } from "../components/ui";
-import { ACTOR_META, MERGE_BLOCKERS } from "../data/status";
-import { RACI_ROLES } from "../data/raci";
+import { DOC_PR_STATUS, isApproved } from "../data/status";
 import { useAuth } from "../auth/AuthContext";
 import { usePermissions } from "../hooks/usePermissions";
-import { IconAlertCircle, IconCheck } from "../components/icons";
-import { docPrs } from "../api/endpoints";
+import { docPrs, documents as documentsApi } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
 import { unwrap, unwrapList } from "../api/unwrap";
+import { normalizeDocPr, normalizeDocument, normalizeMergeCheck } from "../api/normalize";
 
 /**
  * Doc PR 상세 — `#/doc-pr-detail`
@@ -91,20 +90,25 @@ export default function DocPrDetailPage() {
   const mergeException = useMutation((payload) => docPrs.mergeException(prId, payload));
   const setApprover = useMutation((payload) => docPrs.setApprover(prId, payload));
 
-  const pr = unwrap(detail.data) ?? {};
-  const mergeCheckBody = unwrap(mergeCheck.data);
-  // merge-check는 배열로 오기도 하고 `{ checks: [...] }`로 오기도 한다
-  const checks = Array.isArray(mergeCheckBody)
-    ? mergeCheckBody
-    : unwrapList(mergeCheckBody?.checks ?? mergeCheckBody);
+  const pr = normalizeDocPr(unwrap(detail.data) ?? {});
+  /**
+   * Merge 가능 여부는 `{ mergeable, reason }` 한 쌍이다 — 예전에 가정했던
+   * `[{key, met}]` 조건 배열이 아니다. 백엔드 스코프도 축소돼 있어
+   * 지금은 "상태가 APPROVED인가"만 본다(명세서 merge-check 성공코드 주석).
+   * 승인권자(A)가 아니면 403이라 조회 자체가 실패한다.
+   */
+  const mergeState = normalizeMergeCheck(unwrap(mergeCheck.data));
   const timeline = unwrapList(history.data);
   const humanReviews = unwrapList(reviews.data);
   const handover = unwrap(nextAssignee.data) ?? {};
 
   // Follow-the-Sun 인수인계 — 응답 키 이름이 달라도 받도록 넓게 읽는다
   const current = {
-    name: handover.currentAssignee?.name ?? handover.current?.name ?? pr.author?.name ?? "—",
-    role: handover.currentAssignee?.role ?? handover.current?.role ?? pr.author?.role ?? "R",
+    name:
+      handover.currentAssignee?.name ??
+      handover.current?.name ??
+      (pr.requesterId ? `#${pr.requesterId}` : "—"),
+    role: handover.currentAssignee?.role ?? handover.current?.role ?? "R",
     timezone: handover.currentAssignee?.timezone ?? handover.current?.timezone ?? null,
   };
   const next = {
@@ -117,11 +121,30 @@ export default function DocPrDetailPage() {
     next.name ? `다음 작업자 ${next.name}` : "다음 작업자 미지정"
   }`;
 
-  const permissions = usePermissions(pr.documentId ?? pr.targetDocId);
+  // Doc PR 응답에는 문서 제목이 없다 — 대상 문서를 따로 불러 제목을 채운다
+  const targetDoc = useApi(
+    () => documentsApi.detail(pr.documentId),
+    [pr.documentId],
+    { enabled: Boolean(pr.documentId) },
+  );
+  const targetDocTitle =
+    normalizeDocument(unwrap(targetDoc.data) ?? {}).title ??
+    (pr.documentId ? `문서 #${pr.documentId}` : "—");
+
+  const permissions = usePermissions(pr.documentId);
   const myRole = permissions.meta;
   const canApprove = permissions.canApprove;
-  const blockers = checks.filter((check) => !check.met);
-  const primary = MERGE_BLOCKERS[blockers[0]?.key];
+  /**
+   * merge-check는 승인권자(A) 전용이라 다른 역할에서는 403이 난다.
+   * 그럴 때는 Doc PR 상태로 근사한다 — `APPROVED`면 Merge 단계라는 뜻이다.
+   */
+  const mergeCheckForbidden = mergeCheck.error?.status === 403;
+  const mergeable = mergeState.known ? mergeState.mergeable : isApproved(pr.status);
+  const blockReason = mergeState.known
+    ? mergeState.reason
+    : mergeCheckForbidden
+      ? null
+      : "Merge 가능 여부를 확인하지 못했습니다.";
   const busy = approve.pending || reject.pending || merge.pending || resubmit.pending || mergeException.pending || setApprover.pending;
 
   /** 상태를 바꾸는 요청은 전부 같은 모양이다 — 실행 → 갱신, 실패하면 사유를 알린다 */
@@ -140,7 +163,11 @@ export default function DocPrDetailPage() {
     run("반려", () => reject.mutate("리뷰 의견을 반영해 주세요."), [detail, history]);
   const onMerge = () => run("Merge", () => merge.mutate(), [detail, mergeCheck, history]);
   const onResubmit = () =>
-    run("재제출", () => resubmit.mutate({ title: pr.title }), [detail, mergeCheck, history]);
+    run("재제출", () => resubmit.mutate({ proposedContent: pr.proposedContent }), [
+      detail,
+      mergeCheck,
+      history,
+    ]);
   const onMergeException = (reason) =>
     run("예외 Merge", () => mergeException.mutate({ reason }), [detail, mergeCheck, history]);
   const onSetApprover = (approverPayload) =>
@@ -157,18 +184,28 @@ export default function DocPrDetailPage() {
         breadcrumb={[
           { label: "5IO주", href: "#/dashboard" },
           { label: "Doc PR", href: "#/doc-pr" },
-          { label: pr.id },
+          { label: `#${prId}` },
         ]}
-        title={`${pr.id} · ${pr.title}`}
+        title={`Doc PR #${prId} · ${targetDocTitle}`}
         properties={[
           { label: "상태", value: <StatusBadge variant="solid" status={pr.status} size="sm" /> },
           {
-            label: "작성자",
-            value: <RaciChip role={pr.author?.role ?? "R"} name={pr.author?.name ?? "—"} size="sm" />,
+            label: "요청자",
+            value: <RaciChip role="R" name={`#${pr.requesterId ?? "—"}`} size="sm" />,
           },
-          { label: "대상 문서", value: pr.targetDoc ?? "—" },
-          { label: "생성", value: pr.createdAt ?? "—" },
-          { label: "브랜치", value: <code className="font-mono text-[12px]">{pr.branch ?? "—"}</code> },
+          {
+            label: "대상 문서",
+            value: pr.documentId ? (
+              <a
+                href={`#/write?documentId=${encodeURIComponent(pr.documentId)}`}
+                className="font-semibold text-main-500"
+              >
+                {targetDocTitle}
+              </a>
+            ) : (
+              "—"
+            ),
+          },
           {
             label: "내 역할",
             value: <RaciChip role={permissions.role} showLabel size="sm" />,
@@ -181,14 +218,21 @@ export default function DocPrDetailPage() {
         <div className="flex flex-wrap items-start gap-[16px]">
           <div className="min-w-0 flex-1">
             <h2 className="text-[18px] font-bold leading-[26px] text-neutral-900">
-              {blockers.length > 0
-                ? `${blockers.length}개 조건이 남아 Merge가 차단되어 있습니다`
-                : "Merge할 수 있습니다"}
+              {mergeCheck.loading
+                ? "Merge 가능 여부를 확인하는 중입니다"
+                : mergeable
+                  ? "Merge할 수 있습니다"
+                  : "아직 Merge할 수 없습니다"}
             </h2>
-            {primary && (
+            {blockReason && (
               <p className="mt-[6px] text-[14px] font-medium leading-[21px] text-neutral-700">
-                가장 먼저 풀어야 할 것 —{" "}
-                <span className="font-semibold">{primary.label}</span>. {primary.detail}.
+                {blockReason}
+              </p>
+            )}
+            {mergeCheckForbidden && (
+              <p className="mt-[6px] text-[13px] font-medium text-neutral-500">
+                Merge 가능 여부는 승인권자(A) 본인만 확인할 수 있어, 상태(
+                {DOC_PR_STATUS[pr.status]?.label ?? pr.status})로만 표시합니다.
               </p>
             )}
             {!canApprove && (
@@ -208,7 +252,7 @@ export default function DocPrDetailPage() {
             >
               반려
             </Button>
-            {blockers.length === 0 ? (
+            {mergeable ? (
               <Button className="rounded-sm" disabled={!canApprove || busy} onClick={onMerge}>
                 {merge.pending ? "Merge 중…" : "Merge"}
               </Button>
@@ -218,13 +262,13 @@ export default function DocPrDetailPage() {
               </Button>
             )}
             {/* 재제출 — 반려 상태일 때 R 역할이 누른다 */}
-            {(pr.status === "rejected" || pr.status === "반려") && permissions.canEdit && (
+            {pr.status === "rejected" && permissions.canEdit && (
               <Button variant="secondary" className="rounded-sm" disabled={busy} onClick={onResubmit}>
                 {resubmit.pending ? "재제출 중…" : "재제출"}
               </Button>
             )}
             {/* 예외 Merge — 조건 미충족 상태에서 A 역할이 사유와 함께 실행 */}
-            {blockers.length > 0 && canApprove && (
+            {!mergeable && canApprove && (
               <Button
                 variant="ghost"
                 className="rounded-sm text-error-text"
@@ -244,8 +288,13 @@ export default function DocPrDetailPage() {
                 className="rounded-sm"
                 disabled={busy}
                 onClick={() => {
-                  const name = window.prompt("대체 승인권자 이름을 입력하세요.");
-                  if (name) onSetApprover({ approver: name });
+                  const input = window.prompt("대체 승인권자의 사용자 ID를 입력하세요.");
+                  const approverId = Number(input);
+                  if (input && Number.isFinite(approverId)) {
+                    onSetApprover({ approverId });
+                  } else if (input) {
+                    window.alert("사용자 ID(숫자)를 입력해 주세요.");
+                  }
                 }}
               >
                 {setApprover.pending ? "지정 중…" : "승인권자 변경"}
@@ -254,43 +303,48 @@ export default function DocPrDetailPage() {
           </div>
         </div>
 
-        {/* Merge 조건은 주인공 안에 한 줄씩 압축 */}
-        <ul className="mt-[16px] flex flex-wrap gap-x-[16px] gap-y-[8px] border-t border-line pt-[14px]">
-          {checks.map(({ key, met }) => {
-            const blocker = MERGE_BLOCKERS[key];
-            const actor = ACTOR_META[blocker.actor];
-            return (
-              <li key={key} className="flex items-center gap-[7px]">
-                <span
-                  className={cx(
-                    "flex size-[18px] shrink-0 items-center justify-center rounded-full",
-                    met ? "bg-success-tint text-success-text" : "bg-error-tint text-error-text",
-                  )}
-                >
-                  {met ? <IconCheck height={8} /> : <IconAlertCircle size={11} />}
-                </span>
-                <span
-                  className={cx(
-                    "text-[13px] font-medium",
-                    met ? "text-neutral-500 line-through" : "text-neutral-700",
-                  )}
-                >
-                  {blocker.label}
-                </span>
-                <span
-                  className={cx(
-                    "flex h-[19px] items-center gap-[3px] rounded-full border px-[6px] font-mono text-[10px] font-bold",
-                    tone(actor.tone).chip,
-                  )}
-                >
-                  {blocker.actor === "ai" && <CioMark size={9} />}
-                  {actor.label}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
+        {/* 명세서가 주는 사실만 한 줄로 — 조건별 체크리스트는 백엔드에 아직 없다 */}
+        <dl className="mt-[16px] flex flex-wrap gap-x-[24px] gap-y-[8px] border-t border-line pt-[14px]">
+          <div className="flex items-center gap-[7px]">
+            <dt className="text-[13px] font-medium text-neutral-500">상태</dt>
+            <dd>
+              <StatusBadge status={pr.status} size="sm" />
+            </dd>
+          </div>
+          <div className="flex items-center gap-[7px]">
+            <dt className="text-[13px] font-medium text-neutral-500">요청자</dt>
+            <dd className="font-mono text-[13px] text-neutral-700">#{pr.requesterId ?? "—"}</dd>
+          </div>
+          <div className="flex items-center gap-[7px]">
+            <dt className="text-[13px] font-medium text-neutral-500">승인권자</dt>
+            <dd className="font-mono text-[13px] text-neutral-700">
+              {pr.approverId ? `#${pr.approverId}` : "미지정"}
+            </dd>
+          </div>
+          {pr.mergedAt && (
+            <div className="flex items-center gap-[7px]">
+              <dt className="text-[13px] font-medium text-neutral-500">Merge</dt>
+              <dd className="text-[13px] text-neutral-700">
+                {String(pr.mergedAt).slice(0, 10)}
+                {pr.exceptionMerge && (
+                  <span className="ml-[6px] rounded-full border border-warning/30 bg-warning-tint px-[6px] font-mono text-[10px] font-bold text-warning-text">
+                    예외 Merge
+                  </span>
+                )}
+              </dd>
+            </div>
+          )}
+        </dl>
       </section>
+
+      {pr.proposedContent && (
+        <section className="mt-[24px]">
+          <h2 className="text-[16px] font-semibold leading-[24px] text-neutral-900">제안 내용</h2>
+          <p className="mt-[6px] whitespace-pre-wrap text-[14px] font-medium leading-[21px] text-neutral-700">
+            {pr.proposedContent}
+          </p>
+        </section>
+      )}
 
       {/* ── 나머지는 접기 ── */}
       <div className="mt-[28px]">

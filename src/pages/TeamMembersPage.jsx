@@ -12,11 +12,12 @@ import {
   cx,
   tone,
 } from "../components/ui";
-import { RACI_ROLES, canManageTeam } from "../data/raci";
+import { RACI_ROLES, TEAM_ROLES, canManageTeam } from "../data/raci";
 import { docPrs, teams as teamsApi } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
 import { useDocPrList } from "../hooks/useDocPrList";
 import { unwrapList } from "../api/unwrap";
+import { normalizeMember } from "../api/normalize";
 import { useAuth } from "../auth/AuthContext";
 
 /**
@@ -40,18 +41,6 @@ import { useAuth } from "../auth/AuthContext";
  * 그중 승인권자가 없는 것만 걸러 낸다.
  */
 
-/** 백엔드 응답을 표가 쓰는 모양으로 */
-function normalizeMember(raw, index) {
-  return {
-    id: raw.id ?? raw.memberId ?? `m${index}`,
-    name: raw.name ?? raw.user?.name ?? "—",
-    email: raw.email ?? raw.user?.email ?? "—",
-    role: RACI_ROLES[raw.role] ? raw.role : "I",
-    membership: raw.isTeamAdmin || raw.isAdmin ? "팀 관리자" : "일반 팀원",
-    docs: raw.documentCount ?? raw.docs ?? 0,
-  };
-}
-
 const MEMBER_COLUMNS = [
   {
     key: "name",
@@ -64,32 +53,30 @@ const MEMBER_COLUMNS = [
     ),
   },
   {
-    key: "role",
-    label: "역할",
-    width: 150,
-    render: (row) => <RaciChip role={row.role} name={RACI_ROLES[row.role].label} size="sm" />,
-  },
-  {
-    key: "membership",
-    label: "구분",
-    width: 110,
+    key: "teamRole",
+    label: "팀 역할",
+    width: 130,
     render: (row) => (
       <span
         className={cx(
           "rounded-full border px-[8px] py-[2px] font-mono text-[11px] font-bold",
-          row.membership === "팀 관리자" ? tone("main").chip : "border-line text-neutral-700",
+          row.isAdmin ? tone("main").chip : "border-line text-neutral-700",
         )}
       >
-        {row.membership}
+        {TEAM_ROLES[row.teamRole]?.label ?? row.teamRole}
       </span>
     ),
   },
   {
-    key: "docs",
-    label: "담당 문서",
-    width: 90,
+    key: "joinedAt",
+    label: "합류일",
+    width: 120,
     align: "right",
-    render: (row) => <span className="font-mono text-[13px] text-neutral-500">{row.docs}</span>,
+    render: (row) => (
+      <span className="text-[13px] text-neutral-500">
+        {row.joinedAt ? String(row.joinedAt).slice(0, 10) : "—"}
+      </span>
+    ),
   },
 ];
 
@@ -99,20 +86,24 @@ export default function TeamMembersPage() {
   const teamId = user.teamId ?? "me";
 
   const membersQuery = useApi(() => teamsApi.members(teamId), [teamId]);
-  const rawMembers = unwrapList(membersQuery.data);
-  const members = rawMembers.map(normalizeMember);
+  const members = unwrapList(membersQuery.data).map(normalizeMember);
 
   const invite = useMutation((email) => teamsApi.invite(teamId, { email }));
   const removeMember = useMutation((memberId) => teamsApi.removeMember(teamId, memberId));
-  const assignApprover = useMutation((prId, name, note) =>
-    docPrs.setApprover(prId, { approver: name, reason: note || undefined }),
+  const assignApprover = useMutation((prId, approverId, note) =>
+    docPrs.setApprover(prId, { approverId: Number(approverId), reason: note || undefined }),
   );
 
   // 승인권자가 없어 Merge가 막힌 Doc PR
   const docPrList = useDocPrList(teamId);
   const blockedDocPrs = docPrList.list.filter((pr) => !pr.approver);
 
-  const approverCandidates = members.filter((member) => member.role === "A");
+  /**
+   * 대체 승인권자 후보는 **팀원 전체**다.
+   * 팀원 목록의 role은 MEMBER/ADMIN이라 RACI의 A를 걸러낼 수 없고,
+   * Doc PR 승인권자는 RACI와 별개로 지정한다(PUT /documents/{id}/raci 성공코드 주석).
+   */
+  const approverCandidates = members;
   const [targetPr, setTargetPr] = useState("");
   const [approver, setApprover] = useState("");
   const [reason, setReason] = useState("");
@@ -122,7 +113,9 @@ export default function TeamMembersPage() {
     if (!targetPr && blockedDocPrs.length > 0) setTargetPr(blockedDocPrs[0].id);
   }, [blockedDocPrs, targetPr]);
   useEffect(() => {
-    if (!approver && approverCandidates.length > 0) setApprover(approverCandidates[0].name);
+    if (!approver && approverCandidates.length > 0) {
+      setApprover(String(approverCandidates[0].userId ?? approverCandidates[0].memberId));
+    }
   }, [approverCandidates, approver]);
 
   async function onAssignApprover() {
@@ -139,7 +132,7 @@ export default function TeamMembersPage() {
   async function onRemoveMember(member) {
     if (!window.confirm(`${member.name}님을 팀에서 제외하시겠습니까?`)) return;
     try {
-      await removeMember.mutate(member.id);
+      await removeMember.mutate(member.memberId);
       membersQuery.reload();
     } catch (err) {
       window.alert(`팀원 제외 실패: ${err.body?.message ?? err.message}`);
@@ -258,15 +251,19 @@ export default function TeamMembersPage() {
                   <option value="">A 역할 팀원이 없습니다</option>
                 )}
                 {approverCandidates.map((member) => (
-                  <option key={member.name} value={member.name}>
-                    {member.name} — A 역할 (승인 책임)
+                  <option
+                    key={member.memberId}
+                    value={String(member.userId ?? member.memberId)}
+                  >
+                    {member.name} ({member.email})
                   </option>
                 ))}
               </select>
             </label>
           </div>
           <p className="mt-[6px] text-[12px] font-medium text-neutral-500">
-            A 역할(승인 책임) 보유자만 대체 승인권자가 될 수 있습니다.
+            팀원 누구나 대체 승인권자가 될 수 있습니다 — Doc PR 승인권자는 문서 RACI와 별개로
+            지정됩니다.
           </p>
 
           <label className="mt-[16px] block">

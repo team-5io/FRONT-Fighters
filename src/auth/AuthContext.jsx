@@ -64,6 +64,25 @@ export function AuthProvider({ children }) {
 
   const signUp = useCallback((payload) => authApi.signup(payload), []);
 
+  /**
+   * 활성 팀과 그 팀에서의 내 역할을 세션에 반영한다.
+   * `GET /teams/me`가 팀마다 `role`(MEMBER/ADMIN)을 주므로(PR #98),
+   * 팀 관리자 여부를 로컬 추측이 아니라 이 값으로 정한다.
+   */
+  const setActiveTeam = useCallback((team) => {
+    if (!team) return;
+    setUser((prev) => {
+      const updated = normalizeUser({
+        ...(prev ?? GUEST_USER),
+        teamId: team.id,
+        teamName: team.name,
+        isTeamAdmin: team.isAdmin,
+      });
+      saveStoredUser(updated);
+      return updated;
+    });
+  }, []);
+
   const signOutRemote = useCallback(async () => {
     try {
       if (isApiConfigured() && token) await authApi.logout();
@@ -79,6 +98,7 @@ export function AuthProvider({ children }) {
       signIn,
       signUp,
       signOut: signOutRemote,
+      setActiveTeam,
       updateUser: (patch) => {
         setUser((prev) => {
           const updated = normalizeUser({ ...(prev ?? GUEST_USER), ...patch });
@@ -87,7 +107,7 @@ export function AuthProvider({ children }) {
         });
       },
     }),
-    [user, token, signIn, signUp, signOutRemote],
+    [user, token, signIn, signUp, signOutRemote, setActiveTeam],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

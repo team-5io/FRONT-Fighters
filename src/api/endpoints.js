@@ -7,11 +7,15 @@ import { api } from "./client";
  * 여기 없는 것은 의도적으로 연동하지 않는다 (지시서 1.3):
  *   AI 검토·작성 보조·번역·Charter 초안 생성·알림 → 전부 mock 유지.
  *
- * 스펙에 아예 없어 만들 수 없는 것 (지시서 0장):
- *   - `GET /doc-prs` (Doc PR 목록) — 모든 doc-prs 엔드포인트가 {prId} 단건 전용
- *   - 용어집 관련 — 56개 어디에도 없음
- *   - 초대 "수락" — 보내는 쪽(invitations)만 있음
+ * 스펙에 아예 없어 만들 수 없는 것:
+ *   - 용어집 관련 — 어디에도 없음
+ *   - 초대 "수락" — 초대 즉시 MEMBER로 등록돼 수락 절차 자체가 없다 (PR #98)
  * 존재하지 않는 엔드포인트를 상상해서 부르지 않는다.
+ *
+ * 2026-08-19 갱신 (명세서 재조회): PR #98/#100/#102/#107/#115 반영.
+ *   - 신규: `GET /doc-prs` (PR #107), `GET /documents/{documentId}` (PR #100)
+ *   - 문서 생성·수정 요청이 `content`(String) → `blocks`(List<Block>)로 바뀜 (#100/#102)
+ *   - 팀원 식별자가 userId → memberId(멤버십 PK)로 바뀜 (#98)
  */
 
 /* ── 계정 (2.1 · 2.2) ── */
@@ -40,6 +44,8 @@ export const teams = {
 export const documents = {
   list: (query) => api.get("/documents", { query }),
   search: (query) => api.get("/documents/search", { query }),
+  /** PR #100 신규 — 본문 blocks는 이 단건 조회에서만 채워진다 */
+  detail: (documentId) => api.get(`/documents/${documentId}`),
   create: (payload) => api.post("/documents", payload),
   update: (documentId, payload) => api.patch(`/documents/${documentId}`, payload),
   remove: (documentId) => api.del(`/documents/${documentId}`),
@@ -52,8 +58,10 @@ export const documents = {
   createDocPr: (documentId, payload) => api.post(`/documents/${documentId}/doc-prs`, payload),
 };
 
-/* ── Doc PR 단건 (2.7 · 2.8) — 목록 조회는 스펙에 없다 ── */
+/* ── Doc PR ── */
 export const docPrs = {
+  /** PR #107 신규 — teamId 필수, 페이지네이션 */
+  list: (query) => api.get("/doc-prs", { query }),
   detail: (prId) => api.get(`/doc-prs/${prId}`),
   mergeCheck: (prId) => api.get(`/doc-prs/${prId}/merge-check`),
   history: (prId) => api.get(`/doc-prs/${prId}/history`),
