@@ -54,7 +54,7 @@ export default function DataTable({
                   key={row.id}
                   onClick={onRowClick ? () => onRowClick(row) : undefined}
                   className={cx(
-                    "border-b border-line last:border-b-0",
+                    "group/row border-b border-line last:border-b-0",
                     onRowClick && "cursor-pointer",
                     "transition-colors hover:bg-neutral-50/70",
                   )}
