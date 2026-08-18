@@ -39,14 +39,6 @@ const RELATIONS = [
   { value: "reference", label: "참조 문서", describe: (a, b) => `${a}가 ${b}를 참조합니다.` },
 ];
 
-const CURRENT_DOC = "API 설계 원칙";
-
-const SEARCH_RESULTS = [
-  { id: "d1", title: "글로벌 협업 가이드라인 초안", meta: "팀 공개 · 2일 전 업데이트", status: "draft" },
-  { id: "d2", title: "온보딩 가이드라인", meta: "팀 공개 · 5일 전 업데이트", status: "official" },
-  { id: "d3", title: "배포 체크리스트", meta: "팀 공개 · 1일 전 업데이트", status: "inReview" },
-];
-
 const PERMISSION_NOTES = [
   "팀 공개 문서는 팀원 누구나 연결 대상으로 지정할 수 있습니다.",
   "지정 참여자 전용 문서는 해당 문서의 RACI 참여자 또는 팀 관리자만 연결할 수 있습니다.",
@@ -56,20 +48,20 @@ const PERMISSION_NOTES = [
 export default function LinkDocumentsPage() {
   const [documentId] = useState(getDocumentIdFromHash);
   const [relation, setRelation] = useState("parent");
-  const [links, setLinks] = useState([{ id: "d2", title: "온보딩 가이드라인", relation: "child" }]);
+  const [links, setLinks] = useState([]);
   const [searchKeyword, setSearchKeyword] = useState("");
 
   const relationMeta = RELATIONS.find((item) => item.value === relation);
 
-  // 검색 API 연동 — 키워드가 있으면 실제 검색, 없으면 mock으로 떨어진다
+  // 검색 API 연동 — 키워드가 있으면 실제 검색
   const { data: searchResults, loading: searching } = useApi(
     () => documentsApi.search(searchKeyword.trim()),
     [searchKeyword],
-    { fallback: SEARCH_RESULTS, enabled: Boolean(searchKeyword.trim()) },
+    { enabled: Boolean(searchKeyword.trim()) },
   );
   const displayResults = searchKeyword.trim()
-    ? (Array.isArray(searchResults) ? searchResults : SEARCH_RESULTS)
-    : SEARCH_RESULTS;
+    ? (Array.isArray(searchResults) ? searchResults : [])
+    : [];
 
   const saveRelations = useMutation(() =>
     documentsApi.relations(documentId, {
@@ -92,7 +84,6 @@ export default function LinkDocumentsPage() {
         breadcrumb={[
           { label: "5IO주", href: "#/dashboard" },
           { label: "문서", href: "#/documents" },
-          { label: CURRENT_DOC, href: "#/write" },
           { label: "관련 문서 연결" },
         ]}
         title="관련 문서 연결"
@@ -220,7 +211,7 @@ export default function LinkDocumentsPage() {
                       </div>
                       {/* 화살표 대신 관계를 문장으로 — 1차는 방향이 읽히지 않았다 */}
                       <p className="mt-[6px] text-[12px] font-medium leading-[17px] text-neutral-500">
-                        {meta.describe(CURRENT_DOC, link.title)}
+                        {meta.describe("이 문서", link.title)}
                       </p>
                     </li>
                   );

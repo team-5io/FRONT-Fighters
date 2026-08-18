@@ -48,16 +48,9 @@ function prIdFromHash() {
   return query ? new URLSearchParams(query).get("prId") : null;
 }
 
-const DOC_PR = {
-  id: "PR #142",
-  title: "온보딩 가이드 v2 검토 요청",
-  status: "needsReviewer",
-  author: { name: "김성민", role: "R" },
-  createdAt: "2026-08-12",
-  targetDoc: "온보딩 가이드 v2",
-  branch: "docs/onboarding-v2",
-};
-
+/**
+ * AI 검토 결과 — AI 엔드포인트가 "시작 전"이라 mock 유지 (지시서 1.3).
+ */
 const AI_FINDINGS = [
   {
     level: "reject",
@@ -85,42 +78,29 @@ const FINDING_TONE = {
   pass: { tone: "success", text: "문제 없음" },
 };
 
-const HUMAN_REVIEWS = [
-  {
-    reviewer: { name: "김재원", role: "C" },
-    at: "2026-08-11",
-    body: "협업 프로세스 항목이 현행 팀 규칙과 다릅니다. 수정이 필요합니다.",
-  },
-  {
-    reviewer: { name: "김준한", role: "C" },
-    at: "2026-08-12",
-    body: "전반적인 구성은 좋습니다. 김재원님 의견 반영 후 승인 가능합니다.",
-  },
-];
-
-const TIMELINE = [
-  { status: "created", actor: "human", by: "김성민", at: "2026-08-07", note: "Doc PR 생성" },
-  { status: "aiReview", actor: "ai", by: "CIO", at: "2026-08-08", note: "1차 검토 완료 · 반려 권고 1건" },
-  { status: "needsReviewer", actor: "system", by: "시스템", at: "2026-08-09", note: "승인권자 미지정" },
-  { status: "humanReview", actor: "human", by: "김재원 · 김준한", at: "2026-08-11", note: "리뷰 제출 · 김민섭 대기중" },
-];
-
-const MERGE_CHECKS = [
-  { key: "approverMissing", met: false },
-  { key: "reviewIncomplete", met: false },
-  { key: "lionRejected", met: false },
-  { key: "conflictUnresolved", met: true },
-];
-
 export default function DocPrDetailPage() {
   const { user } = useAuth();
-  const prId = prIdFromHash() ?? DOC_PR.id;
+  const prId = prIdFromHash();
 
-  const detail = useApi(() => docPrs.detail(prId), [prId], { fallback: DOC_PR });
-  const mergeCheck = useApi(() => docPrs.mergeCheck(prId), [prId], { fallback: MERGE_CHECKS });
-  const history = useApi(() => docPrs.history(prId), [prId], { fallback: TIMELINE });
-  const reviews = useApi(() => docPrs.reviews(prId), [prId], { fallback: HUMAN_REVIEWS });
-  const nextAssignee = useApi(() => docPrs.nextAssignee(prId), [prId], { fallback: null });
+  // prId가 없으면 진입 경로가 잘못된 것
+  if (!prId) {
+    return (
+      <Page>
+        <EmptyState
+          title="Doc PR을 찾을 수 없습니다"
+          description="Doc PR 목록에서 항목을 선택해 주세요."
+          actionLabel="Doc PR 목록"
+          onAction={() => (window.location.hash = "#/doc-pr")}
+        />
+      </Page>
+    );
+  }
+
+  const detail = useApi(() => docPrs.detail(prId), [prId]);
+  const mergeCheck = useApi(() => docPrs.mergeCheck(prId), [prId]);
+  const history = useApi(() => docPrs.history(prId), [prId]);
+  const reviews = useApi(() => docPrs.reviews(prId), [prId]);
+  const nextAssignee = useApi(() => docPrs.nextAssignee(prId), [prId]);
 
   const approve = useMutation(() => docPrs.approve(prId));
   const reject = useMutation((reason) => docPrs.reject(prId, { reason }));
@@ -129,10 +109,10 @@ export default function DocPrDetailPage() {
   const mergeException = useMutation((payload) => docPrs.mergeException(prId, payload));
   const setApprover = useMutation((payload) => docPrs.setApprover(prId, payload));
 
-  const pr = detail.data ?? DOC_PR;
-  const checks = Array.isArray(mergeCheck.data) ? mergeCheck.data : MERGE_CHECKS;
-  const timeline = Array.isArray(history.data) ? history.data : TIMELINE;
-  const humanReviews = Array.isArray(reviews.data) ? reviews.data : HUMAN_REVIEWS;
+  const pr = detail.data ?? {};
+  const checks = Array.isArray(mergeCheck.data) ? mergeCheck.data : [];
+  const timeline = Array.isArray(history.data) ? history.data : [];
+  const humanReviews = Array.isArray(reviews.data) ? reviews.data : [];
 
   const permissions = usePermissions(pr.documentId ?? pr.targetDocId);
   const myRole = permissions.meta;

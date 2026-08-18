@@ -58,15 +58,11 @@ export default function DocumentGraphPage() {
   const [selectedId, setSelectedId] = useState(FOCUS_ID);
   const [tab, setTab] = useState("impact");
 
-  // 그래프 데이터를 실제 API에서 가져온다. 응답이 없으면 mock 그래프를 쓴다.
-  const graphQuery = useApi(() => documentsApi.graph(FOCUS_ID), [FOCUS_ID], {
-    fallback: { nodes: GRAPH_NODES, edges: GRAPH_EDGES },
-  });
-  const impactQuery = useApi(() => documentsApi.impact(selectedId), [selectedId], {
-    fallback: null,
-  });
+  // 그래프 데이터를 실제 API에서 가져온다.
+  const graphQuery = useApi(() => documentsApi.graph(FOCUS_ID), [FOCUS_ID]);
+  const impactQuery = useApi(() => documentsApi.impact(selectedId), [selectedId]);
 
-  // API가 노드/엣지를 직접 줬으면 그걸, 아니면 mock에서 가져온다
+  // API가 노드/엣지를 직접 줬으면 그걸, 아니면 data/graph.js의 로컬 데이터
   const graphNodes = graphQuery.data?.nodes ?? GRAPH_NODES;
   const graphEdges = graphQuery.data?.edges ?? GRAPH_EDGES;
 

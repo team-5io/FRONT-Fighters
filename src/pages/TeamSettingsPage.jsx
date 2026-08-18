@@ -24,13 +24,6 @@ import { IconPaper, IconShield, IconTeam, IconText } from "../components/icons";
  * 구조로 재편했다. 카드를 층층이 쌓지 않고 한 번에 한 항목만 보여 준다.
  */
 
-const TEAM = {
-  name: "5IO주",
-  code: "5IO-2026-A7",
-  createdAt: "2026-08-01",
-  memberCount: 5,
-};
-
 const SECTIONS = [
   {
     key: "team",
@@ -68,7 +61,7 @@ const SECTIONS = [
     label: "팀원 관리",
     summary: "초대 · 역할 배정 · 대체 승인권자",
     href: "#/team-members",
-    status: { label: `${TEAM.memberCount}명`, tone: "neutral" },
+    status: { label: "—", tone: "neutral" },
   },
 ];
 
@@ -77,21 +70,22 @@ export default function TeamSettingsPage() {
   const [active, setActive] = useState("team");
   const editable = canManageTeam(user);
   const teamId = user.teamId ?? "me";
+  const teamName = user.teamName ?? "내 팀";
 
   // 팀원 목록을 가져와서 실제 인원 수를 반영한다
-  const membersQuery = useApi(() => teamsApi.members(teamId), [teamId], { fallback: [] });
-  const memberCount = Array.isArray(membersQuery.data) ? membersQuery.data.length : TEAM.memberCount;
+  const membersQuery = useApi(() => teamsApi.members(teamId), [teamId]);
+  const memberCount = Array.isArray(membersQuery.data) ? membersQuery.data.length : 0;
 
   const current = SECTIONS.find((section) => section.key === active);
 
   return (
     <Page>
       <PageHeader
-        breadcrumb={[{ label: TEAM.name, href: "#/dashboard" }, { label: "설정" }]}
+        breadcrumb={[{ label: teamName, href: "#/dashboard" }, { label: "설정" }]}
         title="팀 설정"
         properties={[
-          { label: "팀", value: TEAM.name },
-          { label: "구성원", value: `${TEAM.memberCount}명` },
+          { label: "팀", value: teamName },
+          { label: "구성원", value: `${memberCount}명` },
           { label: "내 역할", value: <RaciChip role={user.role} showLabel size="sm" /> },
         ]}
       />
