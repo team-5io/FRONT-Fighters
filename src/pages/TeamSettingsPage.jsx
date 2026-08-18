@@ -38,7 +38,7 @@ const TABS = [
 export default function TeamSettingsPage() {
   const { user } = useAuth();
   const editable = canManageTeam(user);
-  const teamId = user.teamId ?? "me";
+  const teamId = user.teamId ?? null;
   const teamName = user.teamName ?? "내 팀";
 
   // URL의 ?tab= 에서 초기 탭을 읽는다
@@ -46,7 +46,7 @@ export default function TeamSettingsPage() {
   const [active, setActive] = useState(initialTab);
 
   // 팀원 목록 — 응답: { status, data: [{ userId, role, joinedAt }] }
-  const membersQuery = useApi(() => teamsApi.members(teamId), [teamId]);
+  const membersQuery = useApi(() => teamsApi.members(teamId), [teamId], { enabled: Boolean(teamId) });
   const membersRaw = membersQuery.data?.data ?? membersQuery.data;
   const members = Array.isArray(membersRaw) ? membersRaw : [];
 

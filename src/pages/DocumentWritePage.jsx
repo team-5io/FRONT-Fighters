@@ -103,9 +103,9 @@ export default function DocumentWritePage() {
   }, [documentId]);
 
   const { user } = useAuth();
-  const teamId = user.teamId ?? "me";
-  const { data: membersData } = useApi(() => teamsApi.members(teamId), [teamId]);
-  const teamMembers = Array.isArray(membersData) ? membersData : [];
+  const teamId = user.teamId ?? null;
+  const { data: membersData } = useApi(() => teamsApi.members(teamId), [teamId], { enabled: Boolean(teamId) });
+  const teamMembers = Array.isArray(membersData?.data ?? membersData) ? (membersData?.data ?? membersData) : [];
   const [author, setAuthor] = useState(null); // null = 자기 자신
 
   const permissions = usePermissions(documentId);
@@ -157,13 +157,13 @@ export default function DocumentWritePage() {
   // 자동 저장 — 제목이나 내용이 변하면 3초 후 서버에 저장
   const saveTimerRef = useRef(null);
   useEffect(() => {
-    if (!documentId) return;
+    if (!documentId || !teamId) return;
     clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(async () => {
       try {
         const content = blocks.map((b) => b.content ?? b.text ?? "").filter(Boolean).join("\n");
         await documentsApi.update(documentId, {
-          teamId: Number(teamId) || teamId,
+          teamId: Number(teamId),
           title: title || "제목 없음",
           content,
         });
