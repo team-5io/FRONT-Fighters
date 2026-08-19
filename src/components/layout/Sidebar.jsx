@@ -42,11 +42,12 @@ const SETTINGS_ITEM = {
   icon: <IconSettings size={15} />,
 };
 
-function NavLink({ item, active, depth = 0, teamId }) {
+function NavLink({ item, active, depth = 0, teamId, onClick }) {
   const href = navHref(teamId, item.page);
   return (
     <a
       href={href}
+      onClick={onClick}
       aria-current={active ? "page" : undefined}
       className={cx(
         "flex items-center gap-[8px] rounded-sm py-[6px] pr-[10px] text-[14px] transition-colors",
@@ -66,7 +67,7 @@ function NavLink({ item, active, depth = 0, teamId }) {
   );
 }
 
-export default function Sidebar({ active, teamId }) {
+export default function Sidebar({ active, teamId, onNavigate }) {
   const { user, updateUser, setActiveTeam } = useAuth();
   const hasTeam = Boolean(teamId);
   const [switcherOpen, setSwitcherOpen] = useState(false);
@@ -179,7 +180,7 @@ export default function Sidebar({ active, teamId }) {
           <ul className="flex flex-col gap-[2px]">
             {NAV_ITEMS.map((item) => (
               <li key={item.label}>
-                <NavLink item={item} active={item.label === active} teamId={teamId} />
+                <NavLink item={item} active={item.label === active} teamId={teamId} onClick={onNavigate} />
               </li>
             ))}
           </ul>
@@ -190,6 +191,7 @@ export default function Sidebar({ active, teamId }) {
                 item={{ label: "대시보드", page: "dashboard", icon: <IconHome size={16} /> }}
                 active={active === "대시보드"}
                 teamId={null}
+                onClick={onNavigate}
               />
             </li>
           </ul>
@@ -199,7 +201,7 @@ export default function Sidebar({ active, teamId }) {
       {/* 하단 설정 — 팀 소속일 때만 */}
       {hasTeam && (
         <div className="border-t border-line px-[12px] py-[12px]">
-          <NavLink item={SETTINGS_ITEM} active={active === "설정"} teamId={teamId} />
+          <NavLink item={SETTINGS_ITEM} active={active === "설정"} teamId={teamId} onClick={onNavigate} />
         </div>
       )}
     </aside>

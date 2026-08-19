@@ -16,7 +16,7 @@ export default function Page({ fullBleed = false, className = "", children }) {
   return (
     <div
       className={cx(
-        "mx-auto w-full px-[32px] pb-[96px] pt-[32px]",
+        "mx-auto w-full px-[16px] pb-[64px] pt-[20px] sm:px-[24px] sm:pt-[32px] lg:px-[32px] lg:pb-[96px]",
         fullBleed ? "max-w-[1280px]" : CONTENT_WIDTH,
         className,
       )}
