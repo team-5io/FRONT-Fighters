@@ -16,22 +16,24 @@ export default function AppShell({ children, activeNav, teamId }) {
   return (
     <SidebarContext.Provider value={{ open: sidebarOpen, toggle }}>
       <div className="flex h-full min-h-screen bg-neutral-0">
-        {/* 모바일 오버레이 */}
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 z-[45] bg-neutral-900/50 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
 
-        {/* 사이드바: 데스크톱은 항상 표시, 모바일은 토글 */}
-        <div
-          className={`fixed inset-y-[12px] left-[12px] z-[60] w-[272px] rounded-xl shadow-[0_12px_48px_-4px_rgba(0,0,0,0.25),0_4px_16px_-2px_rgba(0,0,0,0.1)] transition-all duration-200 lg:static lg:inset-y-0 lg:left-0 lg:z-auto lg:w-auto lg:rounded-none lg:shadow-none ${
-            sidebarOpen ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 lg:translate-x-0 lg:opacity-100"
-          }`}
-        >
-          <Sidebar active={activeNav} teamId={teamId} onNavigate={() => setSidebarOpen(false)} />
+        {/* 데스크톱 사이드바 — 항상 표시, 모바일에서 숨김 */}
+        <div className="hidden lg:block">
+          <Sidebar active={activeNav} teamId={teamId} />
         </div>
+
+        {/* 모바일 사이드바 — 열려있을 때만 렌더 */}
+        {sidebarOpen && (
+          <>
+            <div
+              className="fixed inset-0 z-[45] bg-neutral-900/50 lg:hidden"
+              onClick={() => setSidebarOpen(false)}
+            />
+            <div className="fixed inset-y-[12px] left-[12px] z-[60] w-[272px] rounded-xl shadow-[0_12px_48px_-4px_rgba(0,0,0,0.25),0_4px_16px_-2px_rgba(0,0,0,0.1)] lg:hidden">
+              <Sidebar active={activeNav} teamId={teamId} onNavigate={() => setSidebarOpen(false)} />
+            </div>
+          </>
+        )}
 
         <div className="flex min-w-0 flex-1 flex-col">
           <Topbar />
