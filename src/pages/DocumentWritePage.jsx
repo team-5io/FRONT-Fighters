@@ -261,7 +261,7 @@ export default function DocumentWritePage() {
   const savingRef = useRef(false);
 
   async function saveNow() {
-    if (!documentId || !teamId || isOfficial || savingRef.current) return;
+    if (!documentId || isOfficial || savingRef.current) return;
     savingRef.current = true;
     try {
       await documentsApi.update(documentId, {
@@ -285,10 +285,10 @@ export default function DocumentWritePage() {
 
   // 내용 변경 시 2초 디바운스 저장 예약
   useEffect(() => {
-    if (!documentId || !teamId || isOfficial) return;
+    if (!documentId || isOfficial) return;
     scheduleSave();
     return () => clearTimeout(saveTimerRef.current);
-  }, [title, blocks, documentId, teamId, isOfficial]);
+  }, [title, blocks, documentId, isOfficial]);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [docPrModalOpen, setDocPrModalOpen] = useState(false);
