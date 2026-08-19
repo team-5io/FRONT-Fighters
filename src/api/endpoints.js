@@ -56,6 +56,12 @@ export const documents = {
   myPermissions: (documentId) => api.get(`/documents/${documentId}/my-permissions`),
   setRaci: (documentId, payload) => api.put(`/documents/${documentId}/raci`, payload),
   createDocPr: (documentId, payload) => api.post(`/documents/${documentId}/doc-prs`, payload),
+  /** AI 글쓰기 제안 — content + cursorContext 필수 */
+  writingSuggestions: (documentId, payload) => api.post(`/documents/${documentId}/writing-assistant/suggestions`, payload),
+  /** 번역 요청 — blockId, content, sourceLanguage, targetLanguage 필수 */
+  requestTranslation: (documentId, payload) => api.post(`/documents/${documentId}/translations`, payload),
+  /** 번역 결과 원문 대조 조회 */
+  getTranslation: (documentId, translationId) => api.get(`/documents/${documentId}/translations/${translationId}`),
 };
 
 /* ── Doc PR ── */
@@ -74,6 +80,16 @@ export const docPrs = {
   merge: (prId) => api.post(`/doc-prs/${prId}/merge`),
   mergeException: (prId, payload) => api.post(`/doc-prs/${prId}/merge/exception`, payload),
   setApprover: (prId, payload) => api.patch(`/doc-prs/${prId}/approver`, payload),
+  /** AI 리뷰 요청 — hasConflict, isConsistent, violatesCharter, evidence 반환 */
+  requestAiReview: (prId) => api.post(`/doc-prs/${prId}/ai-review`),
+  /** AI 리뷰 결과 조회 */
+  getAiReview: (prId) => api.get(`/doc-prs/${prId}/ai-review`),
+};
+
+/* ── Charter ── */
+export const charter = {
+  /** 협업 규칙 초안 AI 생성 요청 */
+  generateDraft: (teamId) => api.post(`/teams/${teamId}/charter/draft`),
 };
 
 /** 연동한 엔드포인트 수 — 작업 기록과 대조하기 위한 값 */
@@ -82,4 +98,5 @@ export const WIRED_ENDPOINT_COUNT =
   Object.keys(users).length +
   Object.keys(teams).length +
   Object.keys(documents).length +
-  Object.keys(docPrs).length;
+  Object.keys(docPrs).length +
+  Object.keys(charter).length;
