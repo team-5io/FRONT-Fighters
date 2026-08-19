@@ -29,7 +29,7 @@ export default function AppShell({ children, activeNav, teamId }) {
               className="fixed inset-0 z-[45] bg-neutral-900/50 lg:hidden"
               onClick={() => setSidebarOpen(false)}
             />
-            <div className="fixed inset-y-[12px] left-[12px] z-[60] w-[272px] rounded-xl shadow-[0_12px_48px_-4px_rgba(0,0,0,0.25),0_4px_16px_-2px_rgba(0,0,0,0.1)] lg:hidden">
+            <div className="fixed inset-y-[12px] left-[12px] z-[60] w-[272px] overflow-hidden rounded-xl bg-neutral-0 shadow-sm lg:hidden">
               <Sidebar active={activeNav} teamId={teamId} onNavigate={() => setSidebarOpen(false)} />
             </div>
           </>
