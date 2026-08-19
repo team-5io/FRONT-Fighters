@@ -112,7 +112,7 @@ export default function TeamResetPage() {
             <Button variant="danger" className="rounded-sm" disabled={!ready}>
               팀 설정 초기화
             </Button>
-            <a href="#/settings" className="text-[13px] font-semibold text-main-500">
+            <a href="/settings" className="text-[13px] font-semibold text-main-500">
               팀 설정으로 돌아가기
             </a>
           </div>

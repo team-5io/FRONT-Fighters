@@ -109,7 +109,7 @@ export default function GlossaryPage() {
 
       <p className="mt-[8px] text-[13px] font-medium leading-[19px] text-neutral-500">
         여기 등록한 용어는{" "}
-        <a href="#/translation" className="font-semibold text-main-500">
+        <a href="/translation" className="font-semibold text-main-500">
           번역 보기
         </a>
         에서 원문 보존·치환 기준으로 쓰입니다. 코드 블록·API명·변수명은 용어집과 무관하게

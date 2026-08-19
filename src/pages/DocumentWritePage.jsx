@@ -1,3 +1,4 @@
+import { navigate } from "../router";
 import { useEffect, useRef, useState } from "react";
 import Page from "../components/layout/Page";
 import AssistantPanel from "../components/editor/AssistantPanel";
@@ -48,7 +49,7 @@ import { useAuth } from "../auth/AuthContext";
 
 /** URL에서 documentId를 읽는다. 없으면 새 문서 생성 모드. */
 function getDocumentIdFromHash() {
-  const params = new URLSearchParams(window.location.hash.split("?")[1] ?? "");
+  const params = new URLSearchParams(window.location.search.slice(1));
   return params.get("documentId") ?? params.get("id") ?? null;
 }
 
@@ -89,15 +90,15 @@ export default function DocumentWritePage() {
   const [assigneeName, setAssigneeName] = useState(user.name);
   // `#/ai-structure` 딥링크로 들어오면 패널을 펼친 상태로 시작한다
   const [panelOpen, setPanelOpen] = useState(
-    () => window.location.hash === "#/ai-structure",
+    () => window.location.pathname === "/ai-structure",
   );
 
   useEffect(() => {
     const onHash = () => {
-      if (window.location.hash === "#/ai-structure") setPanelOpen(true);
+      if (window.location.pathname === "/ai-structure") setPanelOpen(true);
     };
-    window.addEventListener("hashchange", onHash);
-    return () => window.removeEventListener("hashchange", onHash);
+    window.addEventListener("popstate", onHash);
+    return () => window.removeEventListener("popstate", onHash);
   }, []);
 
   // AI 작성 도우미 패널이 열리면 제안을 가져온다
@@ -306,14 +307,14 @@ export default function DocumentWritePage() {
     {
       label: "관련 문서 연결",
       icon: <IconLink size={14} className="text-neutral-500" />,
-      run: () => (window.location.hash = documentId
-        ? `#/link-documents?documentId=${encodeURIComponent(documentId)}`
-        : "#/link-documents"),
+      run: () => navigate(documentId
+        ? `/link-documents?documentId=${encodeURIComponent(documentId)}`
+        : "/link-documents"),
     },
     {
       label: "번역 보기",
       icon: <IconGlobe size={14} className="text-neutral-500" />,
-      run: () => (window.location.hash = "#/translation"),
+      run: () => navigate("/translation"),
     },
     {
       label: panelOpen ? "작성 도우미 접기" : "작성 도우미 열기",
@@ -329,7 +330,7 @@ export default function DocumentWritePage() {
               if (!window.confirm("이 문서를 삭제하시겠습니까?")) return;
               try {
                 await removeDocument.mutate();
-                window.location.hash = "#/documents";
+                navigate("/documents");
               } catch (err) {
                 window.alert(`문서 삭제 실패: ${err.body?.message ?? err.message}`);
               }
@@ -352,7 +353,7 @@ export default function DocumentWritePage() {
           {/* 이 화면은 노션 페이지 레이아웃이라 PageHeader를 쓰지 않는다 —
               뒤로가기를 여기 직접 둔다 (4차 4.2) */}
           <a
-            href="#/documents"
+            href="/documents"
             className="mb-[10px] inline-flex items-center gap-[6px] rounded-xs text-[13px] font-medium text-neutral-500 transition-colors hover:text-main-500"
           >
             <span aria-hidden>←</span> 문서 목록
@@ -361,7 +362,7 @@ export default function DocumentWritePage() {
           <nav aria-label="현재 위치" className="mb-[10px]">
             <ol className="flex flex-wrap items-center gap-[6px] text-[13px] font-medium text-neutral-500">
               <li>
-                <a href="#/dashboard" className="hover:text-main-500">
+                <a href="/dashboard" className="hover:text-main-500">
                   {user.teamName ?? "내 팀"}
                 </a>
               </li>
@@ -369,7 +370,7 @@ export default function DocumentWritePage() {
                 /
               </li>
               <li>
-                <a href="#/documents" className="hover:text-main-500">
+                <a href="/documents" className="hover:text-main-500">
                   문서
                 </a>
               </li>
@@ -538,7 +539,7 @@ export default function DocumentWritePage() {
             <p className="text-[13px] text-neutral-500">
               관련 문서 연결은 더보기 메뉴에서 할 수 있습니다.
             </p>
-            <a href="#/graph" className="mt-[8px] block text-[12px] font-semibold text-main-500">
+            <a href="/graph" className="mt-[8px] block text-[12px] font-semibold text-main-500">
               그래프에서 보기 →
             </a>
           </Disclosure>
@@ -568,9 +569,9 @@ export default function DocumentWritePage() {
               const created = unwrap(await createDocPr.mutate(docId, { approverMemberId, proposedContent }));
               const prId = created?.id ?? created?.prId ?? created?.docPrId;
               setDocPrModalOpen(false);
-              window.location.hash = prId
-                ? `#/doc-pr-detail?prId=${encodeURIComponent(prId)}`
-                : "#/doc-pr";
+              navigate(prId
+                ? `/doc-pr-detail?prId=${encodeURIComponent(prId)}`
+                : "/doc-pr");
             } catch (err) {
               window.alert(`Doc PR 생성 실패: ${err.body?.message ?? err.message}`);
             }

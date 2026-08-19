@@ -79,7 +79,7 @@ function NoTeamView({ onCreated }) {
       const newTeamId = team.id;
       setActiveTeam({ ...team, isAdmin: true });
       // 새 팀의 워크스페이스 URL로 이동
-      window.location.hash = newTeamId ? `#/t/${newTeamId}/dashboard` : "#/dashboard";
+      navigate(newTeamId ? `/t/${newTeamId}/dashboard` : "/dashboard");
       window.location.reload();
     } catch {
       // 에러는 useMutation이 관리
@@ -123,7 +123,7 @@ function NoTeamView({ onCreated }) {
           </form>
 
           <div className="mt-[24px] border-t border-line pt-[16px]">
-            <a href="#/me" className="text-[13px] font-semibold text-main-500">
+            <a href="/me" className="text-[13px] font-semibold text-main-500">
               내 계정 설정 →
             </a>
           </div>

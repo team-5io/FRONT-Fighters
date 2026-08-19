@@ -1,3 +1,4 @@
+import { navigate } from "../router";
 import { useState } from "react";
 import Page from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
@@ -18,7 +19,7 @@ import { unwrap } from "../api/unwrap";
  */
 
 function getDocumentIdFromHash() {
-  const params = new URLSearchParams(window.location.hash.split("?")[1] ?? "");
+  const params = new URLSearchParams(window.location.search.slice(1));
   return params.get("documentId") ?? params.get("id") ?? null;
 }
 
@@ -70,7 +71,7 @@ export default function TranslationPage() {
             title="문서를 선택해 주세요"
             description="문서 작성 화면에서 '번역 보기'로 진입하면 해당 문서의 번역을 요청할 수 있습니다."
             actionLabel="문서 목록"
-            onAction={() => (window.location.hash = "#/documents")}
+            onAction={() => navigate("/documents")}
           />
         </div>
       </Page>

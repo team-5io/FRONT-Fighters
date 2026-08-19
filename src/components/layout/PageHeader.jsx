@@ -20,11 +20,11 @@ export default function PageHeader({
   actions,
   className = "",
 }) {
-  const [hash, setHash] = useState(() => window.location.hash);
+  const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
   useEffect(() => {
-    const onHash = () => setHash(window.location.hash);
-    window.addEventListener("hashchange", onHash);
-    return () => window.removeEventListener("hashchange", onHash);
+    const onHash = () => setCurrentPath(window.location.pathname);
+    window.addEventListener("popstate", onHash);
+    return () => window.removeEventListener("popstate", onHash);
   }, []);
 
   const back = backTo ?? backToFor(hash);

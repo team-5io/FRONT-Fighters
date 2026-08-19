@@ -1,3 +1,4 @@
+import { navigate } from "../router";
 import { useState } from "react";
 import Page, { Section } from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
@@ -32,7 +33,7 @@ import { useAuth } from "../auth/AuthContext";
  */
 
 function getDocumentIdFromHash() {
-  const params = new URLSearchParams(window.location.hash.split("?")[1] ?? "");
+  const params = new URLSearchParams(window.location.search.slice(1));
   return params.get("documentId") ?? params.get("id") ?? "api-design";
 }
 
@@ -99,7 +100,7 @@ export default function LinkDocumentsPage() {
             <Button
               variant="secondary"
               className="rounded-sm"
-              onClick={() => (window.location.hash = "#/write")}
+              onClick={() => navigate("/write")}
             >
               돌아가기
             </Button>
@@ -109,9 +110,9 @@ export default function LinkDocumentsPage() {
               onClick={async () => {
                 try {
                   await saveRelations.mutate();
-                  window.location.hash = documentId
-                    ? `#/write?documentId=${encodeURIComponent(documentId)}`
-                    : "#/write";
+                  navigate(documentId
+                    ? `/write?documentId=${encodeURIComponent(documentId)}`
+                    : "/write");
                 } catch (err) {
                   window.alert(`문서 연결 저장 실패: ${err.body?.message ?? err.message}`);
                 }

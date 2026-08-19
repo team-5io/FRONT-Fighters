@@ -1,3 +1,4 @@
+import { navigate } from "../router";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { auth as authApi } from "../api/endpoints";
 import { getAccessToken, isApiConfigured, setAccessToken, setUnauthorizedHandler } from "../api/client";
@@ -40,7 +41,7 @@ export function AuthProvider({ children }) {
     setToken(null);
     setUser(null);
     saveStoredUser(null);
-    if (redirect) window.location.hash = "#/login";
+    if (redirect) navigate("/login");
   }, []);
 
   /** 401을 받으면 어디서든 로그아웃 + 로그인 화면으로 (지시서 1.1) */

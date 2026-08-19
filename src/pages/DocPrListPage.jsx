@@ -1,3 +1,4 @@
+import { navigate } from "../router";
 import { useMemo, useState } from "react";
 import Page from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
@@ -90,7 +91,7 @@ const COLUMNS = [
         variant="secondary"
         size="sm"
         className="rounded-sm"
-        onClick={() => (window.location.hash = `#/doc-pr-detail?prId=${encodeURIComponent(row.id)}`)}
+        onClick={() => navigate(`/doc-pr-detail?prId=${encodeURIComponent(row.id)}`)}
       >
         자세히
       </Button>
@@ -151,7 +152,7 @@ export default function DocPrListPage() {
           loading={loading}
           rows={rows}
           onRowClick={(row) =>
-            (window.location.hash = `#/doc-pr-detail?prId=${encodeURIComponent(row.id)}`)
+            navigate(`/doc-pr-detail?prId=${encodeURIComponent(row.id)}`)
           }
           empty={{
             title: error
@@ -173,7 +174,7 @@ export default function DocPrListPage() {
                 setKeyword("");
                 return;
               }
-              window.location.hash = "#/write";
+              navigate("/write");
             },
           }}
         />

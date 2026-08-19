@@ -1,3 +1,4 @@
+import { navigate } from "../../router";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { teams as teamsApi } from "../../api/endpoints";
@@ -24,8 +25,8 @@ import {
  */
 
 function navHref(teamId, page) {
-  if (!teamId) return `#/${page}`;
-  return `#/t/${teamId}/${page}`;
+  if (!teamId) return `/${page}`;
+  return `/t/${teamId}/${page}`;
 }
 
 const NAV_ITEMS = [
@@ -142,7 +143,7 @@ export default function Sidebar({ active, teamId, onNavigate }) {
                   onClick={() => {
                     updateUser({ teamId: team.id, teamName: team.name });
                     setSwitcherOpen(false);
-                    window.location.hash = `#/t/${team.id}/dashboard`;
+                    navigate(`/t/${team.id}/dashboard`);
                   }}
                   className={cx(
                     "flex w-full items-center gap-[8px] rounded-sm px-[8px] py-[6px] text-left text-[13px] font-medium transition-colors",
@@ -164,7 +165,7 @@ export default function Sidebar({ active, teamId, onNavigate }) {
                 type="button"
                 onClick={() => {
                   setSwitcherOpen(false);
-                  window.location.hash = "#/dashboard";
+                  navigate("/dashboard");
                 }}
                 className="flex w-full items-center gap-[8px] rounded-sm px-[8px] py-[6px] text-left text-[13px] font-medium text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700"
               >

@@ -1,3 +1,4 @@
+import { navigate } from "../router";
 import { Button, Card, RaciChip } from "../components/ui";
 import { IconTalkBubbles } from "../components/icons";
 
@@ -87,7 +88,7 @@ export default function TeamInvitePage() {
             </Button>
             <Button
               className="flex-1 justify-center rounded-sm"
-              onClick={() => (window.location.hash = "#/dashboard")}
+              onClick={() => navigate("/dashboard")}
             >
               초대 수락
             </Button>
@@ -96,7 +97,7 @@ export default function TeamInvitePage() {
 
         <p className="mt-[16px] text-center text-[13px] font-medium text-neutral-500">
           팀을 직접 만들고 싶다면{" "}
-          <a href="#/team-reset" className="font-semibold text-main-500">
+          <a href="/team-reset" className="font-semibold text-main-500">
             새 팀 만들기
           </a>
         </p>

@@ -1,3 +1,4 @@
+import { navigate } from "../router";
 import { useEffect, useState } from "react";
 import Page, { Section } from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
@@ -203,7 +204,7 @@ export default function MyPage() {
             title="소속된 팀이 없습니다"
             description="팀을 만들거나 초대를 수락하면 여기에 표시됩니다."
             actionLabel="팀 생성 또는 참여"
-            onAction={() => (window.location.hash = "#/team-invite")}
+            onAction={() => navigate("/team-invite")}
           />
         )}
         <ul className="flex flex-col">
@@ -213,7 +214,7 @@ export default function MyPage() {
               className="flex flex-wrap items-center gap-x-[12px] gap-y-[6px] border-b border-line py-[12px] last:border-b-0"
             >
               <a
-                href="#/dashboard"
+                href="/dashboard"
                 className="text-[14px] font-semibold text-neutral-900 hover:text-main-500"
               >
                 {team.name}

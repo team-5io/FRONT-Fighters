@@ -1,3 +1,4 @@
+import { navigate } from "../router";
 import { useState } from "react";
 import Page from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
@@ -19,7 +20,7 @@ import { unwrap, unwrapList } from "../api/unwrap";
  */
 
 function getDocumentIdFromHash() {
-  const params = new URLSearchParams(window.location.hash.split("?")[1] ?? "");
+  const params = new URLSearchParams(window.location.search.slice(1));
   return params.get("documentId") ?? params.get("id") ?? null;
 }
 
@@ -58,7 +59,7 @@ export default function DocumentGraphPage() {
             title="표시할 그래프가 없습니다"
             description="문서를 선택한 뒤 그래프를 열거나, 문서 간 관계를 먼저 연결해 주세요."
             actionLabel="문서 목록"
-            onAction={() => (window.location.hash = "#/documents")}
+            onAction={() => navigate("/documents")}
           />
         </div>
       </Page>
@@ -98,7 +99,7 @@ export default function DocumentGraphPage() {
             title="연결된 문서가 없습니다"
             description="문서 간 관계를 먼저 연결하면 그래프가 표시됩니다."
             actionLabel="관련 문서 연결"
-            onAction={() => (window.location.hash = `#/link-documents?documentId=${encodeURIComponent(documentId)}`)}
+            onAction={() => navigate(`/link-documents?documentId=${encodeURIComponent(documentId)}`)}
           />
         </div>
       )}
@@ -157,7 +158,7 @@ export default function DocumentGraphPage() {
                   variant="secondary"
                   size="sm"
                   className="rounded-sm"
-                  onClick={() => (window.location.hash = `#/write?documentId=${encodeURIComponent(selectedId)}`)}
+                  onClick={() => navigate(`/write?documentId=${encodeURIComponent(selectedId)}`)}
                 >
                   문서 열기
                 </Button>
@@ -165,7 +166,7 @@ export default function DocumentGraphPage() {
                   variant="secondary"
                   size="sm"
                   className="rounded-sm"
-                  onClick={() => (window.location.hash = `#/link-documents?documentId=${encodeURIComponent(selectedId)}`)}
+                  onClick={() => navigate(`/link-documents?documentId=${encodeURIComponent(selectedId)}`)}
                 >
                   관계 편집
                 </Button>

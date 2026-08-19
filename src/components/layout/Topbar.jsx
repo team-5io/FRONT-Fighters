@@ -37,7 +37,7 @@ export default function Topbar() {
 
       {/* 마이페이지 */}
       <a
-        href="#/me"
+        href="/me"
         aria-label={`내 계정 — ${user.name}`}
         className="ml-auto flex shrink-0 items-center gap-[8px] rounded-sm py-[3px] pl-[3px] pr-[8px] transition-colors hover:bg-neutral-75/70"
       >

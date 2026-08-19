@@ -1,3 +1,4 @@
+import { navigate } from "../router";
 import { useEffect, useMemo, useState } from "react";
 import Page from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
@@ -355,7 +356,7 @@ export default function RaciRolesPage() {
               title: "역할을 지정할 문서가 없습니다",
               description: "문서를 만들면 여기에서 R·A·C·I를 지정할 수 있습니다.",
               actionLabel: "문서 작성하기",
-              onAction: () => (window.location.hash = "#/write"),
+              onAction: () => navigate("/write"),
             }}
           />
         </Disclosure>

@@ -1,3 +1,4 @@
+import { navigate } from "../router";
 import { IconTalkBubbles } from "../components/icons";
 import { Button } from "../components/ui";
 
@@ -5,7 +6,7 @@ import { Button } from "../components/ui";
  * 404 — 존재하지 않는 경로로 진입했을 때 표시.
  */
 export default function NotFoundPage() {
-  const currentHash = window.location.hash || "#/";
+  const currentPath = window.location.pathname;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-neutral-50 px-[16px] py-[24px] sm:px-[24px]">
@@ -27,13 +28,13 @@ export default function NotFoundPage() {
 
         <Button
           className="mx-auto mt-[24px] h-[38px] rounded-sm px-[20px]"
-          onClick={() => (window.location.hash = "#/dashboard")}
+          onClick={() => navigate("/dashboard")}
         >
           대시보드로 이동
         </Button>
 
         <p className="mt-[16px] font-mono text-[12px] text-neutral-400">
-          {currentHash}
+          {currentPath}
         </p>
       </div>
     </div>
