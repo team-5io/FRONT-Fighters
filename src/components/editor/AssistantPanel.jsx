@@ -150,7 +150,7 @@ export default function AssistantPanel({
                   <li key={quote.nodeId} className="border-b border-line pb-[10px] last:border-b-0">
                     <div className="flex items-center gap-[6px]">
                       <a
-                        href="#/graph"
+                        href="/graph"
                         className="truncate text-[13px] font-semibold text-neutral-900 hover:text-main-500"
                       >
                         {node?.title}

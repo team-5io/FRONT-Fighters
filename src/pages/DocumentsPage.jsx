@@ -1,3 +1,4 @@
+import { navigate } from "../router";
 import { useState } from "react";
 import Page from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
@@ -157,7 +158,7 @@ export default function DocumentsPage() {
             <Button
               size="sm"
               className="rounded-sm"
-              onClick={() => (window.location.hash = "#/write")}
+              onClick={() => navigate("/write")}
             >
               새 문서
             </Button>
@@ -182,7 +183,7 @@ export default function DocumentsPage() {
             rows={list}
             onRowClick={(row) => {
               const base = teamId ? `#/t/${teamId}/write` : "#/write";
-              window.location.hash = `${base}?documentId=${encodeURIComponent(row.id)}`;
+              navigate(`${base}?documentId=${encodeURIComponent(row.id)}`);
             }}
             empty={{
               title: error ? "문서를 불러오지 못했습니다" : "아직 문서가 없습니다",
@@ -191,7 +192,7 @@ export default function DocumentsPage() {
                 : "이 팀에 등록된 문서가 없습니다. 첫 문서를 작성하면 여기에서 상태와 버전을 함께 볼 수 있습니다.",
               actionLabel: error ? "다시 시도" : "문서 작성하기",
               icon: <IconPaper size={20} />,
-              onAction: () => (error ? reload() : (window.location.hash = "#/write")),
+              onAction: () => (error ? reload() : navigate("/write")),
             }}
           />
         </div>

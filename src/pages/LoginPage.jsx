@@ -1,3 +1,4 @@
+import { navigate } from "../router";
 import { useState } from "react";
 import { Button, Card, EmptyState } from "../components/ui";
 import { IconTalkBubbles } from "../components/icons";
@@ -38,7 +39,7 @@ export default function LoginPage() {
         }
         await signIn({ email: form.email, password: form.password });
       }
-      window.location.hash = "#/dashboard";
+      navigate("/dashboard");
     } catch (err) {
       setError(err);
     } finally {
@@ -155,7 +156,7 @@ export default function LoginPage() {
 
         <p className="mt-[16px] text-center text-[13px] font-medium text-neutral-500">
           팀이 아직 없으신가요?{" "}
-          <a href="#/team-invite" className="font-semibold text-main-500">
+          <a href="/team-invite" className="font-semibold text-main-500">
             팀 생성 또는 참여
           </a>
         </p>

@@ -1,3 +1,4 @@
+import { navigate } from "../router";
 import { useState } from "react";
 import Page, { Section } from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
@@ -69,7 +70,7 @@ export default function AssignApproverPage() {
           title="Doc PR을 선택해 주세요"
           description="Doc PR 상세에서 승인권자 지정으로 진입해 주세요."
           actionLabel="Doc PR 목록"
-          onAction={() => (window.location.hash = "#/doc-pr")}
+          onAction={() => navigate("/doc-pr")}
         />
       </Page>
     );
@@ -93,7 +94,7 @@ export default function AssignApproverPage() {
           <Button
             variant="secondary"
             className="rounded-sm"
-            onClick={() => (window.location.hash = `#/doc-pr-detail?prId=${encodeURIComponent(prId)}`)}
+            onClick={() => navigate(`/doc-pr-detail?prId=${encodeURIComponent(prId)}`)}
           >
             Doc PR 상세로
           </Button>
@@ -124,7 +125,7 @@ export default function AssignApproverPage() {
               title="팀원이 없습니다"
               description="팀 설정에서 팀원을 초대하면 대체 승인권자로 지정할 수 있습니다."
               actionLabel="팀 설정 열기"
-              onAction={() => (window.location.hash = "#/settings?tab=members")}
+              onAction={() => navigate("/settings?tab=members")}
             />
           ) : (
             <ul className="flex flex-col gap-[8px]">
@@ -183,8 +184,7 @@ export default function AssignApproverPage() {
               onClick={async () => {
                 try {
                   await assign.mutate();
-                  window.location.hash = `#/doc-pr-detail?prId=${encodeURIComponent(prId)}`;
-                } catch (err) {
+                  navigate(`/doc-pr-detail?prId=${encodeURIComponent(prId)}`);                } catch (err) {
                   window.alert(`대체 승인권자 지정 실패: ${err.body?.message ?? err.message}`);
                 }
               }}

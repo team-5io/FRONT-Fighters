@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import AppShell from "./components/layout/AppShell";
 import { useAuth } from "./auth/AuthContext";
+import { getPathname, navigate, onRouteChange, replaceRoute } from "./router";
 import AiReviewPage from "./pages/AiReviewPage";
 import CharterPage from "./pages/CharterPage";
 import GlossaryPage from "./pages/GlossaryPage";
@@ -21,15 +22,18 @@ import TeamInvitePage from "./pages/TeamInvitePage";
 import TeamSettingsPage from "./pages/TeamSettingsPage";
 import TranslationPage from "./pages/TranslationPage";
 import TeamResetPage from "./pages/TeamResetPage";
-
 import NotFoundPage from "./pages/NotFoundPage";
 
 /**
- * URL 구조: #/t/{teamId}/{page}
- * 예: #/t/1/dashboard, #/t/1/documents, #/t/1/write?documentId=abc
- *
- * 팀이 없는 사용자: #/dashboard (팀 생성 화면)
- * 인증 전: #/login
+ * URL 구조 (path 기반):
+ *   /login
+ *   /team-invite
+ *   /dashboard
+ *   /me
+ *   /t/{teamId}/dashboard
+ *   /t/{teamId}/documents
+ *   /t/{teamId}/write?documentId=abc
+ *   /t/{teamId}/doc-pr-detail?prId=1
  */
 
 const PAGES = {
@@ -41,8 +45,6 @@ const PAGES = {
   "ai-review": { page: AiReviewPage, activeNav: "Doc PR" },
   "human-review": { page: HumanReviewPage, activeNav: "Doc PR" },
   settings: { page: TeamSettingsPage, activeNav: "설정" },
-  // 팀 설정에서 갈라져 나오는 화면들. `data/nav.js`가 이미 뒤로가기를 정의해 두고
-  // 있었는데 ROUTES에서만 빠져 있어 도달할 수 없었다 (화면-목록.md 17~20번).
   "raci-roles": { page: RaciRolesPage, activeNav: "설정" },
   charter: { page: CharterPage, activeNav: "설정" },
   glossary: { page: GlossaryPage, activeNav: "설정" },
@@ -55,64 +57,95 @@ const PAGES = {
   translation: { page: TranslationPage, activeNav: "작성" },
   "team-reset": { page: TeamResetPage, activeNav: "설정" },
   "team-invite": { page: TeamInvitePage, bare: true },
+  login: { page: LoginPage, bare: true },
 };
 
-/** 해시에서 teamId와 pageName을 파싱한다 */
-function parseHash(hash) {
-  // #/t/{teamId}/{page}...
-  const teamMatch = hash.match(/^#\/t\/([^/]+)\/([^?]*)/);
+/** pathname에서 teamId와 pageName을 파싱한다 */
+function parsePath(pathname) {
+  // /t/{teamId}/{page}
+  const teamMatch = pathname.match(/^\/t\/([^/]+)\/([^?]*)/);
   if (teamMatch) {
-    return { teamId: teamMatch[1], pageName: teamMatch[2] || "dashboard", raw: hash };
+    return { teamId: teamMatch[1], pageName: teamMatch[2] || "dashboard" };
   }
-  // 레거시: #/{page} (팀 없는 사용자 또는 로그인)
-  const legacyMatch = hash.match(/^#\/([^?]*)/);
-  const pageName = legacyMatch?.[1] || "login";
-  return { teamId: null, pageName, raw: hash };
+  // /{page}
+  const simple = pathname.replace(/^\//, "").split("?")[0];
+  return { teamId: null, pageName: simple || "login" };
 }
 
 /** 팀 기반 URL을 생성한다 */
 export function teamUrl(teamId, page, query = "") {
-  if (!teamId) return `#/${page}${query}`;
-  return `#/t/${teamId}/${page}${query}`;
+  if (!teamId) return `/${page}${query}`;
+  return `/t/${teamId}/${page}${query}`;
 }
 
 export default function App() {
-  const [hash, setHash] = useState(() => window.location.hash || "#/login");
+  const [path, setPath] = useState(getPathname);
   const { user } = useAuth();
 
   useEffect(() => {
-    const onHashChange = () => setHash(window.location.hash || "#/login");
-    window.addEventListener("hashchange", onHashChange);
-    return () => window.removeEventListener("hashchange", onHashChange);
+    return onRouteChange(() => setPath(getPathname()));
   }, []);
 
-  const { teamId, pageName } = parseHash(hash);
+  // 해시 URL 레거시 지원 — 해시가 있으면 path로 변환
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash && hash.startsWith("#/")) {
+      const converted = hash.slice(1); // "#/t/1/dashboard" → "/t/1/dashboard"
+      replaceRoute(converted);
+    }
+  }, []);
 
-  // 로그인/온보딩 bare 화면
+  // 앱 내 링크 클릭을 가로채서 SPA 네비게이션으로 처리
+  useEffect(() => {
+    function onClick(e) {
+      const anchor = e.target.closest("a[href]");
+      if (!anchor) return;
+      const href = anchor.getAttribute("href");
+      // 외부 링크, 새 탭, 특수 키는 무시
+      if (!href || href.startsWith("http") || href.startsWith("//") || e.metaKey || e.ctrlKey || e.shiftKey || anchor.target === "_blank") return;
+      // 해시 링크 레거시 지원
+      if (href.startsWith("#/")) {
+        e.preventDefault();
+        navigate(href.slice(1));
+        return;
+      }
+      // 내부 path 링크
+      if (href.startsWith("/")) {
+        e.preventDefault();
+        navigate(href);
+      }
+    }
+    document.addEventListener("click", onClick);
+    return () => document.removeEventListener("click", onClick);
+  }, []);
+
+  const { teamId, pageName } = parsePath(path);
+
+  // bare 화면 (로그인, 팀 초대)
   if (pageName === "login") return <LoginPage />;
   if (pageName === "team-invite") return <TeamInvitePage />;
 
-  // 인증 가드 — 토큰 없으면 로그인으로
+  // 인증 가드
   const isAuthenticated = Boolean(user.id);
   if (!isAuthenticated) {
-    window.location.hash = "#/login";
+    replaceRoute("/login");
     return <LoginPage />;
   }
 
-  // 팀 ID가 URL에 있으면 그걸 활성 팀으로 사용
+  // 팀 ID
   const activeTeamId = teamId ?? user.teamId ?? null;
 
-  // 레거시 URL(#/settings 등)로 들어왔는데 팀이 있으면 팀 URL로 리다이렉트
+  // 팀이 있는데 path에 teamId가 없으면 리다이렉트
   if (!teamId && activeTeamId && pageName !== "dashboard" && pageName !== "me") {
-    const queryPart = hash.includes("?") ? hash.slice(hash.indexOf("?")) : "";
-    window.location.hash = `#/t/${activeTeamId}/${pageName}${queryPart}`;
+    const query = window.location.search || "";
+    replaceRoute(`/t/${activeTeamId}/${pageName}${query}`);
     return null;
   }
 
-  // 팀이 없으면 대시보드(팀 생성)와 마이페이지만 허용
+  // 팀 없으면 대시보드/마이페이지만 허용
   const allowedWithoutTeam = ["dashboard", "me"];
   if (!activeTeamId && !allowedWithoutTeam.includes(pageName)) {
-    window.location.hash = "#/dashboard";
+    replaceRoute("/dashboard");
     return (
       <AppShell activeNav="대시보드" teamId={null}>
         <DashboardPage />
@@ -120,11 +153,9 @@ export default function App() {
     );
   }
 
-  // 존재하지 않는 경로 → 404
+  // 404
   const route = PAGES[pageName];
-  if (!route) {
-    return <NotFoundPage />;
-  }
+  if (!route) return <NotFoundPage />;
 
   const Page = route.page;
 

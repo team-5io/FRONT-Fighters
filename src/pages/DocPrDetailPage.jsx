@@ -1,3 +1,4 @@
+import { navigate } from "../router";
 import Page from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
 import {
@@ -69,7 +70,7 @@ export default function DocPrDetailPage() {
           title="Doc PR을 찾을 수 없습니다"
           description="Doc PR 목록에서 항목을 선택해 주세요."
           actionLabel="Doc PR 목록"
-          onAction={() => (window.location.hash = "#/doc-pr")}
+          onAction={() => navigate("/doc-pr")}
         />
       </Page>
     );
@@ -362,7 +363,7 @@ export default function DocPrDetailPage() {
           count={AI_FINDINGS.filter((f) => f.level !== "pass").length}
           caption="AI 검토 엔드포인트는 아직 준비되지 않았습니다"
           right={
-            <a href="#/ai-review" className="text-[13px] font-semibold text-main-500">
+            <a href="/ai-review" className="text-[13px] font-semibold text-main-500">
               상세 보기
             </a>
           }
@@ -412,7 +413,7 @@ export default function DocPrDetailPage() {
           }
           defaultOpen
           right={
-            <a href="#/human-review" className="text-[13px] font-semibold text-main-500">
+            <a href="/human-review" className="text-[13px] font-semibold text-main-500">
               리뷰 화면 열기
             </a>
           }
@@ -443,7 +444,7 @@ export default function DocPrDetailPage() {
                 description="지정된 리뷰어가 모두 의견을 남겨야 Merge 조건이 충족됩니다."
                 actionLabel="리뷰 화면 열기"
                 onAction={() =>
-                  (window.location.hash = `#/human-review?prId=${encodeURIComponent(prId)}`)
+                  navigate(`/human-review?prId=${encodeURIComponent(prId)}`)
                 }
               />
             )}

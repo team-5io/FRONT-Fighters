@@ -1,3 +1,4 @@
+import { navigate } from "../router";
 import { useState } from "react";
 import Page from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
@@ -39,7 +40,7 @@ export default function TeamSettingsPage() {
   const teamName = user.teamName ?? "내 팀";
 
   // URL의 ?tab= 에서 초기 탭을 읽는다
-  const initialTab = new URLSearchParams(window.location.hash.split("?")[1] ?? "").get("tab") ?? "team";
+  const initialTab = new URLSearchParams(window.location.search.slice(1)).get("tab") ?? "team";
   const [active, setActive] = useState(initialTab);
 
   /**
@@ -286,7 +287,7 @@ function CharterPanel({ teamId, editable }) {
           variant="secondary"
           size="sm"
           className="shrink-0 rounded-sm"
-          onClick={() => (window.location.hash = "#/charter")}
+          onClick={() => navigate("/charter")}
         >
           규칙 편집하기
         </Button>
@@ -390,7 +391,7 @@ function MembersPanel({ teamId, members, editable, reload }) {
           variant="secondary"
           size="sm"
           className="shrink-0 rounded-sm"
-          onClick={() => (window.location.hash = "#/team-members")}
+          onClick={() => navigate("/team-members")}
         >
           대체 승인권자 지정
         </Button>

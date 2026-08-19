@@ -1,3 +1,4 @@
+import { navigate } from "../router";
 import Page from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
 import {
@@ -134,7 +135,7 @@ export default function AiReviewPage() {
           <Button
             variant="secondary"
             className="rounded-sm"
-            onClick={() => (window.location.hash = "#/doc-pr-detail")}
+            onClick={() => navigate("/doc-pr-detail")}
           >
             Doc PR 상세로
           </Button>
