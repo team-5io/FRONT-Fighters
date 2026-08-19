@@ -19,15 +19,15 @@ export default function AppShell({ children, activeNav, teamId }) {
         {/* 모바일 오버레이 */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 z-40 bg-neutral-900/30 lg:hidden"
+            className="fixed inset-0 z-40 bg-neutral-900/40 backdrop-blur-[2px] lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
         {/* 사이드바: 데스크톱은 항상 표시, 모바일은 토글 */}
         <div
-          className={`fixed inset-y-0 left-0 z-50 transition-transform duration-200 lg:static lg:translate-x-0 ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          className={`fixed inset-y-[12px] left-[12px] z-50 w-[272px] overflow-hidden rounded-xl shadow-[0_8px_40px_rgba(0,0,0,0.18)] transition-all duration-200 lg:static lg:inset-y-0 lg:left-0 lg:w-auto lg:rounded-none lg:shadow-none ${
+            sidebarOpen ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 lg:translate-x-0 lg:opacity-100"
           }`}
         >
           <Sidebar active={activeNav} teamId={teamId} onNavigate={() => setSidebarOpen(false)} />
