@@ -128,7 +128,6 @@ export default function App() {
   // 인증 가드
   const isAuthenticated = Boolean(user.id);
   if (!isAuthenticated) {
-    replaceRoute("/login");
     return <LoginPage />;
   }
 
@@ -138,14 +137,21 @@ export default function App() {
   // 팀이 있는데 path에 teamId가 없으면 리다이렉트
   if (!teamId && activeTeamId && pageName !== "dashboard" && pageName !== "me") {
     const query = window.location.search || "";
-    replaceRoute(`/t/${activeTeamId}/${pageName}${query}`);
-    return null;
+    const targetPage = PAGES[pageName];
+    if (targetPage) {
+      replaceRoute(`/t/${activeTeamId}/${pageName}${query}`);
+      const RedirectPage = targetPage.page;
+      return (
+        <AppShell activeNav={targetPage.activeNav} teamId={activeTeamId}>
+          <RedirectPage />
+        </AppShell>
+      );
+    }
   }
 
   // 팀 없으면 대시보드/마이페이지만 허용
   const allowedWithoutTeam = ["dashboard", "me"];
   if (!activeTeamId && !allowedWithoutTeam.includes(pageName)) {
-    replaceRoute("/dashboard");
     return (
       <AppShell activeNav="대시보드" teamId={null}>
         <DashboardPage />
