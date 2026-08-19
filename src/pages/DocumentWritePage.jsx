@@ -100,6 +100,30 @@ export default function DocumentWritePage() {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
+  // AI 작성 도우미 패널이 열리면 제안을 가져온다
+  useEffect(() => {
+    if (!panelOpen || !documentId) return;
+    // 명세서: content(필수) + cursorContext(필수)
+    const content = blocks.map((b) => b.content ?? "").filter(Boolean).join("\n");
+    const cursorContext = content.slice(-200); // 마지막 200자를 커서 맥락으로
+    documentsApi.writingSuggestions(documentId, { content: content || " ", cursorContext: cursorContext || " " }).then((result) => {
+      const data = unwrap(result);
+      const items = Array.isArray(data) ? data : (data?.suggestions ?? []);
+      if (items.length > 0) {
+        setSuggestions(items.map((s, i) => ({
+          id: s.id ?? `ai-${i}`,
+          kind: s.kind ?? s.type ?? "structure",
+          title: s.text ?? s.title ?? "",
+          detail: s.text ?? s.detail ?? "",
+          preview: s.text ?? "",
+          apply: () => [createBlock("paragraph", s.text ?? "")],
+        })));
+      }
+    }).catch((err) => {
+      console.error("[AI 제안 요청 실패]", err.message);
+    });
+  }, [panelOpen, documentId]);
+
   /**
    * 기존 문서 로딩 — `GET /documents/{documentId}` (PR #100 신규).
    * 예전에는 단건 조회가 없어 `GET /documents`로 받아 배열에서 골라 썼다.

@@ -51,8 +51,6 @@ function prIdFromHash() {
 /**
  * AI 검토 결과 — AI 엔드포인트가 아직 준비되지 않아 빈 배열.
  */
-const AI_FINDINGS = [];
-
 const FINDING_TONE = {
   reject: { tone: "error", text: "반려 권장" },
   warn: { tone: "warning", text: "주의" },
@@ -82,6 +80,8 @@ export default function DocPrDetailPage() {
   const history = useApi(() => docPrs.history(prId), [prId]);
   const reviews = useApi(() => docPrs.reviews(prId), [prId]);
   const nextAssignee = useApi(() => docPrs.nextAssignee(prId), [prId]);
+  const aiReview = useApi(() => docPrs.getAiReview(prId), [prId]);
+  const requestAiReview = useMutation(() => docPrs.requestAiReview(prId));
 
   const approve = useMutation(() => docPrs.approve(prId));
   const reject = useMutation((reason) => docPrs.reject(prId, { reason }));
@@ -101,6 +101,15 @@ export default function DocPrDetailPage() {
   const timeline = unwrapList(history.data);
   const humanReviews = unwrapList(reviews.data);
   const handover = unwrap(nextAssignee.data) ?? {};
+
+  // AI 리뷰 결과 파싱
+  const aiReviewData = unwrap(aiReview.data);
+  const AI_FINDINGS = aiReviewData ? [
+    ...(aiReviewData.hasConflict ? [{ level: "reject", label: "문서 충돌 검토", detail: "연결 문서와 상충하는 내용이 있습니다.", evidence: aiReviewData.evidence ?? "" }] : []),
+    ...(!aiReviewData.isConsistent ? [{ level: "warn", label: "정합성 검토", detail: "기존 Merge 결정과 모순이 발견되었습니다.", evidence: aiReviewData.evidence ?? "" }] : []),
+    ...(aiReviewData.violatesCharter ? [{ level: "reject", label: "협업 규칙 위반", detail: "Team Collaboration Charter 위반이 감지되었습니다.", evidence: aiReviewData.evidence ?? "" }] : []),
+    ...(!aiReviewData.hasConflict && aiReviewData.isConsistent && !aiReviewData.violatesCharter ? [{ level: "pass", label: "정합성 확인", detail: "문제가 발견되지 않았습니다.", evidence: "" }] : []),
+  ] : [];
 
   // Follow-the-Sun 인수인계 — 응답 키 이름이 달라도 받도록 넓게 읽는다
   const current = {

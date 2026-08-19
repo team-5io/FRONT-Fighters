@@ -8,9 +8,9 @@ import {
 } from "../components/ui";
 import { TEAM_ROLES, canManageTeam } from "../data/raci";
 import { useAuth } from "../auth/AuthContext";
-import { teams as teamsApi } from "../api/endpoints";
+import { teams as teamsApi, charter as charterApi } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
-import { unwrapList } from "../api/unwrap";
+import { unwrapList, unwrap } from "../api/unwrap";
 import { normalizeMember } from "../api/normalize";
 import { IconPaper, IconTeam, IconText } from "../components/icons";
 
@@ -236,6 +236,28 @@ function TeamInfoPanel({ teamName, memberCount, editable, members, teamId, reloa
 function CharterPanel({ teamId, editable }) {
   const [rules, setRules] = useState([]);
   const saveCharter = useMutation((payload) => teamsApi.saveCharter(teamId, payload));
+  const generateDraft = useMutation(() => charterApi.generateDraft(teamId));
+
+  async function handleGenerateDraft() {
+    try {
+      const result = await generateDraft.mutate();
+      const draft = unwrap(result);
+      // 응답: data.content = "1. 제목\n설명\n\n2. 제목\n설명" 형식 텍스트
+      if (draft?.content) {
+        // "번호. " 로 시작하는 줄을 기준으로 규칙을 분리
+        const parts = draft.content.split(/\n(?=\d+\.\s)/).filter(Boolean);
+        const parsed = parts.map((part, i) => {
+          const lines = part.split("\n");
+          const titleLine = lines[0]?.replace(/^\d+\.\s*/, "") ?? "";
+          const bodyLines = lines.slice(1).join("\n").trim();
+          return { id: `rule-${i}`, title: titleLine, body: bodyLines };
+        });
+        setRules(parsed);
+      }
+    } catch (err) {
+      window.alert(`초안 생성 실패: ${err.body?.message ?? err.message}`);
+    }
+  }
 
   function addRule() {
     setRules((prev) => [...prev, { id: `rule-${Date.now()}`, title: "", body: "" }]);
@@ -271,14 +293,26 @@ function CharterPanel({ teamId, editable }) {
       </div>
 
       {rules.length === 0 ? (
-        <EmptyState
-          compact
-          className="mt-[16px]"
-          title="아직 규칙이 없습니다"
-          description="규칙을 추가하면 CIO 검토의 기준이 됩니다."
-          actionLabel={editable ? "규칙 추가" : undefined}
-          onAction={addRule}
-        />
+        <div className="mt-[16px]">
+          <EmptyState
+            compact
+            title="아직 규칙이 없습니다"
+            description="AI에게 초안을 생성하거나 직접 규칙을 추가할 수 있습니다."
+            actionLabel={editable ? "규칙 추가" : undefined}
+            onAction={addRule}
+          />
+          {editable && (
+            <Button
+              variant="secondary"
+              size="sm"
+              className="mt-[8px] rounded-sm"
+              disabled={generateDraft.pending}
+              onClick={handleGenerateDraft}
+            >
+              {generateDraft.pending ? "AI 생성 중…" : "AI 초안 생성"}
+            </Button>
+          )}
+        </div>
       ) : (
         <ul className="mt-[16px] flex flex-col gap-[12px]">
           {rules.map((rule) => (
