@@ -26,7 +26,7 @@ export default function AppShell({ children, activeNav, teamId }) {
 
         {/* 사이드바: 데스크톱은 항상 표시, 모바일은 토글 */}
         <div
-          className={`fixed inset-y-[12px] left-[12px] z-50 w-[272px] overflow-hidden rounded-xl shadow-[0_8px_40px_rgba(0,0,0,0.18)] transition-all duration-200 lg:static lg:inset-y-0 lg:left-0 lg:w-auto lg:rounded-none lg:shadow-none ${
+          className={`fixed inset-y-[12px] left-[12px] z-50 w-[272px] overflow-visible rounded-xl shadow-[0_12px_48px_-4px_rgba(0,0,0,0.25),0_4px_16px_-2px_rgba(0,0,0,0.1)] ring-1 ring-neutral-900/5 transition-all duration-200 lg:static lg:inset-y-0 lg:left-0 lg:w-auto lg:rounded-none lg:shadow-none lg:ring-0 ${
             sidebarOpen ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 lg:translate-x-0 lg:opacity-100"
           }`}
         >
