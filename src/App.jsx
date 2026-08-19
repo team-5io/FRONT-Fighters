@@ -125,8 +125,8 @@ export default function App() {
   if (pageName === "login") return <LoginPage />;
   if (pageName === "team-invite") return <TeamInvitePage />;
 
-  // 인증 가드
-  const isAuthenticated = Boolean(user.id);
+  // 인증 가드 — user state 또는 localStorage 토큰으로 판단
+  const isAuthenticated = Boolean(user.id) || Boolean(localStorage.getItem("doc_pr_access_token"));
   if (!isAuthenticated) {
     return <LoginPage />;
   }
