@@ -27,7 +27,7 @@ export default function PageHeader({
     return () => window.removeEventListener("popstate", onHash);
   }, []);
 
-  const back = backTo ?? backToFor(hash);
+  const back = backTo ?? backToFor(currentPath);
 
   return (
     <header className={cx("border-b border-line pb-[20px]", className)}>

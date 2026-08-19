@@ -45,7 +45,7 @@ import { normalizeDocPr, normalizeDocument, normalizeMergeCheck } from "../api/n
 
 /** `#/doc-pr-detail?prId=PR-142` 형태에서 prId를 꺼낸다 */
 function prIdFromHash() {
-  const query = window.location.hash.split("?")[1];
+  const query = window.location.search.slice(1);
   return query ? new URLSearchParams(query).get("prId") : null;
 }
 
