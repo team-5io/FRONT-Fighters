@@ -22,6 +22,8 @@ import TeamSettingsPage from "./pages/TeamSettingsPage";
 import TranslationPage from "./pages/TranslationPage";
 import TeamResetPage from "./pages/TeamResetPage";
 
+import NotFoundPage from "./pages/NotFoundPage";
+
 /**
  * URL 구조: #/t/{teamId}/{page}
  * 예: #/t/1/dashboard, #/t/1/documents, #/t/1/write?documentId=abc
@@ -90,6 +92,13 @@ export default function App() {
   if (pageName === "login") return <LoginPage />;
   if (pageName === "team-invite") return <TeamInvitePage />;
 
+  // 인증 가드 — 토큰 없으면 로그인으로
+  const isAuthenticated = Boolean(user.id);
+  if (!isAuthenticated) {
+    window.location.hash = "#/login";
+    return <LoginPage />;
+  }
+
   // 팀 ID가 URL에 있으면 그걸 활성 팀으로 사용
   const activeTeamId = teamId ?? user.teamId ?? null;
 
@@ -111,7 +120,12 @@ export default function App() {
     );
   }
 
-  const route = PAGES[pageName] ?? PAGES.dashboard;
+  // 존재하지 않는 경로 → 404
+  const route = PAGES[pageName];
+  if (!route) {
+    return <NotFoundPage />;
+  }
+
   const Page = route.page;
 
   return (
