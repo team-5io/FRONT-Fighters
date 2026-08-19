@@ -252,7 +252,7 @@ export default function DocPrDetailPage() {
             )}
           </div>
           {/* 주 액션 하나 + 부 액션 하나로 줄인다 */}
-          <div className="flex shrink-0 items-center gap-[8px]">
+          <div className="flex shrink-0 flex-wrap items-center gap-[8px]">
             <Button
               variant="secondary"
               className="rounded-sm"

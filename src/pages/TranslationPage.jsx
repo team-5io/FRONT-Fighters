@@ -118,7 +118,7 @@ export default function TranslationPage() {
 
         {/* 번역 결과 */}
         {translationResult && (
-          <div className="mt-[20px] grid grid-cols-2 gap-[16px]">
+          <div className="mt-[20px] grid grid-cols-1 gap-[16px] md:grid-cols-2">
             {/* 원문 */}
             <div className="rounded-md border border-line p-[16px]">
               <h3 className="text-[13px] font-semibold text-neutral-500">원문 (ko)</h3>

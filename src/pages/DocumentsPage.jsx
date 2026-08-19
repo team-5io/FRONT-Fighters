@@ -165,7 +165,7 @@ export default function DocumentsPage() {
         }
       />
 
-      <div className="mt-[24px] flex gap-[24px]">
+      <div className="mt-[24px] flex flex-col gap-[24px] lg:flex-row">
         {/* ── 좌: 목록 ── */}
         <div className="min-w-0 flex-1">
           <ListFilterBar
@@ -198,7 +198,7 @@ export default function DocumentsPage() {
 
         {/* ── 우: 선택 문서 요약 ── */}
         {selected && (
-          <aside className="w-[280px] shrink-0">
+          <aside className="hidden w-[280px] shrink-0 lg:block">
             <div className="flex items-start gap-[8px]">
               <h2 className="min-w-0 flex-1 text-[15px] font-bold leading-[22px] text-neutral-900">
                 {selected.title}

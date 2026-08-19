@@ -346,7 +346,7 @@ export default function DocumentWritePage() {
 
   return (
     <Page>
-      <div className="flex gap-[32px]">
+      <div className="flex flex-col gap-[24px] lg:flex-row lg:gap-[32px]">
         {/* ── 본문: 노션 페이지 ── */}
         <article className="min-w-0 flex-1">
           {/* 이 화면은 노션 페이지 레이아웃이라 PageHeader를 쓰지 않는다 —
@@ -533,7 +533,7 @@ export default function DocumentWritePage() {
         </article>
 
         {/* ── 우측: 문서 속성 (AI는 플로팅 패널로 빠졌다) ── */}
-        <aside className="w-[260px] shrink-0">
+        <aside className="hidden w-[260px] shrink-0 lg:block">
           <Disclosure title="연결된 문서" caption="변경 시 영향을 받습니다">
             <p className="text-[13px] text-neutral-500">
               관련 문서 연결은 더보기 메뉴에서 할 수 있습니다.
@@ -593,7 +593,7 @@ function DocPrModal({ teamMembers, pending, onClose, onSubmit }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40" onClick={onClose}>
       <div
-        className="w-full max-w-[480px] rounded-lg border border-line bg-neutral-0 p-[24px] shadow-[0_8px_32px_rgba(0,0,0,0.12)]"
+        className="mx-[16px] w-full max-w-[480px] rounded-lg border border-line bg-neutral-0 p-[16px] shadow-[0_8px_32px_rgba(0,0,0,0.12)] sm:p-[24px]"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-[18px] font-bold text-neutral-900">Doc PR 생성</h2>

@@ -88,7 +88,7 @@ function NoTeamView({ onCreated }) {
 
   return (
     <Page>
-      <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="flex min-h-[60vh] items-center justify-center px-[16px]">
         <div className="w-full max-w-[400px]">
           <h1 className="text-[24px] font-bold leading-[32px] text-neutral-900">
             팀을 만들어 시작하세요

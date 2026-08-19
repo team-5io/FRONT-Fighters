@@ -64,10 +64,10 @@ export default function TeamSettingsPage() {
         ]}
       />
 
-      <div className="mt-[24px] flex gap-[32px]">
+      <div className="mt-[24px] flex flex-col gap-[16px] md:flex-row md:gap-[32px]">
         {/* ── 좌: 설정 메뉴 ── */}
-        <nav aria-label="설정 항목" className="w-[180px] shrink-0">
-          <ul className="flex flex-col gap-[2px]">
+        <nav aria-label="설정 항목" className="w-full shrink-0 md:w-[180px]">
+          <ul className="flex gap-[2px] overflow-x-auto md:flex-col">
             {TABS.map((tab) => (
               <li key={tab.key}>
                 <button
