@@ -24,7 +24,6 @@ export function getPathname() {
 
 /** SPA 네비게이션 — pushState + 리스너 호출 */
 export function navigate(to) {
-  if (to === getPath()) return;
   window.history.pushState(null, "", to);
   notify();
 }

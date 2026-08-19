@@ -83,7 +83,11 @@ export default function App() {
   const { user } = useAuth();
 
   useEffect(() => {
-    return onRouteChange(() => setPath(getPathname()));
+    return onRouteChange((newPath) => {
+      // query string 제거해서 pathname만 사용
+      const pathname = newPath.split("?")[0];
+      setPath(pathname);
+    });
   }, []);
 
   // 해시 URL 레거시 지원 — 해시가 있으면 path로 변환
