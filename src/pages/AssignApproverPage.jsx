@@ -25,7 +25,7 @@ import { useAuth } from "../auth/AuthContext";
  */
 
 function prIdFromHash() {
-  const query = window.location.hash.split("?")[1];
+  const query = window.location.search.slice(1);
   return query ? new URLSearchParams(query).get("prId") : null;
 }
 

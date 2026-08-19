@@ -39,7 +39,7 @@ import { usePermissions } from "../hooks/usePermissions";
 
 /** URL에서 prId를 읽는다 */
 function prIdFromHash() {
-  const query = window.location.hash.split("?")[1];
+  const query = window.location.search.slice(1);
   return query ? new URLSearchParams(query).get("prId") : null;
 }
 
