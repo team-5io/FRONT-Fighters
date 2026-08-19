@@ -100,7 +100,7 @@ export default function Sidebar({ active, teamId, onNavigate }) {
   }, [switcherOpen]);
 
   return (
-    <aside className="flex w-[240px] shrink-0 flex-col border-r border-line bg-neutral-50">
+    <aside className="flex h-full w-[240px] shrink-0 flex-col border-r border-line bg-neutral-0 lg:bg-neutral-50 lg:rounded-none">
       {/* 워크스페이스 스위처 */}
       <div className="relative mx-[12px] mt-[12px]" data-workspace-switcher>
         <button
