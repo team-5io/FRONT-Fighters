@@ -263,11 +263,11 @@ export default function DocPrDetailPage() {
               반려
             </Button>
             {mergeable ? (
-              <Button className="rounded-sm" disabled={!canApprove || busy} onClick={onMerge}>
+              <Button className="rounded-sm" disabled={busy} onClick={onMerge}>
                 {merge.pending ? "Merge 중…" : "Merge"}
               </Button>
             ) : (
-              <Button className="rounded-sm" disabled={!canApprove || busy} onClick={onApprove}>
+              <Button className="rounded-sm" disabled={busy} onClick={onApprove}>
                 {approve.pending ? "승인 중…" : "승인"}
               </Button>
             )}
