@@ -560,12 +560,12 @@ export default function DocumentWritePage() {
           teamMembers={teamMembers}
           pending={createDocPr.pending}
           onClose={() => setDocPrModalOpen(false)}
-          onSubmit={async ({ approverId, proposedContent }) => {
+          onSubmit={async ({ approverMemberId, proposedContent }) => {
             try {
               const docId = await ensureDocument();
               if (!docId) return;
               await saveDraft.mutate(docId);
-              const created = unwrap(await createDocPr.mutate(docId, { approverId, proposedContent }));
+              const created = unwrap(await createDocPr.mutate(docId, { approverMemberId, proposedContent }));
               const prId = created?.id ?? created?.prId ?? created?.docPrId;
               setDocPrModalOpen(false);
               window.location.hash = prId
@@ -583,12 +583,12 @@ export default function DocumentWritePage() {
 
 /** Doc PR 생성 모달 — 승인권자 드롭다운 + 제안 내용 입력 */
 function DocPrModal({ teamMembers, pending, onClose, onSubmit }) {
-  const [approverId, setApproverId] = useState(null);
+  const [approverMemberId, setApproverMemberId] = useState(null);
   const [proposedContent, setProposedContent] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  const selected = teamMembers.find((m) => (m.userId ?? m.memberId) === approverId);
-  const canSubmit = approverId && proposedContent.trim();
+  const selected = teamMembers.find((m) => (m.memberId ?? m.userId) === approverMemberId);
+  const canSubmit = approverMemberId && proposedContent.trim();
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40" onClick={onClose}>
@@ -628,14 +628,14 @@ function DocPrModal({ teamMembers, pending, onClose, onSubmit }) {
                   <li className="px-[10px] py-[8px] text-[13px] text-neutral-500">팀원이 없습니다</li>
                 )}
                 {teamMembers.map((member) => {
-                  const id = member.userId ?? member.memberId;
-                  const isSelected = id === approverId;
+                  const id = member.memberId ?? member.userId;
+                  const isSelected = id === approverMemberId;
                   return (
                     <li key={id}>
                       <button
                         type="button"
                         onClick={() => {
-                          setApproverId(id);
+                          setApproverMemberId(id);
                           setDropdownOpen(false);
                         }}
                         className={`flex w-full items-center gap-[10px] rounded-sm px-[10px] py-[8px] text-left transition-colors ${
@@ -678,7 +678,7 @@ function DocPrModal({ teamMembers, pending, onClose, onSubmit }) {
             size="sm"
             className="rounded-sm"
             disabled={!canSubmit || pending}
-            onClick={() => onSubmit({ approverId, proposedContent: proposedContent.trim() })}
+            onClick={() => onSubmit({ approverMemberId, proposedContent: proposedContent.trim() })}
           >
             {pending ? "생성 중…" : "Doc PR 생성"}
           </Button>
