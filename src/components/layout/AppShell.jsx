@@ -16,17 +16,17 @@ export default function AppShell({ children, activeNav, teamId }) {
   return (
     <SidebarContext.Provider value={{ open: sidebarOpen, toggle }}>
       <div className="flex h-full min-h-screen bg-neutral-0">
-        {/* 모바일 오버레이 — 패널(z-50)보다 확실히 아래 */}
+        {/* 모바일 오버레이 */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 z-[45] bg-neutral-900/40 backdrop-blur-[2px] lg:hidden"
+            className="fixed inset-0 z-[45] bg-neutral-900/50 lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
         {/* 사이드바: 데스크톱은 항상 표시, 모바일은 토글 */}
         <div
-          className={`fixed inset-y-[12px] left-[12px] z-[60] w-[272px] rounded-xl shadow-[0_12px_48px_-4px_rgba(0,0,0,0.25),0_4px_16px_-2px_rgba(0,0,0,0.1)] ring-1 ring-neutral-900/5 transition-all duration-200 lg:static lg:inset-y-0 lg:left-0 lg:z-auto lg:w-auto lg:rounded-none lg:shadow-none lg:ring-0 ${
+          className={`fixed inset-y-[12px] left-[12px] z-[60] w-[272px] rounded-xl shadow-[0_12px_48px_-4px_rgba(0,0,0,0.25),0_4px_16px_-2px_rgba(0,0,0,0.1)] transition-all duration-200 lg:static lg:inset-y-0 lg:left-0 lg:z-auto lg:w-auto lg:rounded-none lg:shadow-none ${
             sidebarOpen ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 lg:translate-x-0 lg:opacity-100"
           }`}
         >
