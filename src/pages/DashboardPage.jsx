@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
+import { navigate } from "../router";
 import Page from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
-import { Button } from "../components/ui";
+import { Button, EmptyState } from "../components/ui";
 import { useAuth } from "../auth/AuthContext";
 import { teams as teamsApi } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
@@ -49,6 +50,16 @@ export default function DashboardPage() {
   }
 
   const teamName = activeTeam?.name ?? user.teamName ?? "내 팀";
+  const currentTeamId = activeTeam?.id ?? user.teamId;
+
+  // 팀원 목록 조회 — 본인만 있으면 "팀원 없음" 안내
+  const { data: membersData } = useApi(
+    () => teamsApi.members(currentTeamId),
+    [currentTeamId],
+    { enabled: Boolean(currentTeamId) },
+  );
+  const members = unwrapList(membersData);
+  const hasOtherMembers = members.length > 1;
 
   return (
     <Page>
@@ -63,6 +74,18 @@ export default function DashboardPage() {
           },
         ]}
       />
+
+      {/* 팀원이 없을 때 안내 */}
+      {!hasOtherMembers && currentTeamId && (
+        <div className="mt-[24px]">
+          <EmptyState
+            title="팀원이 아직 없습니다"
+            description="팀원을 초대해보세요!"
+            actionLabel="팀원 초대 화면으로 이동하기"
+            onAction={() => navigate(`/t/${currentTeamId}/settings`)}
+          />
+        </div>
+      )}
     </Page>
   );
 }
