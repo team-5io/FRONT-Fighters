@@ -19,8 +19,8 @@ export function normalizeDocument(raw = {}) {
     id: raw.id,
     teamId: raw.teamId ?? null,
     title: raw.title ?? "제목 없음",
-    /** 블록 텍스트를 이어붙인 평문 미리보기 (목록·검색용) */
-    preview: raw.content ?? "",
+    /** 블록 텍스트를 이어붙인 평문 미리보기 (목록·검색용, 최대 100자) */
+    preview: (raw.content ?? "").slice(0, 100),
     blocks: Array.isArray(raw.blocks) ? raw.blocks : [],
     status: documentStatusOf(raw.status),
     restricted: Boolean(raw.restricted),
