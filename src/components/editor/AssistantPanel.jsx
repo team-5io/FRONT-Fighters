@@ -22,6 +22,7 @@ const ACTIONS = [
     ),
     label: "문서 구조 개선 제안",
     kind: "structure",
+    locked: true,
   },
   {
     icon: (
@@ -32,6 +33,7 @@ const ACTIONS = [
     ),
     label: "관련 문서 맥락 인용 조회",
     kind: "context",
+    locked: true,
   },
   {
     icon: (
@@ -46,6 +48,7 @@ const ACTIONS = [
     ),
     label: "문서 작성 Assistant",
     kind: "writing",
+    locked: false,
   },
 ];
 
@@ -183,8 +186,9 @@ export default function AssistantPanel({
                 <li key={action.kind}>
                   <button
                     type="button"
-                    onClick={() => onRequestSuggestions?.(action.kind)}
-                    className="flex w-full items-center gap-[12px] rounded-lg px-0 py-[10px] text-left transition-colors hover:bg-[#fafaf9] active:bg-neutral-100"
+                    disabled={action.locked}
+                    onClick={() => !action.locked && onRequestSuggestions?.(action.kind)}
+                    className={`flex w-full items-center gap-[12px] rounded-lg px-0 py-[10px] text-left transition-colors ${action.locked ? "cursor-not-allowed opacity-50" : "hover:bg-[#fafaf9] active:bg-neutral-100"}`}
                   >
                     <span className="flex size-4 shrink-0 items-center justify-center">
                       {action.icon}
@@ -192,6 +196,12 @@ export default function AssistantPanel({
                     <span className="text-[12px] font-medium text-black">
                       {action.label}
                     </span>
+                    {action.locked && (
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="ml-auto shrink-0 text-[#cbc8c5]">
+                        <rect x="2" y="5.5" width="8" height="5.5" rx="1.2" stroke="currentColor" strokeWidth="1.2" />
+                        <path d="M4 5.5V3.5a2 2 0 0 1 4 0V5.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                      </svg>
+                    )}
                   </button>
                 </li>
               ))}
