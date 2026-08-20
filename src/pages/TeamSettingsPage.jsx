@@ -30,7 +30,6 @@ const TABS = [
   { key: "team", icon: <IconTeam size={15} />, label: "팀 정보" },
   { key: "charter", icon: <IconPaper size={14} />, label: "협업 규칙" },
   { key: "glossary", icon: <IconText size={14} />, label: "팀 용어집" },
-  { key: "members", icon: <IconTeam size={15} />, label: "팀원 관리" },
 ];
 
 export default function TeamSettingsPage() {
@@ -97,7 +96,6 @@ export default function TeamSettingsPage() {
           {active === "team" && <TeamInfoPanel teamName={teamName} memberCount={members.length} editable={isAdmin} members={members} teamId={teamId} reload={membersQuery.reload} />}
           {active === "charter" && <CharterPanel teamId={teamId} editable={isAdmin} />}
           {active === "glossary" && <GlossaryPanel />}
-          {active === "members" && <MembersPanel teamId={teamId} members={members} editable={isAdmin} reload={membersQuery.reload} />}
         </div>
       </div>
     </Page>
