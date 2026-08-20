@@ -223,7 +223,8 @@ export default function DocPrDetailPage() {
         ]}
       />
 
-      {/* ── 주인공: 지금 무엇이 막고 있고, 내가 뭘 하면 되는가 ── */}
+      {/* ── 주인공: 지금 무엇이 막고 있고, 내가 뭘 하면 되는가 (Merge 완료 시 숨김) ── */}
+      {pr.status !== "merged" && (
       <section className="mt-[24px] rounded-md bg-neutral-50/70 px-[20px] py-[18px]">
         <div className="flex flex-wrap items-start gap-[16px]">
           <div className="min-w-0 flex-1">
@@ -346,6 +347,7 @@ export default function DocPrDetailPage() {
           )}
         </dl>
       </section>
+      )}
 
       {pr.proposedContent && (
         <section className="mt-[24px]">
