@@ -261,18 +261,12 @@ export default function DocumentWritePage() {
   const savingRef = useRef(false);
 
   async function saveNow() {
-    if (!documentId || !teamId || isOfficial || savingRef.current) return;
+    if (!documentId || !canWrite || savingRef.current) return;
     savingRef.current = true;
     try {
-      await documentsApi.update(documentId, {
-        title: title || "제목 없음",
-        blocks: toServerBlocks(blocks),
-      });
-      setSavedAt("방금 전");
-      setAutoSaveError(null);
-    } catch (err) {
-      console.error("[자동저장 실패]", err.body?.code ?? "", err.message);
-      setAutoSaveError(err.body?.message ?? err.message);
+      await saveDraft.mutate(documentId);
+    } catch {
+      // saveDraft.error가 이미 관리
     } finally {
       savingRef.current = false;
     }
@@ -283,12 +277,13 @@ export default function DocumentWritePage() {
     saveTimerRef.current = setTimeout(saveNow, 2000);
   }
 
-  // 내용 변경 시 2초 디바운스 저장 예약
+  // 내용 변경 시 즉시 저장 + 2초 디바운스 백업
   useEffect(() => {
-    if (!documentId || !teamId || isOfficial) return;
+    if (!documentId || !canWrite) return;
+    saveNow();
     scheduleSave();
     return () => clearTimeout(saveTimerRef.current);
-  }, [title, blocks, documentId, teamId, isOfficial]);
+  }, [title, blocks, documentId, canWrite]);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [docPrModalOpen, setDocPrModalOpen] = useState(false);
