@@ -41,6 +41,7 @@ const RELATIONS = [
   { value: "parent", label: "상위 문서", describe: (a, b) => `${b}가 ${a}의 상위 문서입니다.` },
   { value: "child", label: "하위 문서", describe: (a, b) => `${b}가 ${a}의 하위 문서입니다.` },
   { value: "reference", label: "참조 문서", describe: (a, b) => `${a}가 ${b}를 참조합니다.` },
+  { value: "dependency", label: "의존 문서", describe: (a, b) => `${a}가 ${b}에 의존합니다.` },
 ];
 
 const PERMISSION_NOTES = [
@@ -69,11 +70,16 @@ export default function LinkDocumentsPage() {
     ? unwrapList(searchResults).map(normalizeDocument)
     : [];
 
-  const saveRelations = useMutation(() =>
-    documentsApi.relations(documentId, {
-      relations: links.map((link) => ({ targetId: link.id, relation: link.relation })),
-    }),
-  );
+  const saveRelations = useMutation(async () => {
+    // 명세서: POST /documents/{documentId}/relations — 단건 생성
+    // { targetDocumentId, relationType } (PARENT/CHILD/REFERENCE/DEPENDENCY)
+    for (const link of links) {
+      await documentsApi.relations(documentId, {
+        targetDocumentId: link.id,
+        relationType: link.relation.toUpperCase(),
+      });
+    }
+  });
 
   function addLink(doc) {
     if (links.some((link) => link.id === doc.id)) return;
