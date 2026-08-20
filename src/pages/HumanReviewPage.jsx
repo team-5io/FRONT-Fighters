@@ -276,7 +276,8 @@ export default function HumanReviewPage() {
         )}
       </Section>
 
-      {/* ── Card 2: 리뷰 의견 입력 (독립 단위) ── */}
+      {/* ── Card 2: 리뷰 의견 입력 (승인/머지 완료 시 숨김) ── */}
+      {pr.status !== "approved" && pr.status !== "merged" && (
       <Section
         title="내 리뷰"
         caption={
@@ -340,6 +341,7 @@ export default function HumanReviewPage() {
           </div>
         </Card>
       </Section>
+      )}
 
       {/* ── Card 3: 최종 결정 (승인/머지 완료 시 숨김) ── */}
       {pr.status !== "approved" && pr.status !== "merged" && (
