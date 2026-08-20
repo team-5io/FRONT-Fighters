@@ -79,6 +79,7 @@ export default function AssistantPanel({
   suggestions,
   onAccept,
   onReject,
+  onRequestSuggestions,
 }) {
 
   /* ─── 닫힌 상태: 플로팅 트리거 버튼 ─── */
@@ -182,6 +183,7 @@ export default function AssistantPanel({
                 <li key={action.kind}>
                   <button
                     type="button"
+                    onClick={() => onRequestSuggestions?.(action.kind)}
                     className="flex w-full items-center gap-[12px] rounded-lg px-0 py-[10px] text-left transition-colors hover:bg-[#fafaf9] active:bg-neutral-100"
                   >
                     <span className="flex size-4 shrink-0 items-center justify-center">

@@ -101,12 +101,11 @@ export default function DocumentWritePage() {
     return () => window.removeEventListener("popstate", onHash);
   }, []);
 
-  // AI 작성 도우미 패널이 열리면 제안을 가져온다
-  useEffect(() => {
-    if (!panelOpen || !documentId) return;
-    // 명세서: content(필수) + cursorContext(필수)
+  // AI 글쓰기 제안 요청 함수
+  function fetchWritingSuggestions() {
+    if (!documentId) return;
     const content = blocks.map((b) => b.content ?? "").filter(Boolean).join("\n");
-    const cursorContext = content.slice(-200); // 마지막 200자를 커서 맥락으로
+    const cursorContext = content.slice(-200);
     documentsApi.writingSuggestions(documentId, { content: content || " ", cursorContext: cursorContext || " " }).then((result) => {
       const data = unwrap(result);
       const items = Array.isArray(data) ? data : (data?.suggestions ?? []);
@@ -123,7 +122,9 @@ export default function DocumentWritePage() {
     }).catch((err) => {
       console.error("[AI 제안 요청 실패]", err.message);
     });
-  }, [panelOpen, documentId]);
+  }
+
+  // AI 작성 도우미 패널 — 버튼 클릭 시에만 제안 요청 (패널 열릴 때 자동 호출 안 함)
 
   /**
    * 기존 문서 로딩 — `GET /documents/{documentId}` (PR #100 신규).
@@ -576,6 +577,7 @@ export default function DocumentWritePage() {
         suggestions={suggestions}
         onAccept={acceptSuggestion}
         onReject={(item) => setSuggestions((prev) => prev.filter((row) => row.id !== item.id))}
+        onRequestSuggestions={fetchWritingSuggestions}
       />
 
       {/* Doc PR 생성 모달 */}
