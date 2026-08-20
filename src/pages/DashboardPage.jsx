@@ -79,9 +79,8 @@ function NoTeamView({ onCreated }) {
       const team = normalizeTeam(unwrap(result) ?? {});
       const newTeamId = team.id;
       setActiveTeam({ ...team, isAdmin: true });
-      // 새 팀의 워크스페이스 URL로 이동
-      navigate(newTeamId ? `/t/${newTeamId}/dashboard` : "/dashboard");
-      window.location.reload();
+      // 새 팀의 워크스페이스로 즉시 이동
+      window.location.href = newTeamId ? `/t/${newTeamId}/dashboard` : "/dashboard";
     } catch {
       // 에러는 useMutation이 관리
     }
