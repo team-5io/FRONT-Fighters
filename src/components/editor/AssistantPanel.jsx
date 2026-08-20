@@ -1,28 +1,32 @@
 import { useState } from "react";
-import { CONTEXT_QUOTES, nodeById } from "../../data/graph";
-import CioBadge, { AiDisclaimer, CioMark } from "../ui/CioBadge";
+import { CioMark } from "../ui/CioBadge";
 import Button from "../ui/Button";
 import EmptyState from "../ui/EmptyState";
-import StatusBadge from "../ui/StatusBadge";
 import { cx } from "../ui/cx";
 
 /**
- * AI 작성 보조 — 우측 하단 플로팅 패널 (2차 지시서 2장).
+ * AI 작성 도우미 — Notion AI 스타일 플로팅 패널.
  *
- * 1차에서는 구조 추천이 `#/ai-structure`라는 별도 페이지로 빠져 있어서
- * "AI가 문서 작성 흐름 밖으로 튕겨나가는" 문제가 있었다. 그 화면을 여기로 흡수한다.
- *
- * **챗봇이 아니다.** 기본 콘텐츠는 채팅 로그가 아니라 수락/거부가 붙은 제안 카드
- * 피드이고, 자유 질문 입력창은 하단에 보조로만 둔다 — 대화가 아니라 제안이 주 기능이다.
- * 수락해야만 본문에 반영된다 (기능명세서 5.1 비즈니스 규칙: AI는 자동 반영하지 않는다).
- *
- * 모달이 아니라 오버레이라서, 열려 있는 동안에도 본문 편집이 계속 가능하다.
+ * - 보라색 그라디언트 헤더 (AI 브랜딩)
+ * - 둥근 모서리 + 부드러운 그림자
+ * - 제안 카드는 깔끔한 분리선
+ * - 하단 입력은 채팅 UX
  */
 
 const KIND_LABEL = {
-  structure: "구조 개선",
-  missing: "누락된 섹션",
-  next: "다음 문단",
+  structure: "구조",
+  missing: "누락",
+  next: "이어쓰기",
+  "next-paragraph": "이어쓰기",
+  clarity: "명확성",
+};
+
+const KIND_ICON = {
+  structure: "🏗️",
+  missing: "📋",
+  next: "✍️",
+  "next-paragraph": "✍️",
+  clarity: "💡",
 };
 
 export default function AssistantPanel({
@@ -34,22 +38,20 @@ export default function AssistantPanel({
   onReject,
 }) {
   const [question, setQuestion] = useState("");
-  const quotes = CONTEXT_QUOTES[documentId] ?? [];
 
+  // 닫힌 상태 — 플로팅 버튼
   if (!open) {
     return (
       <button
         type="button"
         onClick={() => onOpenChange(true)}
         aria-expanded={false}
-        className="fixed bottom-[24px] right-[24px] z-30 flex items-center gap-[8px] rounded-full border border-info/25 bg-neutral-0 py-[10px] pl-[12px] pr-[16px] shadow-[0_4px_16px_rgba(0,0,0,0.10)] transition-shadow hover:shadow-[0_6px_20px_rgba(0,0,0,0.14)]"
+        className="fixed bottom-[20px] right-[20px] z-30 flex items-center gap-[8px] rounded-full bg-gradient-to-r from-[#7c3aed] to-[#6366f1] px-[16px] py-[10px] text-neutral-0 shadow-[0_4px_20px_rgba(99,102,241,0.3)] transition-all hover:shadow-[0_6px_28px_rgba(99,102,241,0.4)] hover:scale-[1.02] active:scale-[0.98]"
       >
-        <span className="flex size-[26px] items-center justify-center rounded-full bg-info-tint text-info">
-          <CioMark size={15} />
-        </span>
-        <span className="text-[13px] font-semibold text-neutral-900">작성 도우미</span>
+        <CioMark size={16} className="text-neutral-0" />
+        <span className="text-[13px] font-semibold">AI 도우미</span>
         {suggestions.length > 0 && (
-          <span className="flex h-[20px] min-w-[20px] items-center justify-center rounded-full bg-info px-[6px] font-mono text-[11px] font-bold text-neutral-0">
+          <span className="flex size-[20px] items-center justify-center rounded-full bg-white/20 font-mono text-[11px] font-bold">
             {suggestions.length}
           </span>
         )}
@@ -57,161 +59,127 @@ export default function AssistantPanel({
     );
   }
 
+  // 열린 상태 — 패널
   return (
     <>
-      {/* 패널 바깥 클릭 시 닫기 */}
-      <div
-        className="fixed inset-0 z-[29]"
-        onClick={() => onOpenChange(false)}
-      />
-    <aside
-      aria-label="CIO 작성 도우미"
-      className="fixed bottom-[24px] right-[24px] z-30 flex max-h-[min(620px,calc(100vh-96px))] w-[360px] flex-col overflow-hidden rounded-md border border-line bg-neutral-0 shadow-[0_8px_28px_rgba(0,0,0,0.14)]"
-    >
-      <div className="h-[3px] w-full shrink-0 bg-info" />
+      {/* 바깥 클릭 시 닫기 */}
+      <div className="fixed inset-0 z-[29]" onClick={() => onOpenChange(false)} />
 
-      <header className="flex shrink-0 items-center gap-[8px] border-b border-line px-[16px] py-[12px]">
-        <CioBadge feature="Writing Assistant" size="sm" />
-        <button
-          type="button"
-          onClick={() => onOpenChange(false)}
-          aria-label="작성 도우미 닫기"
-          className="ml-auto flex size-[24px] items-center justify-center rounded-xs text-neutral-500 transition-colors hover:bg-neutral-75 hover:text-neutral-900"
-        >
-          ✕
-        </button>
-      </header>
+      <aside
+        aria-label="AI 작성 도우미"
+        className="fixed bottom-[20px] right-[20px] z-30 flex max-h-[min(640px,calc(100vh-80px))] w-[380px] flex-col overflow-hidden rounded-2xl border border-neutral-200/60 bg-white shadow-[0_20px_60px_-12px_rgba(0,0,0,0.15),0_0_0_1px_rgba(0,0,0,0.03)]"
+      >
+        {/* 헤더 — 보라 그라디언트 */}
+        <header className="flex shrink-0 items-center gap-[10px] bg-gradient-to-r from-[#7c3aed] to-[#6366f1] px-[18px] py-[14px]">
+          <CioMark size={18} className="text-white/90" />
+          <div className="min-w-0 flex-1">
+            <h2 className="text-[14px] font-semibold text-white">AI 작성 도우미</h2>
+            <p className="text-[11px] font-medium text-white/60">제안을 수락하면 본문에 반영됩니다</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            aria-label="닫기"
+            className="flex size-[28px] items-center justify-center rounded-lg text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M1 1l12 12M13 1L1 13" />
+            </svg>
+          </button>
+        </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        {/* ── 제안 카드 피드 (주 기능) ── */}
-        <section className="px-[16px] py-[14px]">
-          <h2 className="text-[13px] font-semibold text-neutral-900">제안</h2>
-          <p className="mt-[2px] text-[12px] font-medium text-neutral-500">
-            수락해야 본문에 반영됩니다.
-          </p>
-
+        {/* 본문 — 스크롤 */}
+        <div className="min-h-0 flex-1 overflow-y-auto">
           {suggestions.length > 0 ? (
-            <ul className="mt-[12px] flex flex-col gap-[10px]">
-              {suggestions.map((item) => (
+            <ul className="flex flex-col">
+              {suggestions.map((item, i) => (
                 <li
                   key={item.id}
-                  className="border-b border-line pb-[12px] last:border-b-0"
+                  className={cx(
+                    "px-[18px] py-[16px]",
+                    i < suggestions.length - 1 && "border-b border-neutral-100",
+                  )}
                 >
-                  <span className="rounded-full border border-info/25 bg-info-tint px-[7px] py-[2px] font-mono text-[11px] font-bold text-info-text">
-                    {KIND_LABEL[item.kind] ?? item.kind}
-                  </span>
-                  <p className="mt-[8px] text-[13px] font-semibold leading-[19px] text-neutral-900">
+                  <div className="flex items-center gap-[8px]">
+                    <span className="text-[14px]">{KIND_ICON[item.kind] ?? "💬"}</span>
+                    <span className="rounded-full bg-neutral-100 px-[8px] py-[2px] text-[11px] font-semibold text-neutral-600">
+                      {KIND_LABEL[item.kind] ?? item.kind}
+                    </span>
+                  </div>
+                  <p className="mt-[10px] text-[13px] font-medium leading-[20px] text-neutral-900">
                     {item.title}
                   </p>
-                  <p className="mt-[4px] text-[12px] font-medium leading-[17px] text-neutral-500">
-                    {item.detail}
-                  </p>
-                  {item.preview && (
-                    <p className="mt-[8px] rounded-xs border border-line bg-neutral-0 px-[8px] py-[6px] font-mono text-[11px] leading-[17px] text-neutral-700">
-                      {item.preview}
+                  {item.detail && (
+                    <p className="mt-[4px] text-[12px] leading-[18px] text-neutral-500">
+                      {item.detail}
                     </p>
                   )}
-                  <div className="mt-[10px] flex gap-[6px]">
-                    {/* 제안이 여러 개라 채운 버튼을 쓰면 패널이 색으로 뒤덮인다 (3차 2.6) */}
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="flex-1 justify-center rounded-sm border-main-500/40 text-main-700"
+                  {item.preview && (
+                    <div className="mt-[10px] rounded-lg bg-neutral-50 px-[12px] py-[8px] font-mono text-[11px] leading-[17px] text-neutral-700">
+                      {item.preview}
+                    </div>
+                  )}
+                  <div className="mt-[12px] flex gap-[8px]">
+                    <button
+                      type="button"
                       onClick={() => onAccept(item)}
+                      className="flex-1 rounded-lg bg-[#7c3aed] px-[12px] py-[6px] text-[12px] font-semibold text-white transition-colors hover:bg-[#6d28d9]"
                     >
                       수락
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="flex-1 justify-center rounded-sm text-neutral-500"
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => onReject(item)}
+                      className="flex-1 rounded-lg border border-neutral-200 bg-white px-[12px] py-[6px] text-[12px] font-semibold text-neutral-600 transition-colors hover:bg-neutral-50"
                     >
-                      거부
-                    </Button>
+                      건너뛰기
+                    </button>
                   </div>
                 </li>
               ))}
             </ul>
           ) : (
-            <EmptyState
-              compact
-              title="지금은 제안할 내용이 없습니다"
-              description="내용을 더 쓰면 구조와 누락 항목을 다시 살펴봅니다."
-            />
+            <div className="flex flex-col items-center justify-center px-[24px] py-[40px] text-center">
+              <span className="text-[32px]">✨</span>
+              <p className="mt-[12px] text-[14px] font-semibold text-neutral-900">제안 대기 중</p>
+              <p className="mt-[4px] text-[12px] text-neutral-500">
+                문서를 작성하면 구조, 다음 문단, 명확성 제안이 나타납니다.
+              </p>
+            </div>
           )}
-        </section>
+        </div>
 
-        {/* ── 연결 문서 인용 (Document Graph 기반) ── */}
-        <section className="border-t border-line px-[16px] py-[14px]">
-          <h2 className="text-[13px] font-semibold text-neutral-900">연결 문서에서 참고한 내용</h2>
-          <p className="mt-[2px] text-[12px] font-medium text-neutral-500">
-            Document Graph로 연결된 문서를 인용했습니다.
-          </p>
-          {quotes.length > 0 ? (
-            <ul className="mt-[12px] flex flex-col gap-[10px]">
-              {quotes.map((quote) => {
-                const node = nodeById(quote.nodeId);
-                return (
-                  <li key={quote.nodeId} className="border-b border-line pb-[10px] last:border-b-0">
-                    <div className="flex items-center gap-[6px]">
-                      <a
-                        href="/graph"
-                        className="truncate text-[13px] font-semibold text-neutral-900 hover:text-main-500"
-                      >
-                        {node?.title}
-                      </a>
-                      {node && <StatusBadge status={node.status} kind="document" size="sm" />}
-                    </div>
-                    <blockquote className="mt-[8px] border-l-[3px] border-line pl-[8px] text-[12px] font-medium leading-[18px] text-neutral-700">
-                      {quote.quote}
-                    </blockquote>
-                    <p className="mt-[6px] text-[12px] font-medium leading-[17px] text-neutral-500">
-                      {quote.why}
-                    </p>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <EmptyState
-              compact
-              title="연결된 문서가 없습니다"
-              description="관련 문서를 연결하면 그 문서의 맥락을 인용해 제안합니다."
-            />
-          )}
-        </section>
-      </div>
-
-      {/* ── 자유 질문은 보조 (대화가 주 기능이 아니다) ── */}
-      <div className="shrink-0 border-t border-line bg-neutral-50 px-[16px] py-[12px]">
-        <AiDisclaimer className="mb-[10px]" />
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            setQuestion("");
-          }}
-          className="flex items-center gap-[6px]"
-        >
-          <input
-            value={question}
-            onChange={(event) => setQuestion(event.target.value)}
-            placeholder="이 문서에 대해 물어보기 (보조)"
-            aria-label="CIO에게 질문"
-            className="h-[30px] min-w-0 flex-1 border-0 border-b border-line bg-transparent rounded-none px-[10px] text-[12px] font-medium text-neutral-900 outline-none placeholder:text-neutral-500 focus:border-main-500"
-          />
-          <Button
-            type="submit"
-            variant="secondary"
-            size="sm"
-            disabled={!question.trim()}
-            className={cx("shrink-0 rounded-sm")}
+        {/* 하단 입력 — 채팅 스타일 */}
+        <div className="shrink-0 border-t border-neutral-100 bg-neutral-50/80 px-[14px] py-[12px]">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              setQuestion("");
+            }}
+            className="flex items-center gap-[8px] rounded-xl border border-neutral-200 bg-white px-[12px] py-[6px] transition-colors focus-within:border-[#7c3aed]/40 focus-within:ring-2 focus-within:ring-[#7c3aed]/10"
           >
-            질문
-          </Button>
-        </form>
-      </div>
-    </aside>
+            <input
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              placeholder="AI에게 물어보기..."
+              aria-label="AI에게 질문"
+              className="min-w-0 flex-1 border-0 bg-transparent py-[4px] text-[13px] text-neutral-900 outline-none placeholder:text-neutral-400"
+            />
+            <button
+              type="submit"
+              disabled={!question.trim()}
+              className="flex size-[28px] shrink-0 items-center justify-center rounded-lg bg-[#7c3aed] text-white transition-colors hover:bg-[#6d28d9] disabled:bg-neutral-200 disabled:text-neutral-400"
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2L2 7l4 2 2 4 4-11z" />
+              </svg>
+            </button>
+          </form>
+          <p className="mt-[6px] text-center text-[10px] text-neutral-400">
+            AI가 생성한 내용은 참고용입니다. 반드시 검토 후 사용하세요.
+          </p>
+        </div>
+      </aside>
     </>
   );
 }
