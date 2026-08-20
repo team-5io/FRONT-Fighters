@@ -341,7 +341,8 @@ export default function HumanReviewPage() {
         </Card>
       </Section>
 
-      {/* ── Card 3: 최종 결정 (독립 단위 · 화면의 유일한 강조 버튼) ── */}
+      {/* ── Card 3: 최종 결정 (승인/머지 완료 시 숨김) ── */}
+      {pr.status !== "approved" && pr.status !== "merged" && (
       <Section
         title="최종 결정"
         caption={
@@ -384,6 +385,7 @@ export default function HumanReviewPage() {
           </div>
         </Card>
       </Section>
+      )}
 
       {/* ── 이력은 접기 ── */}
       <div className="mt-[32px]">
