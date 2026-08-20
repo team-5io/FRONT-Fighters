@@ -142,8 +142,8 @@ export default function DocumentsPage() {
   );
   const changes = unwrapList(versions).slice(0, 3).map((v) => ({
     at: v.at ?? v.createdAt ?? "—",
-    by: v.by ?? v.author?.name ?? "—",
-    text: v.text ?? v.summary ?? v.title ?? "변경 내용",
+    by: v.by ?? v.author?.name ?? (v.docPrId ? `Doc PR #${v.docPrId}` : "최초 작성"),
+    text: v.text ?? v.summary ?? (v.content ? v.content.slice(0, 40) : `v${v.versionNo ?? "?"}`),
   }));
 
   return (

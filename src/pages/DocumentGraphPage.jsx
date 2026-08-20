@@ -41,8 +41,27 @@ export default function DocumentGraphPage() {
   );
 
   const graph = unwrap(graphQuery.data) ?? {};
-  const nodes = Array.isArray(graph.nodes) ? graph.nodes : [];
-  const edges = Array.isArray(graph.edges) ? graph.edges : [];
+  // 명세서: data는 관계 배열 [{ relationId, direction, relationType, neighborDocumentId, neighborTitle, createdAt }]
+  // 이를 nodes + edges로 변환한다
+  const rawRelations = Array.isArray(graph) ? graph : (Array.isArray(graph.nodes) ? [] : []);
+  
+  // 노드: 기준 문서 + 이웃 문서들 (중복 제거)
+  const nodeMap = new Map();
+  if (documentId) nodeMap.set(Number(documentId), { id: Number(documentId), documentId: Number(documentId), title: "현재 문서" });
+  rawRelations.forEach((rel) => {
+    const nId = rel.neighborDocumentId;
+    if (nId && !nodeMap.has(nId)) {
+      nodeMap.set(nId, { id: nId, documentId: nId, title: rel.neighborTitle ?? `문서 #${nId}` });
+    }
+  });
+  // 기존 nodes/edges 구조 호환 (백엔드가 nodes/edges로 내려주는 경우도 대응)
+  const nodes = Array.isArray(graph.nodes) ? graph.nodes : [...nodeMap.values()];
+  const edges = Array.isArray(graph.edges) ? graph.edges : rawRelations.map((rel) => ({
+    id: rel.relationId,
+    source: rel.direction === "OUTGOING" ? Number(documentId) : rel.neighborDocumentId,
+    target: rel.direction === "OUTGOING" ? rel.neighborDocumentId : Number(documentId),
+    relationType: rel.relationType,
+  }));
   const impacts = unwrapList(impactQuery.data);
   const selectedNode = nodes.find((n) => (n.id ?? n.documentId) === selectedId) ?? null;
 
