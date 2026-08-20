@@ -51,7 +51,8 @@ export function usePermissions(documentId) {
     isTeamAdmin,
     can,
     canApprove: role === "A",
-    canComment: role === "A" || role === "C",
+    /** 명세서: 리뷰어(C) 배정 기능 미구현 → 팀원이면 누구나 의견 등록 가능 */
+    canComment: true,
     /** 편집은 작성자 본인 또는 R 배정자 (PATCH는 작성자만 통과시킨다) */
     canEdit: isAuthor || role === "R" || !data,
     canManage: isTeamAdmin,
