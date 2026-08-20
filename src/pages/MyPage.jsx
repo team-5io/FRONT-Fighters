@@ -116,6 +116,7 @@ export default function MyPage() {
         description="이름과 시간대, 선호 언어를 설정합니다. 시간대는 Follow-the-Sun 인수인계에서 참고됩니다."
         properties={[
           { label: "이메일", value: me.email ?? "—" },
+          { label: "소속 워크스페이스", value: `${teams.length}개` },
         ]}
       />
 
