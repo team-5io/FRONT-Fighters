@@ -147,14 +147,21 @@ export default function GraphCanvas({ nodes: rawNodes = [], edges: rawEdges = []
     panRef.current = null;
   }
 
-  function onWheel(event) {
-    event.preventDefault();
-    const delta = -event.deltaY * 0.0015;
-    setTransform((prev) => {
-      const k = Math.min(2.4, Math.max(0.45, prev.k * (1 + delta)));
-      return { ...prev, k };
-    });
-  }
+  /** 휠 줌 — native listener로 등록해야 preventDefault가 동작한다 */
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    function handleWheel(event) {
+      event.preventDefault();
+      const delta = -event.deltaY * 0.0015;
+      setTransform((prev) => {
+        const k = Math.min(2.4, Math.max(0.45, prev.k * (1 + delta)));
+        return { ...prev, k };
+      });
+    }
+    svg.addEventListener("wheel", handleWheel, { passive: false });
+    return () => svg.removeEventListener("wheel", handleWheel);
+  }, []);
 
   /** 연결된 노드 하이라이트 */
   const connected = useMemo(() => {
@@ -186,7 +193,6 @@ export default function GraphCanvas({ nodes: rawNodes = [], edges: rawEdges = []
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerLeave={onPointerUp}
-        onWheel={onWheel}
       >
         <g transform={`translate(${transform.x},${transform.y}) scale(${transform.k})`}>
           {/* 간선 (엣지) */}
