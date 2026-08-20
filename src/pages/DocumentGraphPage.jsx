@@ -1,5 +1,5 @@
 import { navigate } from "../router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Page from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
 import {
@@ -13,20 +13,28 @@ import { useApi } from "../hooks/useApi";
 import { unwrap, unwrapList } from "../api/unwrap";
 
 /**
- * Document Graph — `#/graph`
+ * Document Graph — `/t/{teamId}/graph`
  *
- * API: `GET /documents/{id}/graph` (노드/엣지), `GET /documents/{id}/impact` (영향 문서)
- * API 응답이 없으면 빈 상태를 안내한다.
+ * API: `GET /documents/{id}/graph` (관계), `GET /documents/{id}/impact` (영향 문서)
+ * documentId가 없으면 문서 목록에서 선택하도록 안내한다.
  */
 
-function getDocumentIdFromHash() {
-  const params = new URLSearchParams(window.location.search.slice(1));
+function getDocumentIdFromUrl() {
+  const params = new URLSearchParams(window.location.search);
   return params.get("documentId") ?? params.get("id") ?? null;
 }
 
 export default function DocumentGraphPage() {
-  const [documentId] = useState(getDocumentIdFromHash);
-  const [selectedId, setSelectedId] = useState(documentId);
+  const [documentId, setDocumentId] = useState(getDocumentIdFromUrl);
+  const [selectedId, setSelectedId] = useState(null);
+
+  // documentId 없으면 팀 문서 목록을 가져온다
+  const docsQuery = useApi(
+    () => documentsApi.list(),
+    [],
+    { enabled: !documentId },
+  );
+  const docList = unwrapList(docsQuery.data);
 
   // 그래프 데이터를 API에서 가져온다
   const graphQuery = useApi(
@@ -36,14 +44,13 @@ export default function DocumentGraphPage() {
   );
   const impactQuery = useApi(
     () => documentsApi.impact(selectedId ?? documentId),
-    [selectedId],
+    [selectedId, documentId],
     { enabled: Boolean(selectedId ?? documentId) },
   );
 
-  const graph = unwrap(graphQuery.data) ?? {};
+  const graphData = unwrap(graphQuery.data);
   // 명세서: data는 관계 배열 [{ relationId, direction, relationType, neighborDocumentId, neighborTitle, createdAt }]
-  // 이를 nodes + edges로 변환한다
-  const rawRelations = Array.isArray(graph) ? graph : (Array.isArray(graph.nodes) ? [] : []);
+  const rawRelations = Array.isArray(graphData) ? graphData : [];
   
   // 노드: 기준 문서 + 이웃 문서들 (중복 제거)
   const nodeMap = new Map();
@@ -54,32 +61,63 @@ export default function DocumentGraphPage() {
       nodeMap.set(nId, { id: nId, documentId: nId, title: rel.neighborTitle ?? `문서 #${nId}` });
     }
   });
-  // 기존 nodes/edges 구조 호환 (백엔드가 nodes/edges로 내려주는 경우도 대응)
-  const nodes = Array.isArray(graph.nodes) ? graph.nodes : [...nodeMap.values()];
-  const edges = Array.isArray(graph.edges) ? graph.edges : rawRelations.map((rel) => ({
+  const nodes = [...nodeMap.values()];
+  const edges = rawRelations.map((rel) => ({
     id: rel.relationId,
     source: rel.direction === "OUTGOING" ? Number(documentId) : rel.neighborDocumentId,
     target: rel.direction === "OUTGOING" ? rel.neighborDocumentId : Number(documentId),
     relationType: rel.relationType,
   }));
   const impacts = unwrapList(impactQuery.data);
-  const selectedNode = nodes.find((n) => (n.id ?? n.documentId) === selectedId) ?? null;
+  const currentSelectedId = selectedId ?? (documentId ? Number(documentId) : null);
+  const selectedNode = nodes.find((n) => n.id === currentSelectedId) ?? null;
 
-  // 데이터가 없으면 빈 상태
-  if (!documentId || (graphQuery.data === null && !graphQuery.loading && !graphQuery.error)) {
+  // documentId가 바뀌면 selectedId 초기화
+  useEffect(() => {
+    if (documentId) setSelectedId(Number(documentId));
+  }, [documentId]);
+
+  // ── documentId 없으면 문서 선택 UI ──
+  if (!documentId) {
     return (
       <Page>
         <PageHeader
           breadcrumb={[{ label: "그래프" }]}
           title="Document Graph"
+          description="그래프를 볼 문서를 선택하세요."
         />
-        <div className="mt-[32px]">
-          <EmptyState
-            title="표시할 그래프가 없습니다"
-            description="문서를 선택한 뒤 그래프를 열거나, 문서 간 관계를 먼저 연결해 주세요."
-            actionLabel="문서 목록"
-            onAction={() => navigate("/documents")}
-          />
+        <div className="mt-[24px]">
+          {docsQuery.loading && (
+            <p className="text-[14px] text-neutral-500">문서 목록을 불러오는 중…</p>
+          )}
+          {!docsQuery.loading && docList.length === 0 && (
+            <EmptyState
+              title="문서가 없습니다"
+              description="팀에 문서가 있어야 그래프를 볼 수 있습니다."
+              actionLabel="새 문서 작성"
+              onAction={() => navigate("/write")}
+            />
+          )}
+          {docList.length > 0 && (
+            <ul className="flex flex-col gap-[6px]">
+              {docList.map((doc) => (
+                <li key={doc.id}>
+                  <button
+                    type="button"
+                    onClick={() => setDocumentId(doc.id)}
+                    className="flex w-full items-center gap-[10px] rounded-lg border border-neutral-200 px-[14px] py-[10px] text-left transition-colors hover:bg-neutral-50"
+                  >
+                    <span className="text-[14px] font-medium text-neutral-800">
+                      {doc.title || "제목 없음"}
+                    </span>
+                    <span className="ml-auto text-[12px] text-neutral-400">
+                      #{doc.id}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </Page>
     );
@@ -134,7 +172,7 @@ export default function DocumentGraphPage() {
               <ul className="flex flex-wrap gap-[8px]">
                 {nodes.map((node) => {
                   const id = node.id ?? node.documentId;
-                  const isSelected = id === selectedId;
+                  const isSelected = id === currentSelectedId;
                   return (
                     <li key={id}>
                       <button
@@ -177,7 +215,7 @@ export default function DocumentGraphPage() {
                   variant="secondary"
                   size="sm"
                   className="rounded-sm"
-                  onClick={() => navigate(`/write?documentId=${encodeURIComponent(selectedId)}`)}
+                  onClick={() => navigate(`/write?documentId=${encodeURIComponent(currentSelectedId)}`)}
                 >
                   문서 열기
                 </Button>
@@ -185,7 +223,7 @@ export default function DocumentGraphPage() {
                   variant="secondary"
                   size="sm"
                   className="rounded-sm"
-                  onClick={() => navigate(`/link-documents?documentId=${encodeURIComponent(selectedId)}`)}
+                  onClick={() => navigate(`/link-documents?documentId=${encodeURIComponent(currentSelectedId)}`)}
                 >
                   관계 편집
                 </Button>
