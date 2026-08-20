@@ -175,10 +175,21 @@ export default function LoginPage() {
         </Card>
 
         <p className="mt-[16px] text-center text-[13px] font-medium text-neutral-500">
-          팀이 아직 없으신가요?{" "}
-          <a href="/team-invite" className="font-semibold text-main-500">
-            팀 생성 또는 참여
-          </a>
+          {isSignup ? (
+            <>
+              이미 계정이 있으신가요?{" "}
+              <button type="button" onClick={() => { setMode("login"); setError(null); }} className="font-semibold text-main-500">
+                로그인 하기
+              </button>
+            </>
+          ) : (
+            <>
+              아직 계정이 없으신가요?{" "}
+              <button type="button" onClick={() => { setMode("signup"); setError(null); }} className="font-semibold text-main-500">
+                회원가입 하기
+              </button>
+            </>
+          )}
         </p>
       </div>
     </div>
