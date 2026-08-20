@@ -165,7 +165,7 @@ export default function Sidebar({ active, teamId, onNavigate }) {
                 type="button"
                 onClick={() => {
                   setSwitcherOpen(false);
-                  navigate("/dashboard");
+                  navigate("/dashboard?createTeam=1");
                 }}
                 className="flex w-full items-center gap-[8px] rounded-sm px-[8px] py-[6px] text-left text-[13px] font-medium text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700"
               >
