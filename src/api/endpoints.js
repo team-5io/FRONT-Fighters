@@ -84,6 +84,12 @@ export const docPrs = {
   requestAiReview: (prId) => api.post(`/doc-prs/${prId}/ai-review`),
   /** AI 리뷰 결과 조회 */
   getAiReview: (prId) => api.get(`/doc-prs/${prId}/ai-review`),
+  /** AI 리뷰 이슈 목록 조회 (미해결만) */
+  getAiIssues: (prId) => api.get(`/doc-prs/${prId}/ai-review/issues`),
+  /** AI 리뷰 이슈 해결 처리 */
+  resolveAiIssue: (prId, issueId) => api.patch(`/doc-prs/${prId}/ai-review/issues/${issueId}/resolve`),
+  /** AI 리뷰 이슈 건너뛰기 */
+  skipAiIssue: (prId, issueId) => api.patch(`/doc-prs/${prId}/ai-review/issues/${issueId}/skip`),
 };
 
 /* ── Charter ── */

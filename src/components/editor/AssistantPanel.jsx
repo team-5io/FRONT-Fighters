@@ -172,13 +172,13 @@ export default function AssistantPanel({
                         {item.detail}
                       </p>
                     )}
-                    <div className="mt-3 flex gap-2">
+                    <div className="mt-3 flex gap-1.5">
                       <button
                         type="button"
                         onClick={() => onAccept(item)}
-                        className="flex-1 rounded-lg bg-[#6B4EFF] py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-[#5a3de8]"
+                        className="flex-1 rounded-lg bg-[#16a34a] py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-[#15803d]"
                       >
-                        수락
+                        해결
                       </button>
                       <button
                         type="button"

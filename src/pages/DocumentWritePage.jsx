@@ -15,7 +15,7 @@ import {
 } from "../components/ui";
 import { createBlock } from "../data/blocks";
 import { IconGlobe, IconLink, IconSparkle } from "../components/icons";
-import { documents as documentsApi, teams as teamsApi } from "../api/endpoints";
+import { documents as documentsApi, teams as teamsApi, docPrs as docPrsApi } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
 import { unwrap, unwrapList } from "../api/unwrap";
 import { fromServerBlocks, normalizeDocument, toServerBlocks } from "../api/normalize";
@@ -351,7 +351,22 @@ export default function DocumentWritePage() {
   ];
 
   function acceptSuggestion(item) {
-    setBlocks((prev) => [...prev, ...item.apply()]);
+    // 해결 처리 — API 호출 (문서에 자동 삽입하지 않음)
+    if (item.prId && item.id) {
+      docPrsApi.resolveAiIssue(item.prId, item.id).catch((err) => {
+        console.error("[AI 이슈 해결 실패]", err.message);
+      });
+    }
+    setSuggestions((prev) => prev.filter((row) => row.id !== item.id));
+  }
+
+  function skipSuggestion(item) {
+    // 건너뛰기 처리 — API 호출
+    if (item.prId && item.id) {
+      docPrsApi.skipAiIssue(item.prId, item.id).catch((err) => {
+        console.error("[AI 이슈 건너뛰기 실패]", err.message);
+      });
+    }
     setSuggestions((prev) => prev.filter((row) => row.id !== item.id));
   }
 
@@ -582,7 +597,7 @@ export default function DocumentWritePage() {
         loading={aiLoading}
         suggestions={suggestions}
         onAccept={acceptSuggestion}
-        onReject={(item) => setSuggestions((prev) => prev.filter((row) => row.id !== item.id))}
+        onReject={skipSuggestion}
         onRequestSuggestions={fetchWritingSuggestions}
       />
 
