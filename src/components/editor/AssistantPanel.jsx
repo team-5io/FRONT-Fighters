@@ -79,6 +79,7 @@ export default function AssistantPanel({
   onOpenChange,
   documentId,
   documentTitle,
+  loading,
   suggestions,
   onAccept,
   onReject,
@@ -141,7 +142,18 @@ export default function AssistantPanel({
 
         {/* ━━━ 액션 리스트 ━━━ */}
         <div className="min-h-0 flex-1 overflow-y-auto px-[30px] pt-[20px] pb-[16px]">
-          {suggestions.length > 0 ? (
+          {loading ? (
+            /* 로딩 상태 — 스피너 + 메시지 */
+            <div className="flex flex-col items-center justify-center gap-[12px] py-[40px]">
+              <svg className="animate-spin" width="28" height="28" viewBox="0 0 28 28" fill="none">
+                <circle cx="14" cy="14" r="12" stroke="#ecebe9" strokeWidth="3" />
+                <path d="M14 2a12 12 0 0 1 12 12" stroke="#9000FF" strokeWidth="3" strokeLinecap="round" />
+              </svg>
+              <p className="text-[13px] font-medium text-[#7f7a76]">
+                문서를 분석하고 있습니다...
+              </p>
+            </div>
+          ) : suggestions.length > 0 ? (
             <div>
               <p className="text-[11px] font-medium text-neutral-400">
                 {suggestions.length}개의 제안
