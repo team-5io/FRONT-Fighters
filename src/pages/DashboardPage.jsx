@@ -36,6 +36,14 @@ export default function DashboardPage() {
 
   const hasTeam = Boolean(activeTeam) || Boolean(user.teamId);
   const showCreateTeam = new URLSearchParams(window.location.search).get("createTeam") === "1";
+  const currentTeamId = activeTeam?.id ?? user.teamId;
+
+  // 팀원 목록 조회 — 본인만 있으면 "팀원 없음" 안내 (Hook은 early return 전에 호출)
+  const { data: membersData } = useApi(
+    () => teamsApi.members(currentTeamId),
+    [currentTeamId],
+    { enabled: Boolean(currentTeamId) },
+  );
 
   if (loading) {
     return (
@@ -50,14 +58,6 @@ export default function DashboardPage() {
   }
 
   const teamName = activeTeam?.name ?? user.teamName ?? "내 팀";
-  const currentTeamId = activeTeam?.id ?? user.teamId;
-
-  // 팀원 목록 조회 — 본인만 있으면 "팀원 없음" 안내
-  const { data: membersData } = useApi(
-    () => teamsApi.members(currentTeamId),
-    [currentTeamId],
-    { enabled: Boolean(currentTeamId) },
-  );
   const members = unwrapList(membersData);
   const hasOtherMembers = members.length > 1;
 
