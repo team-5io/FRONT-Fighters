@@ -545,7 +545,7 @@ export default function DocPrDetailPage() {
           pending={setApprover.pending}
           onClose={() => setApproverModalOpen(false)}
           onSubmit={async (memberId) => {
-            await onSetApprover({ approverId: memberId });
+            await onSetApprover({ newApproverMemberId: memberId });
             setApproverModalOpen(false);
           }}
         />
