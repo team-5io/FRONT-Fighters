@@ -58,6 +58,12 @@ export default function AssistantPanel({
   }
 
   return (
+    <>
+      {/* 패널 바깥 클릭 시 닫기 */}
+      <div
+        className="fixed inset-0 z-[29]"
+        onClick={() => onOpenChange(false)}
+      />
     <aside
       aria-label="CIO 작성 도우미"
       className="fixed bottom-[24px] right-[24px] z-30 flex max-h-[min(620px,calc(100vh-96px))] w-[360px] flex-col overflow-hidden rounded-md border border-line bg-neutral-0 shadow-[0_8px_28px_rgba(0,0,0,0.14)]"
@@ -69,10 +75,10 @@ export default function AssistantPanel({
         <button
           type="button"
           onClick={() => onOpenChange(false)}
-          aria-label="작성 도우미 접기"
-          className="ml-auto flex size-[24px] items-center justify-center rounded-xs text-neutral-500 transition-colors hover:bg-neutral-75"
+          aria-label="작성 도우미 닫기"
+          className="ml-auto flex size-[24px] items-center justify-center rounded-xs text-neutral-500 transition-colors hover:bg-neutral-75 hover:text-neutral-900"
         >
-          ─
+          ✕
         </button>
       </header>
 
@@ -206,5 +212,6 @@ export default function AssistantPanel({
         </form>
       </div>
     </aside>
+    </>
   );
 }
