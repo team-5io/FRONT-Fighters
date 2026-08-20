@@ -120,8 +120,8 @@ export default function HumanReviewPage() {
     <Page>
       <PageHeader
         breadcrumb={[
-          { label: "5IO주", href: "#/dashboard" },
-          { label: "Doc PR", href: "#/doc-pr" },
+          { label: "5IO주", href: "/dashboard" },
+          { label: "Doc PR", href: "/doc-pr" },
           {
             label: `#${prId ?? "—"}`,
             href: `#/doc-pr-detail?prId=${encodeURIComponent(prId ?? "")}`,
@@ -135,7 +135,7 @@ export default function HumanReviewPage() {
             label: "대상 문서",
             value: pr.documentId ? (
               <a
-                href={`#/write?documentId=${encodeURIComponent(pr.documentId)}`}
+                href={`/write?documentId=${encodeURIComponent(pr.documentId)}`}
                 className="font-semibold text-main-500"
               >
                 문서 #{pr.documentId}

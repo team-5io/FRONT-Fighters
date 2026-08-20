@@ -149,7 +149,7 @@ export default function DocumentsPage() {
   return (
     <Page>
       <PageHeader
-        breadcrumb={[{ label: "5IO주", href: "#/dashboard" }, { label: "문서" }]}
+        breadcrumb={[{ label: "5IO주", href: "/dashboard" }, { label: "문서" }]}
         title="문서"
         description="팀의 모든 문서를 한눈에 확인하고 관리하세요."
         actions={
@@ -182,7 +182,7 @@ export default function DocumentsPage() {
             loading={loading}
             rows={list}
             onRowClick={(row) => {
-              const base = teamId ? `#/t/${teamId}/write` : "#/write";
+              const base = teamId ? `/t/${teamId}/write` : "/write";
               navigate(`${base}?documentId=${encodeURIComponent(row.id)}`);
             }}
             empty={{

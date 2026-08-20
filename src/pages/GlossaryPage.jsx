@@ -96,8 +96,8 @@ export default function GlossaryPage() {
     <Page>
       <PageHeader
         breadcrumb={[
-          { label: "5IO주", href: "#/dashboard" },
-          { label: "설정", href: "#/settings" },
+          { label: "5IO주", href: "/dashboard" },
+          { label: "설정", href: "/settings" },
           { label: "팀 용어집" },
         ]}
         title="팀 용어집"

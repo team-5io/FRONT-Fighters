@@ -88,8 +88,8 @@ export default function LinkDocumentsPage() {
     <Page>
       <PageHeader
         breadcrumb={[
-          { label: "5IO주", href: "#/dashboard" },
-          { label: "문서", href: "#/documents" },
+          { label: "5IO주", href: "/dashboard" },
+          { label: "문서", href: "/documents" },
           { label: "관련 문서 연결" },
         ]}
         title="관련 문서 연결"

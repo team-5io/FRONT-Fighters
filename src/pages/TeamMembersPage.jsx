@@ -146,8 +146,8 @@ export default function TeamMembersPage() {
     <Page>
       <PageHeader
         breadcrumb={[
-          { label: "5IO주", href: "#/dashboard" },
-          { label: "설정", href: "#/settings" },
+          { label: "5IO주", href: "/dashboard" },
+          { label: "설정", href: "/settings" },
           { label: "팀원 관리" },
         ]}
         title="팀원 관리"

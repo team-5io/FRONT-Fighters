@@ -121,8 +121,8 @@ export default function CharterPage() {
     <Page>
       <PageHeader
         breadcrumb={[
-          { label: "5IO주", href: "#/dashboard" },
-          { label: "설정", href: "#/settings" },
+          { label: "5IO주", href: "/dashboard" },
+          { label: "설정", href: "/settings" },
           { label: "협업 규칙 (Charter)" },
         ]}
         title="협업 규칙 (Charter)"
