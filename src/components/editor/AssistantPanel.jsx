@@ -113,9 +113,8 @@ export default function AssistantPanel({
       >
         {/* ━━━ 헤더 ━━━ */}
         <div className="shrink-0 px-[30px] pt-[32px]">
-          {/* 우측 상단 축소/닫기 버튼 */}
-          <div className="absolute right-3 top-3 flex items-center gap-1">
-            {/* 축소 버튼 */}
+          {/* 우측 상단 축소 버튼 */}
+          <div className="absolute right-3 top-3">
             <button
               type="button"
               onClick={() => onOpenChange(false)}
@@ -124,17 +123,6 @@ export default function AssistantPanel({
             >
               <svg width="14" height="2" viewBox="0 0 14 2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <path d="M1 1h12" />
-              </svg>
-            </button>
-            {/* 닫기 버튼 */}
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              aria-label="닫기"
-              className="flex size-7 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
-            >
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                <path d="M1 1l10 10M11 1L1 11" />
               </svg>
             </button>
           </div>
