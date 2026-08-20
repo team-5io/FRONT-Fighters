@@ -572,6 +572,7 @@ export default function DocumentWritePage() {
         open={panelOpen}
         onOpenChange={setPanelOpen}
         documentId={documentId ?? "api-design"}
+        documentTitle={title}
         suggestions={suggestions}
         onAccept={acceptSuggestion}
         onReject={(item) => setSuggestions((prev) => prev.filter((row) => row.id !== item.id))}
