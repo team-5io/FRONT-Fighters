@@ -57,7 +57,7 @@ export default function TeamSettingsPage() {
   return (
     <Page>
       <PageHeader
-        breadcrumb={[{ label: teamName, href: "#/dashboard" }, { label: "설정" }]}
+        breadcrumb={[{ label: teamName, href: "/dashboard" }, { label: "설정" }]}
         title="팀 설정"
         properties={[
           { label: "팀", value: teamName },

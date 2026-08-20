@@ -81,7 +81,7 @@ export default function TranslationPage() {
   return (
     <Page>
       <PageHeader
-        breadcrumb={[{ label: "문서", href: "#/documents" }, { label: "번역 보기" }]}
+        breadcrumb={[{ label: "문서", href: "/documents" }, { label: "번역 보기" }]}
         title="번역 보기"
         description="AI가 코드블록·API명·변수명을 보존하고 나머지만 번역합니다."
       />

@@ -192,8 +192,8 @@ export default function DocPrDetailPage() {
     <Page>
       <PageHeader
         breadcrumb={[
-          { label: "5IO주", href: "#/dashboard" },
-          { label: "Doc PR", href: "#/doc-pr" },
+          { label: "5IO주", href: "/dashboard" },
+          { label: "Doc PR", href: "/doc-pr" },
           { label: `#${prId}` },
         ]}
         title={`Doc PR #${prId} · ${targetDocTitle}`}
@@ -207,7 +207,7 @@ export default function DocPrDetailPage() {
             label: "대상 문서",
             value: pr.documentId ? (
               <a
-                href={`#/write?documentId=${encodeURIComponent(pr.documentId)}`}
+                href={`/write?documentId=${encodeURIComponent(pr.documentId)}`}
                 className="font-semibold text-main-500"
               >
                 {targetDocTitle}

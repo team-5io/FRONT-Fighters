@@ -103,9 +103,9 @@ export default function AiReviewPage() {
     <Page>
       <PageHeader
         breadcrumb={[
-          { label: "5IO주", href: "#/dashboard" },
-          { label: "Doc PR", href: "#/doc-pr" },
-          { label: TARGET.prId, href: "#/doc-pr-detail" },
+          { label: "5IO주", href: "/dashboard" },
+          { label: "Doc PR", href: "/doc-pr" },
+          { label: TARGET.prId, href: "/doc-pr-detail" },
           { label: "CIO 1차 검토" },
         ]}
         title="CIO 1차 검토 결과"

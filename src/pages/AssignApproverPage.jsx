@@ -80,8 +80,8 @@ export default function AssignApproverPage() {
     <Page>
       <PageHeader
         breadcrumb={[
-          { label: "5IO주", href: "#/dashboard" },
-          { label: "Doc PR", href: "#/doc-pr" },
+          { label: "5IO주", href: "/dashboard" },
+          { label: "Doc PR", href: "/doc-pr" },
           { label: pr.id ?? prId, href: `#/doc-pr-detail?prId=${encodeURIComponent(prId)}` },
           { label: "승인권자 지정" },
         ]}

@@ -125,7 +125,7 @@ export default function DocPrListPage() {
   return (
     <Page>
       <PageHeader
-        breadcrumb={[{ label: "5IO주", href: "#/dashboard" }, { label: "Doc PR" }]}
+        breadcrumb={[{ label: "5IO주", href: "/dashboard" }, { label: "Doc PR" }]}
         title="Doc PR"
         description="문서의 생성, 검토, 승인 상태를 한눈에 관리하세요."
         properties={[

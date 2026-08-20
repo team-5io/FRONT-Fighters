@@ -52,8 +52,8 @@ export default function TeamResetPage() {
     <Page>
       <PageHeader
         breadcrumb={[
-          { label: "5IO주", href: "#/dashboard" },
-          { label: "설정", href: "#/settings" },
+          { label: "5IO주", href: "/dashboard" },
+          { label: "설정", href: "/settings" },
           { label: "팀 설정 초기화" },
         ]}
         title="팀 설정 초기화"

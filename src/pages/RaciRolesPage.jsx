@@ -183,8 +183,8 @@ export default function RaciRolesPage() {
     <Page>
       <PageHeader
         breadcrumb={[
-          { label: "5IO주", href: "#/dashboard" },
-          { label: "설정", href: "#/settings" },
+          { label: "5IO주", href: "/dashboard" },
+          { label: "설정", href: "/settings" },
           { label: "RACI 역할 관리" },
         ]}
         title="RACI 역할 관리"
