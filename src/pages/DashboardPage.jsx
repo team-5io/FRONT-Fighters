@@ -23,11 +23,15 @@ export default function DashboardPage() {
   const { data: teamsResult, loading, reload } = useApi(() => teamsApi.myTeams(), []);
   const myTeamList = unwrapList(teamsResult).map(normalizeTeam);
 
-  // 팀이 있으면 첫 번째 팀을 활성 팀으로 (역할까지 세션에 반영)
-  const activeTeam = myTeamList[0] ?? null;
+  // URL의 teamId에 해당하는 팀을 찾고, 없으면 첫 번째 팀
+  const urlTeamId = window.location.pathname.match(/^\/t\/([^/]+)/)?.[1] ?? null;
+  const activeTeam = (urlTeamId
+    ? myTeamList.find((t) => String(t.id) === urlTeamId)
+    : null) ?? myTeamList[0] ?? null;
+
   useEffect(() => {
-    if (activeTeam && !user.teamId) setActiveTeam(activeTeam);
-  }, [activeTeam, user.teamId, setActiveTeam]);
+    if (activeTeam) setActiveTeam(activeTeam);
+  }, [activeTeam?.id]);
 
   const hasTeam = Boolean(activeTeam) || Boolean(user.teamId);
   const showCreateTeam = new URLSearchParams(window.location.search).get("createTeam") === "1";
