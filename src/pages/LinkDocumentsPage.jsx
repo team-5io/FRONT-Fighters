@@ -60,15 +60,25 @@ export default function LinkDocumentsPage() {
 
   const relationMeta = RELATIONS.find((item) => item.value === relation);
 
+  // 팀 전체 문서 목록 (자동 표시용)
+  const { data: allDocs } = useApi(
+    () => documentsApi.list({ teamId: Number(teamId), size: 100 }),
+    [teamId],
+    { enabled: Boolean(teamId) },
+  );
+  const allDocList = unwrapList(allDocs).map(normalizeDocument);
+
   // 검색 API 연동 — 키워드가 있으면 실제 검색
   const { data: searchResults, loading: searching } = useApi(
     () => documentsApi.search({ teamId: Number(teamId), keyword: searchKeyword.trim(), size: 50 }),
     [searchKeyword, teamId],
     { enabled: Boolean(searchKeyword.trim()) && Boolean(teamId) },
   );
+
+  // 검색어 있으면 검색 결과, 없으면 전체 목록 (자기 자신 제외)
   const displayResults = searchKeyword.trim()
-    ? unwrapList(searchResults).map(normalizeDocument)
-    : [];
+    ? unwrapList(searchResults).map(normalizeDocument).filter((doc) => String(doc.id) !== String(documentId))
+    : allDocList.filter((doc) => String(doc.id) !== String(documentId));
 
   const saveRelations = useMutation(async () => {
     // 명세서: POST /documents/{documentId}/relations — 단건 생성
