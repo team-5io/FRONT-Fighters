@@ -30,6 +30,7 @@ export default function DashboardPage() {
   }, [activeTeam, user.teamId, setActiveTeam]);
 
   const hasTeam = Boolean(activeTeam) || Boolean(user.teamId);
+  const showCreateTeam = new URLSearchParams(window.location.search).get("createTeam") === "1";
 
   if (loading) {
     return (
@@ -39,7 +40,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (!hasTeam) {
+  if (!hasTeam || showCreateTeam) {
     return <NoTeamView onCreated={reload} />;
   }
 
