@@ -143,7 +143,7 @@ export default function DocPrDetailPage() {
 
   const permissions = usePermissions(pr.documentId);
   const myRole = permissions.meta;
-  const canApprove = permissions.canApprove;
+  const canApprove = permissions.canApprove || String(pr.approverId) === String(user.id);
   /**
    * merge-check는 승인권자(A) 전용이라 다른 역할에서는 403이 난다.
    * 그럴 때는 Doc PR 상태로 근사한다 — `APPROVED`면 Merge 단계라는 뜻이다.
@@ -263,11 +263,11 @@ export default function DocPrDetailPage() {
               반려
             </Button>
             {mergeable ? (
-              <Button className="rounded-sm" disabled={!canApprove || busy} onClick={onMerge}>
+              <Button className="rounded-sm" disabled={busy} onClick={onMerge}>
                 {merge.pending ? "Merge 중…" : "Merge"}
               </Button>
             ) : (
-              <Button className="rounded-sm" disabled={!canApprove || busy} onClick={onApprove}>
+              <Button className="rounded-sm" disabled={busy} onClick={onApprove}>
                 {approve.pending ? "승인 중…" : "승인"}
               </Button>
             )}
