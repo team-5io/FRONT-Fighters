@@ -54,7 +54,7 @@ const COLUMNS_BASE = [
           )}
         </p>
         {row.preview && (
-          <p className="mt-[2px] truncate text-[13px] text-neutral-500">{row.preview}</p>
+          <p className="mt-[2px] max-w-[300px] truncate text-[13px] text-neutral-500">{row.preview}</p>
         )}
       </div>
     ),
