@@ -77,13 +77,16 @@ export default function DashboardPage() {
 
       {/* 팀원이 없을 때 안내 */}
       {!hasOtherMembers && currentTeamId && (
-        <div className="mt-[24px]">
-          <EmptyState
-            title="팀원이 아직 없습니다"
-            description="팀원을 초대해보세요!"
-            actionLabel="팀원 초대 화면으로 이동하기"
-            onAction={() => navigate(`/t/${currentTeamId}/settings`)}
-          />
+        <div className="mt-[24px] flex flex-col items-center justify-center rounded-md border border-neutral-200 px-[32px] py-[48px] text-center">
+          <p className="text-[15px] font-semibold text-neutral-700">팀원이 아직 없습니다</p>
+          <p className="mt-[6px] text-[14px] font-medium text-neutral-500">팀원을 초대해보세요!</p>
+          <button
+            type="button"
+            onClick={() => navigate(`/t/${currentTeamId}/settings`)}
+            className="mt-[16px] rounded-md bg-[#9000FF] px-[16px] py-[8px] text-[13px] font-semibold text-white transition-colors hover:bg-[#7a00d9]"
+          >
+            팀원 초대 화면으로 이동하기
+          </button>
         </div>
       )}
     </Page>
