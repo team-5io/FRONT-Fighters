@@ -52,8 +52,13 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-neutral-50 px-[16px] py-[24px] sm:px-[24px] sm:py-[48px]">
       <div className="w-full max-w-[400px]">
         <div className="flex flex-col items-center">
-          <span className="flex size-[44px] items-center justify-center rounded-md bg-main-500">
-            <IconTalkBubbles size={26} className="text-neutral-0" />
+          <span className="flex size-[44px] items-center justify-center rounded-md bg-[#f5eeff]">
+            <svg width="26" height="22" viewBox="0 0 20 18" fill="none">
+              <circle cx="1.8" cy="1.8" r="1.8" fill="#9000FF" />
+              <circle cx="16.6965" cy="1.8" r="1.8" fill="#9000FF" />
+              <path d="M9.51696 6.38477C9.51696 6.38477 7.96739 10.945 8.35592 13.8879M18.2414 12.95C18.2414 12.95 13.3313 17.2357 9.92137 16.2326C8.95991 15.9498 8.50849 15.0435 8.35592 13.8879M8.35592 13.8879C8.35592 13.8879 6.72137 17.6395 2.24136 15.2947" stroke="#9000FF" strokeWidth="1.6" strokeLinecap="round" />
+              <path d="M11.8893 5.07563C11.2171 3.41591 7.5961 3.41591 6.92382 5.07563C6.25154 6.73535 9.32 8.26807 9.32 8.26807C9.32 8.26807 12.5616 6.73535 11.8893 5.07563Z" fill="#9000FF" stroke="#9000FF" strokeLinecap="round" />
+            </svg>
           </span>
           <h1 className="mt-[14px] text-[24px] font-bold leading-[32px] text-neutral-900">
             Doc PR
