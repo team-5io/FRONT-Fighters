@@ -1,4 +1,5 @@
 import { navigate } from "../router";
+import { useState } from "react";
 import Page from "../components/layout/Page";
 import PageHeader from "../components/layout/PageHeader";
 import {
@@ -16,7 +17,7 @@ import {
 import { DOC_PR_STATUS, isApproved } from "../data/status";
 import { useAuth } from "../auth/AuthContext";
 import { usePermissions } from "../hooks/usePermissions";
-import { docPrs, documents as documentsApi } from "../api/endpoints";
+import { docPrs, documents as documentsApi, teams as teamsApi } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
 import { unwrap, unwrapList } from "../api/unwrap";
 import { normalizeDocPr, normalizeDocument, normalizeMergeCheck } from "../api/normalize";
@@ -90,6 +91,20 @@ export default function DocPrDetailPage() {
   const resubmit = useMutation((payload) => docPrs.resubmit(prId, payload));
   const mergeException = useMutation((payload) => docPrs.mergeException(prId, payload));
   const setApprover = useMutation((payload) => docPrs.setApprover(prId, payload));
+
+  // 승인권자 변경용 팀원 목록 + 드롭다운 상태
+  const teamId = user.teamId;
+  const { data: membersResp } = useApi(
+    () => teamsApi.members(teamId),
+    [teamId],
+    { enabled: Boolean(teamId) },
+  );
+  const teamMembers = unwrapList(membersResp).map((m) => ({
+    memberId: m.memberId ?? m.userId,
+    name: m.name ?? m.email ?? `멤버 #${m.memberId}`,
+    email: m.email ?? "",
+  }));
+  const [approverModalOpen, setApproverModalOpen] = useState(false);
 
   const pr = normalizeDocPr(unwrap(detail.data) ?? {});
   /**
@@ -298,15 +313,7 @@ export default function DocPrDetailPage() {
                 variant="ghost"
                 className="rounded-sm"
                 disabled={busy}
-                onClick={() => {
-                  const input = window.prompt("대체 승인권자의 사용자 ID를 입력하세요.");
-                  const approverId = Number(input);
-                  if (input && Number.isFinite(approverId)) {
-                    onSetApprover({ approverId });
-                  } else if (input) {
-                    window.alert("사용자 ID(숫자)를 입력해 주세요.");
-                  }
-                }}
+                onClick={() => setApproverModalOpen(true)}
               >
                 {setApprover.pending ? "지정 중…" : "승인권자 변경"}
               </Button>
@@ -530,6 +537,107 @@ export default function DocPrDetailPage() {
           </p>
         </Disclosure>
       </div>
+
+      {/* 승인권자 변경 모달 */}
+      {approverModalOpen && (
+        <ApproverChangeModal
+          teamMembers={teamMembers}
+          pending={setApprover.pending}
+          onClose={() => setApproverModalOpen(false)}
+          onSubmit={async (memberId) => {
+            await onSetApprover({ approverId: memberId });
+            setApproverModalOpen(false);
+          }}
+        />
+      )}
     </Page>
+  );
+}
+
+/** 승인권자 변경 모달 — 팀원 드롭다운 선택 */
+function ApproverChangeModal({ teamMembers, pending, onClose, onSubmit }) {
+  const [selected, setSelected] = useState(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const chosen = teamMembers.find((m) => m.memberId === selected);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="relative z-10 w-[360px] rounded-xl border border-neutral-200 bg-white p-[24px] shadow-[0_16px_48px_rgba(0,0,0,0.12)]">
+        <h3 className="text-[16px] font-bold text-neutral-900">승인권자 변경</h3>
+        <p className="mt-[6px] text-[13px] text-neutral-500">새로운 승인권자를 선택하세요.</p>
+
+        {/* 드롭다운 */}
+        <div className="relative mt-[16px]">
+          <button
+            type="button"
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            className="flex w-full items-center justify-between rounded-md border border-neutral-200 px-[12px] py-[10px] text-left text-[13px] font-medium text-neutral-700 transition-colors hover:border-neutral-300"
+          >
+            {chosen ? (
+              <span className="flex items-center gap-[8px]">
+                <span className="flex size-[24px] items-center justify-center rounded-full bg-[#f5eeff] text-[11px] font-bold text-[#9000FF]">
+                  {chosen.name.charAt(0)}
+                </span>
+                <span>{chosen.name}</span>
+                <span className="text-[11px] text-neutral-400">{chosen.email}</span>
+              </span>
+            ) : (
+              <span className="text-neutral-400">팀원을 선택하세요</span>
+            )}
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <path d="M3 4.5l3 3 3-3" />
+            </svg>
+          </button>
+
+          {dropdownOpen && (
+            <ul className="absolute left-0 right-0 top-full z-10 mt-[4px] max-h-[200px] overflow-y-auto rounded-md border border-neutral-200 bg-white p-[4px] shadow-[0_4px_16px_rgba(0,0,0,0.08)]">
+              {teamMembers.length === 0 && (
+                <li className="px-[10px] py-[8px] text-[13px] text-neutral-500">팀원이 없습니다</li>
+              )}
+              {teamMembers.map((member) => (
+                <li key={member.memberId}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelected(member.memberId);
+                      setDropdownOpen(false);
+                    }}
+                    className={`flex w-full items-center gap-[8px] rounded-sm px-[10px] py-[8px] text-left transition-colors ${
+                      selected === member.memberId ? "bg-[#f5eeff]" : "hover:bg-neutral-50"
+                    }`}
+                  >
+                    <span className="flex size-[24px] items-center justify-center rounded-full bg-[#f5eeff] text-[11px] font-bold text-[#9000FF]">
+                      {member.name.charAt(0)}
+                    </span>
+                    <span className="text-[13px] font-medium text-neutral-800">{member.name}</span>
+                    <span className="ml-auto text-[11px] text-neutral-400">{member.email}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* 버튼 */}
+        <div className="mt-[20px] flex justify-end gap-[8px]">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-neutral-200 px-[14px] py-[7px] text-[13px] font-medium text-neutral-600 transition-colors hover:bg-neutral-50"
+          >
+            취소
+          </button>
+          <button
+            type="button"
+            disabled={!selected || pending}
+            onClick={() => onSubmit(selected)}
+            className="rounded-md bg-[#9000FF] px-[14px] py-[7px] text-[13px] font-semibold text-white transition-colors hover:bg-[#7a00d9] disabled:bg-neutral-200 disabled:text-neutral-400"
+          >
+            {pending ? "변경 중…" : "변경 확정"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
