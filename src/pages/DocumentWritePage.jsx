@@ -561,16 +561,8 @@ export default function DocumentWritePage() {
           </p>
         </article>
 
-        {/* ── 우측: 문서 속성 ── */}
+        {/* ── 우측: 문서 속성 (AI는 플로팅 패널로 빠졌다) ── */}
         <aside className="hidden w-[260px] shrink-0 lg:block">
-          {/* RACI 역할 관리 */}
-          {documentId && (
-            <RaciManager
-              documentId={documentId}
-              teamMembers={teamMembers}
-              teamId={teamId}
-            />
-          )}
           <Disclosure title="연결된 문서" caption="변경 시 영향을 받습니다">
             <p className="text-[13px] text-neutral-500">
               관련 문서 연결은 더보기 메뉴에서 할 수 있습니다.
@@ -735,87 +727,5 @@ function MemberAvatar({ name }) {
     <span className="flex size-[28px] shrink-0 items-center justify-center rounded-full bg-main-100 text-[12px] font-bold text-main-700">
       {initial}
     </span>
-  );
-}
-
-/** RACI 역할 관리 패널 — 문서 우측 사이드바 */
-function RaciManager({ documentId, teamMembers, teamId }) {
-  const ROLES = ["R", "A", "C", "I"];
-  const ROLE_LABELS = { R: "작성자", A: "승인권자", C: "리뷰어", I: "통보 대상" };
-
-  const [assignments, setAssignments] = useState([]);
-  const [saving, setSaving] = useState(false);
-  const [dirty, setDirty] = useState(false);
-
-  // 현재 RACI 배정 조회 (my-permissions로는 내 역할만 보이므로 setRaci 응답 캐시 활용)
-  // 초기 로드: 서버에서 현재 배정을 가져오는 전용 API가 없으므로
-  // 문서 상세에서 이미 로드된 assignee 정보를 활용하거나 빈 상태로 시작
-  // → 여기서는 팀원 목록 기반으로 드롭다운 제공, 저장 시 full-replace
-
-  function setRole(memberId, role) {
-    setAssignments((prev) => {
-      // 같은 멤버의 기존 배정 제거
-      const filtered = prev.filter((a) => a.memberId !== memberId);
-      if (role) {
-        return [...filtered, { memberId, role }];
-      }
-      return filtered;
-    });
-    setDirty(true);
-  }
-
-  function getRoleForMember(memberId) {
-    return assignments.find((a) => a.memberId === memberId)?.role ?? "";
-  }
-
-  async function saveRaci() {
-    setSaving(true);
-    try {
-      await documentsApi.setRaci(documentId, { assignments });
-      setDirty(false);
-    } catch (err) {
-      window.alert(`RACI 저장 실패: ${err.body?.message ?? err.message}`);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <Disclosure title="RACI 역할 지정" caption="문서별 접근 권한을 관리합니다" defaultOpen>
-      <div className="flex flex-col gap-[8px]">
-        {teamMembers.map((member) => {
-          const id = member.memberId ?? member.userId;
-          const currentRole = getRoleForMember(id);
-          return (
-            <div key={id} className="flex items-center gap-[8px]">
-              <MemberAvatar name={member.name} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[12px] font-medium text-neutral-800">{member.name}</p>
-              </div>
-              <select
-                value={currentRole}
-                onChange={(e) => setRole(id, e.target.value || null)}
-                className="h-[26px] rounded-md border border-neutral-200 bg-white px-[6px] text-[11px] font-medium text-neutral-700 outline-none"
-              >
-                <option value="">없음</option>
-                {ROLES.map((r) => (
-                  <option key={r} value={r}>{r} — {ROLE_LABELS[r]}</option>
-                ))}
-              </select>
-            </div>
-          );
-        })}
-      </div>
-      {dirty && (
-        <Button
-          size="sm"
-          className="mt-[10px] w-full rounded-sm"
-          disabled={saving}
-          onClick={saveRaci}
-        >
-          {saving ? "저장 중…" : "RACI 저장"}
-        </Button>
-      )}
-    </Disclosure>
   );
 }
