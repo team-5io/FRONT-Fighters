@@ -116,7 +116,6 @@ export default function MyPage() {
         description="이름과 시간대, 선호 언어를 설정합니다. 시간대는 Follow-the-Sun 인수인계에서 참고됩니다."
         properties={[
           { label: "이메일", value: me.email ?? "—" },
-          { label: "소속 팀", value: `${teams.length}개` },
         ]}
       />
 
@@ -194,39 +193,6 @@ export default function MyPage() {
             />
           )}
         </form>
-      </Section>
-
-      {/* ── 소속 팀 ── */}
-      <Section title="소속 팀" caption="팀에서 맡은 RACI 역할입니다.">
-        {teams.length === 0 && (
-          <EmptyState
-            compact
-            title="소속된 팀이 없습니다"
-            description="팀을 만들거나 초대를 수락하면 여기에 표시됩니다."
-            actionLabel="팀 생성 또는 참여"
-            onAction={() => navigate("/team-invite")}
-          />
-        )}
-        <ul className="flex flex-col">
-          {teams.map((team) => (
-            <li
-              key={team.id}
-              className="flex flex-wrap items-center gap-x-[12px] gap-y-[6px] border-b border-line py-[12px] last:border-b-0"
-            >
-              <a
-                href="/dashboard"
-                className="text-[14px] font-semibold text-neutral-900 hover:text-main-500"
-              >
-                {team.name}
-              </a>
-              <RaciChip role={team.role} name={RACI_ROLES[team.role].label} size="sm" />
-              {team.isAdmin && (
-                <span className="font-mono text-[12px] font-bold text-neutral-500">팀 관리자</span>
-              )}
-
-            </li>
-          ))}
-        </ul>
       </Section>
 
       {/* ── 로그아웃 (POST /auth/logout — 실제 호출은 하지 않는다) ── */}
