@@ -5,9 +5,9 @@ import PageHeader from "../components/layout/PageHeader";
 import { Button, EmptyState, RaciChip } from "../components/ui";
 import { RACI_ROLES } from "../data/raci";
 import { useAuth } from "../auth/AuthContext";
-import { users } from "../api/endpoints";
+import { users, teams as teamsApi } from "../api/endpoints";
 import { useApi, useMutation } from "../hooks/useApi";
-import { unwrap } from "../api/unwrap";
+import { unwrap, unwrapList } from "../api/unwrap";
 
 /**
  * 마이페이지 — `#/me` (4차 지시서 3장)
@@ -95,6 +95,9 @@ export default function MyPage() {
   }, [me]);
 
   const teams = myTeams(me);
+  // 소속 워크스페이스 개수 — API에서 실제 조회
+  const { data: myTeamsData } = useApi(() => teamsApi.myTeams(), []);
+  const teamCount = unwrapList(myTeamsData).length;
   const { mutate: save, pending, error } = useMutation((payload) => users.updateMe(payload));
 
   async function submit(event) {
@@ -116,7 +119,7 @@ export default function MyPage() {
         description="이름과 시간대, 선호 언어를 설정합니다. 시간대는 Follow-the-Sun 인수인계에서 참고됩니다."
         properties={[
           { label: "이메일", value: me.email ?? "—" },
-          { label: "소속 워크스페이스", value: `${teams.length}개` },
+          { label: "소속 워크스페이스", value: `${teamCount}개` },
         ]}
       />
 
