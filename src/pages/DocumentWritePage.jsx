@@ -261,12 +261,21 @@ export default function DocumentWritePage() {
   const savingRef = useRef(false);
 
   async function saveNow() {
-    if (!documentId || !canWrite || savingRef.current) return;
+    if (savingRef.current) return;
+    // 제목도 내용도 없으면 저장할 게 없다
+    if (!title.trim() && blocks.every((b) => !(b.content ?? "").trim())) return;
     savingRef.current = true;
     try {
-      await saveDraft.mutate(documentId);
+      // documentId가 없으면 먼저 생성 (POST /documents)
+      const docId = await ensureDocument();
+      if (!docId) return;
+      // 이미 생성된 문서면 수정 (PATCH /documents/{id})
+      if (docId === documentId) {
+        await saveDraft.mutate(docId);
+      }
+      // ensureDocument가 방금 생성했으면 POST 안에서 이미 저장됐으니 PATCH 불필요
     } catch {
-      // saveDraft.error가 이미 관리
+      // 에러는 saveDraft.error / createDocument.error가 관리
     } finally {
       savingRef.current = false;
     }
@@ -279,11 +288,11 @@ export default function DocumentWritePage() {
 
   // 내용 변경 시 즉시 저장 + 2초 디바운스 백업
   useEffect(() => {
-    if (!documentId || !canWrite) return;
+    if (isOfficial) return;
     saveNow();
     scheduleSave();
     return () => clearTimeout(saveTimerRef.current);
-  }, [title, blocks, documentId, canWrite]);
+  }, [title, blocks, isOfficial]);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [docPrModalOpen, setDocPrModalOpen] = useState(false);
