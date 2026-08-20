@@ -101,9 +101,12 @@ export default function DocumentWritePage() {
     return () => window.removeEventListener("popstate", onHash);
   }, []);
 
+  const [aiLoading, setAiLoading] = useState(false);
+
   // AI 글쓰기 제안 요청 함수
   function fetchWritingSuggestions() {
     if (!documentId) return;
+    setAiLoading(true);
     const content = blocks.map((b) => b.content ?? "").filter(Boolean).join("\n");
     const cursorContext = content.slice(-200);
     documentsApi.writingSuggestions(documentId, { content: content || " ", cursorContext: cursorContext || " " }).then((result) => {
@@ -121,6 +124,8 @@ export default function DocumentWritePage() {
       }
     }).catch((err) => {
       console.error("[AI 제안 요청 실패]", err.message);
+    }).finally(() => {
+      setAiLoading(false);
     });
   }
 
@@ -574,6 +579,7 @@ export default function DocumentWritePage() {
         onOpenChange={setPanelOpen}
         documentId={documentId ?? "api-design"}
         documentTitle={title}
+        loading={aiLoading}
         suggestions={suggestions}
         onAccept={acceptSuggestion}
         onReject={(item) => setSuggestions((prev) => prev.filter((row) => row.id !== item.id))}
