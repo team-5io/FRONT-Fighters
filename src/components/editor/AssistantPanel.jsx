@@ -182,13 +182,6 @@ export default function AssistantPanel({
                       </button>
                       <button
                         type="button"
-                        className="flex-1 rounded-lg border border-amber-300 bg-amber-50 py-1.5 text-[11px] font-semibold text-amber-700 transition-colors hover:bg-amber-100"
-                        disabled
-                      >
-                        미해결
-                      </button>
-                      <button
-                        type="button"
                         onClick={() => onReject(item)}
                         className="flex-1 rounded-lg border border-[#ecebe9] bg-white py-1.5 text-[11px] font-semibold text-[#7f7a76] transition-colors hover:bg-[#fafaf9]"
                       >
