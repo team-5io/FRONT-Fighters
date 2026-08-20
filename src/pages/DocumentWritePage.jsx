@@ -130,7 +130,7 @@ export default function DocumentWritePage() {
    * 예전에는 단건 조회가 없어 `GET /documents`로 받아 배열에서 골라 썼다.
    * 본문 `blocks`는 **단건 조회에서만** 채워진다(목록·검색은 항상 `[]`).
    */
-  const { data: loaded, loading: docLoading } = useApi(
+  const { data: loaded, loading: docLoading, error: docError } = useApi(
     () => documentsApi.detail(documentId),
     [documentId],
     { enabled: Boolean(documentId) },
@@ -345,6 +345,21 @@ export default function DocumentWritePage() {
     setSuggestions((prev) => prev.filter((row) => row.id !== item.id));
   }
 
+  // 접근 권한 없음 (403) 또는 문서 없음 (404)
+  const accessDenied = docError && (docError.status === 403 || docError.status === 404);
+  if (accessDenied) {
+    return (
+      <Page>
+        <EmptyState
+          title={docError.status === 404 ? "문서를 찾을 수 없습니다" : "접근 권한이 없습니다"}
+          description={docError.body?.message ?? docError.message}
+          actionLabel="문서 목록으로"
+          onAction={() => navigate("/documents")}
+        />
+      </Page>
+    );
+  }
+
   return (
     <Page>
       <div className="flex flex-col gap-[24px] lg:flex-row lg:gap-[32px]">
@@ -383,7 +398,8 @@ export default function DocumentWritePage() {
 
           <input
             value={title}
-            onChange={(event) => setTitle(event.target.value)}
+            onChange={(event) => canWrite && setTitle(event.target.value)}
+            readOnly={!canWrite}
             placeholder="제목 없음"
             aria-label="문서 제목"
             className="w-full border-0 bg-transparent p-0 text-[32px] font-bold leading-[42px] tracking-[-0.01em] text-neutral-900 outline-none placeholder:text-neutral-300"
@@ -464,10 +480,10 @@ export default function DocumentWritePage() {
                       : "새 문서"}
             </span>
 
-            {/* 공식 문서는 편집할 수 없다 — 서버가 DOCUMENT_400_1로 거절한다 */}
-            {isOfficial && (
+            {/* 편집 불가 안내 */}
+            {!canWrite && documentId && (
               <span className="rounded-full border border-warning/30 bg-warning-tint px-[8px] py-[2px] text-[11px] font-bold text-warning-text">
-                공식 문서 · 편집 불가
+                {isOfficial ? "공식 문서 · 편집 불가" : "편집 권한 없음"}
               </span>
             )}
 
@@ -512,7 +528,9 @@ export default function DocumentWritePage() {
           <BlockEditor
             className="mt-[16px]"
             blocks={blocks}
+            readOnly={!canWrite}
             onChange={(next) => {
+              if (!canWrite) return;
               pushHistory(next, title);
               setBlocks(next);
             }}
