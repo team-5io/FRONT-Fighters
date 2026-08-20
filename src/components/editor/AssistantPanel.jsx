@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { cx } from "../ui/cx";
 
 /**
@@ -76,11 +75,11 @@ export default function AssistantPanel({
   open,
   onOpenChange,
   documentId,
+  documentTitle,
   suggestions,
   onAccept,
   onReject,
 }) {
-  const [question, setQuestion] = useState("");
 
   /* ─── 닫힌 상태: 플로팅 트리거 버튼 ─── */
   if (!open) {
@@ -198,46 +197,40 @@ export default function AssistantPanel({
           )}
         </div>
 
-        {/* ━━━ 하단 입력 카드 ━━━ */}
+        {/* ━━━ 하단 입력 카드 — 채팅 미지원 (비활성) ━━━ */}
         <div className="shrink-0 px-3 pb-3">
-          <div className="overflow-hidden rounded-[15px] border border-[#ecebe9]">
-            {/* 컨텍스트 pill */}
+          <div className="overflow-hidden rounded-[15px] border border-[#ecebe9] opacity-60">
+            {/* 컨텍스트 pill — 현재 문서 제목 */}
             <div className="px-[9px] pt-[9px]">
               <span className="inline-flex items-center gap-[6px] rounded-full border border-[#ecebe9] px-[10px] py-[5px]">
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <path d="M3 1.5h4.5L10 4.5V10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V2.5A1 1 0 0 1 3 1.5z" stroke="#7f7a76" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M7 1.5v3.5h3M4.5 7h3M4.5 9h2" stroke="#7f7a76" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M3 1.5h4.5L10 4.5V10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V2.5A1 1 0 0 1 3 1.5z" stroke="#9000FF" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M7 1.5v3.5h3M4.5 7h3M4.5 9h2" stroke="#9000FF" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 <span className="text-[10px] font-semibold text-[#7f7a76]">
-                  API 명세서
+                  {documentTitle || "제목 없음"}
                 </span>
               </span>
             </div>
 
-            {/* 입력란 */}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!question.trim()) return;
-                setQuestion("");
-              }}
-              className="px-[13px] py-[12px]"
-            >
+            {/* 입력란 — 비활성 */}
+            <div className="px-[13px] py-[12px]">
               <input
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                placeholder="문서에 대해 무엇이든지 질문해 보세요..."
-                aria-label="AI에게 질문"
-                className="w-full border-0 bg-transparent text-[12px] text-black outline-none placeholder:text-[#cbc8c5]"
+                value=""
+                readOnly
+                disabled
+                placeholder="채팅 기능은 준비 중입니다..."
+                aria-label="AI 채팅 (준비 중)"
+                className="w-full cursor-not-allowed border-0 bg-transparent text-[12px] text-black outline-none placeholder:text-[#cbc8c5]"
               />
-            </form>
+            </div>
 
-            {/* 하단 툴바 */}
+            {/* 하단 툴바 — 비활성 */}
             <div className="flex items-center justify-between px-[10px] pb-[10px]">
-              {/* 좌측: + 버튼 */}
               <button
                 type="button"
-                className="flex size-7 items-center justify-center rounded-md text-[#7f7a76] transition-colors hover:bg-[#fafaf9]"
+                disabled
+                className="flex size-7 items-center justify-center rounded-md text-[#cbc8c5] cursor-not-allowed"
                 aria-label="추가"
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
@@ -245,11 +238,11 @@ export default function AssistantPanel({
                 </svg>
               </button>
 
-              {/* 우측: 마이크 + 전송 */}
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="flex size-7 items-center justify-center rounded-md text-[#7f7a76] transition-colors hover:bg-[#fafaf9]"
+                  disabled
+                  className="flex size-7 items-center justify-center rounded-md text-[#cbc8c5] cursor-not-allowed"
                   aria-label="음성 입력"
                 >
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
@@ -257,15 +250,10 @@ export default function AssistantPanel({
                     <path d="M3 7a4 4 0 0 0 8 0M7 11v2" />
                   </svg>
                 </button>
-                {/* 전송 — 보라색 원형 */}
                 <button
                   type="button"
-                  onClick={() => {
-                    if (!question.trim()) return;
-                    setQuestion("");
-                  }}
-                  disabled={!question.trim()}
-                  className="flex size-[26px] items-center justify-center rounded-full bg-[#6B4EFF] text-white transition-all hover:bg-[#5a3de8] disabled:bg-[#e8e6e3] disabled:text-[#cbc8c5]"
+                  disabled
+                  className="flex size-[26px] items-center justify-center rounded-full bg-[#e8e6e3] text-[#cbc8c5] cursor-not-allowed"
                   aria-label="전송"
                 >
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
