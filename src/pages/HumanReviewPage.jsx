@@ -5,7 +5,6 @@ import {
   AiReviewCard,
   Button,
   Card,
-  HumanReviewCard,
   CioMark,
   Disclosure,
   RaciChip,
@@ -101,7 +100,7 @@ export default function HumanReviewPage() {
   const [checklist, setChecklist] = useState(INITIAL_CHECKLIST);
   const [comment, setComment] = useState("");
 
-  const addReview = useMutation(() => docPrs.addReview(prId, { body: comment }));
+  const addReview = useMutation(() => docPrs.addReview(prId, { comment }));
   const approve = useMutation(() => docPrs.approve(prId));
   const reject = useMutation(() => docPrs.reject(prId, { reason: comment || "재검토 요청" }));
 
@@ -252,24 +251,27 @@ export default function HumanReviewPage() {
           </p>
         ) : (
           <div className="flex flex-col gap-[12px]">
-            {humanReviews.map((review, index) => {
-              const reviewer = review.reviewer ?? {
-                name: review.reviewerName ?? review.author?.name ?? "—",
-                role: review.reviewerRole ?? review.author?.role ?? "C",
-              };
-              return (
-                <HumanReviewCard
-                  key={review.id ?? `${reviewer.name}-${index}`}
-                  title={`${reviewer.name}님의 리뷰`}
-                  caption={review.at ?? review.createdAt ?? "—"}
-                  reviewer={reviewer}
-                >
-                  <p className="text-[14px] font-medium leading-[21px] text-neutral-700">
-                    {review.body ?? review.comment ?? review.content ?? ""}
-                  </p>
-                </HumanReviewCard>
-              );
-            })}
+            {humanReviews.map((review, index) => (
+              <div
+                key={review.id ?? index}
+                className="rounded-md border border-neutral-200 bg-white p-[14px]"
+              >
+                <div className="flex items-center gap-[8px]">
+                  <span className="flex size-[24px] items-center justify-center rounded-full bg-main-100 text-[11px] font-bold text-main-700">
+                    {String(review.reviewerId ?? "?").charAt(0)}
+                  </span>
+                  <span className="text-[13px] font-semibold text-neutral-800">
+                    리뷰어 #{review.reviewerId ?? "—"}
+                  </span>
+                  <span className="ml-auto text-[11px] text-neutral-400">
+                    {review.createdAt ? String(review.createdAt).replace("T", " ").slice(0, 16) : "—"}
+                  </span>
+                </div>
+                <p className="mt-[8px] text-[13px] font-medium leading-[20px] text-neutral-700">
+                  {review.comment ?? ""}
+                </p>
+              </div>
+            ))}
           </div>
         )}
       </Section>
@@ -350,9 +352,9 @@ export default function HumanReviewPage() {
       >
         <Card padding="md" className="flex flex-wrap items-center gap-[12px]">
           <p className="min-w-0 flex-1 text-[13px] font-medium leading-[19px] text-neutral-500">
-            {pending.length > 0
-              ? `${pending.map((r) => r.name).join(" · ")}님의 리뷰가 아직 등록되지 않았습니다.`
-              : "모든 조건이 충족되었습니다."}
+            {mergeable
+              ? "모든 조건이 충족되었습니다. 승인 또는 반려를 결정하세요."
+              : "리뷰 의견을 확인한 후 승인 또는 반려를 결정하세요."}
           </p>
           <div className="flex shrink-0 items-center gap-[8px]">
             <Button
