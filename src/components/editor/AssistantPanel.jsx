@@ -108,7 +108,7 @@ export default function AssistantPanel({
 
       <aside
         aria-label="AI 작성 도우미"
-        className="fixed bottom-5 right-5 z-30 flex max-h-[min(640px,calc(100vh-60px))] w-[334px] flex-col overflow-hidden rounded-[15px] bg-white shadow-[0_24px_60px_-12px_rgba(0,0,0,0.15),0_0_0_1px_rgba(0,0,0,0.03)]"
+        className="fixed bottom-5 right-5 z-30 flex max-h-[min(640px,calc(100vh-60px))] w-[334px] flex-col overflow-hidden rounded-[15px] border border-neutral-200 bg-white shadow-[0_24px_60px_-8px_rgba(0,0,0,0.25),0_8px_20px_-4px_rgba(0,0,0,0.1)]"
       >
         {/* ━━━ 헤더 ━━━ */}
         <div className="shrink-0 px-[30px] pt-[32px]">
