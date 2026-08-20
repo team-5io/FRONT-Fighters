@@ -24,6 +24,7 @@ export default function LoginPage() {
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const isSignup = mode === "signup";
   const configured = isApiConfigured();
@@ -116,14 +117,33 @@ export default function LoginPage() {
 
           <label className="mt-[16px] block">
             <span className="mb-[2px] block text-[13px] font-medium text-neutral-500">비밀번호</span>
-            <input
-              type="password"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              required
-              autoComplete={isSignup ? "new-password" : "current-password"}
-              className={UNDERLINE}
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                required
+                autoComplete={isSignup ? "new-password" : "current-password"}
+                className={UNDERLINE + " pr-[36px]"}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
+                className="absolute right-0 top-1/2 flex size-[28px] -translate-y-1/2 items-center justify-center rounded-sm text-neutral-400 transition-colors hover:text-neutral-700"
+              >
+                {showPassword ? (
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M2 2l12 12M6.5 6.5a2 2 0 0 0 2.83 2.83M4.2 4.2C2.8 5.2 1.7 6.5 1 8c1.3 2.8 4 5 7 5 1.2 0 2.3-.3 3.3-.9M9.8 4.2C12 5 13.5 6.3 14.5 8c-.5 1-1.2 2-2 2.8" />
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 8c1.3-2.8 4-5 7-5s5.7 2.2 7 5c-1.3 2.8-4 5-7 5s-5.7-2.2-7-5z" />
+                    <circle cx="8" cy="8" r="2" />
+                  </svg>
+                )}
+              </button>
+            </div>
           </label>
 
           <Button
