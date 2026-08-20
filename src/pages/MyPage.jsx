@@ -195,12 +195,12 @@ export default function MyPage() {
         </form>
       </Section>
 
-      {/* ── 로그아웃 (POST /auth/logout — 실제 호출은 하지 않는다) ── */}
-      <Section title="세션">
+      {/* ── 로그아웃 ── */}
+      <div className="mt-[24px]">
         <Button variant="ghost" className="rounded-sm px-0 text-error-text" onClick={signOut}>
           로그아웃
         </Button>
-      </Section>
+      </div>
     </Page>
   );
 }
