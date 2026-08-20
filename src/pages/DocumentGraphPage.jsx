@@ -12,6 +12,7 @@ import { documents as documentsApi } from "../api/endpoints";
 import { useApi } from "../hooks/useApi";
 import { useAuth } from "../auth/AuthContext";
 import { unwrap, unwrapList } from "../api/unwrap";
+import GraphCanvas from "../components/graph/GraphCanvas";
 
 /**
  * Document Graph — `/t/{teamId}/graph`
@@ -115,67 +116,15 @@ export default function DocumentGraphPage() {
 
       {nodes.length > 0 && (
         <div className="mt-[20px] flex flex-col gap-[20px] lg:flex-row">
-          {/* ── 좌: 문서 노드 목록 ── */}
+          {/* ── 좌: 그래프 캔버스 (옵시디언 스타일) ── */}
           <div className="min-w-0 flex-1">
-            <div className="rounded-md border border-neutral-200 bg-neutral-50/50 p-[16px]">
-              <p className="mb-[12px] text-[13px] font-medium text-neutral-500">
-                문서 {nodes.length}개 · 관계 {edges.length}개
-              </p>
-              <ul className="flex flex-wrap gap-[8px]">
-                {nodes.map((node) => {
-                  const isSelected = node.id === selectedId;
-                  const hasRelations = edges.some((e) => e.source === node.id || e.target === node.id);
-                  return (
-                    <li key={node.id}>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedId(node.id)}
-                        className={cx(
-                          "rounded-md border px-[12px] py-[8px] text-[13px] font-medium transition-colors",
-                          isSelected
-                            ? "border-[#9000FF] bg-[#f5eeff] text-[#9000FF]"
-                            : hasRelations
-                              ? "border-neutral-200 bg-white text-neutral-700 hover:border-[#9000FF]/40"
-                              : "border-neutral-200 bg-white text-neutral-400 hover:border-neutral-300",
-                        )}
-                      >
-                        {node.title}
-                        {!hasRelations && (
-                          <span className="ml-[4px] text-[10px] text-neutral-300">독립</span>
-                        )}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-
-            {/* 관계 목록 테이블 */}
-            {edges.length > 0 && (
-              <div className="mt-[12px] rounded-md border border-neutral-200 bg-white p-[16px]">
-                <p className="mb-[8px] text-[12px] font-semibold text-neutral-500">관계 목록</p>
-                <ul className="flex flex-col gap-[4px]">
-                  {edges.slice(0, 20).map((edge) => {
-                    const sourceNode = nodes.find((n) => n.id === edge.source);
-                    const targetNode = nodes.find((n) => n.id === edge.target);
-                    return (
-                      <li key={edge.id} className="flex items-center gap-[6px] text-[12px] text-neutral-600">
-                        <span className="font-medium">{sourceNode?.title ?? `#${edge.source}`}</span>
-                        <span className="text-[10px] text-neutral-400">→</span>
-                        <span className="rounded bg-neutral-100 px-[4px] py-[1px] text-[10px] font-semibold text-neutral-500">
-                          {edge.relationType}
-                        </span>
-                        <span className="text-[10px] text-neutral-400">→</span>
-                        <span className="font-medium">{targetNode?.title ?? edge.neighborTitle ?? `#${edge.target}`}</span>
-                      </li>
-                    );
-                  })}
-                  {edges.length > 20 && (
-                    <li className="text-[11px] text-neutral-400">… 외 {edges.length - 20}개</li>
-                  )}
-                </ul>
-              </div>
-            )}
+            <GraphCanvas
+              nodes={nodes}
+              edges={edges}
+              focusId={selectedId}
+              selectedId={selectedId}
+              onSelect={(id) => setSelectedId(id)}
+            />
           </div>
 
           {/* ── 우: 선택 노드 상세 ── */}
