@@ -40,22 +40,22 @@ const ACTIONS = [
   },
 ];
 
-/* CIO 로고 (보라+주황 두 원 + 하단 라인) */
-function CioLogo() {
+/* DocumentLion 로고 */
+function DocumentLionLogo() {
   return (
-    <svg width="19" height="17" viewBox="0 0 19 17" fill="none">
-      <circle cx="3.6" cy="3.6" r="3.2" fill="#6B4EFF" />
-      <circle cx="15.4" cy="3.6" r="3.2" fill="#FF8C42" />
+    <svg width="20" height="18" viewBox="0 0 20 18" fill="none">
+      <circle cx="1.8" cy="1.8" r="1.8" fill="#9000FF" />
+      <circle cx="16.6965" cy="1.8" r="1.8" fill="#9000FF" />
       <path
-        d="M2 10.5c0 0 3.5 5.5 7.5 5.5s7.5-5.5 7.5-5.5"
-        stroke="#6B4EFF"
+        d="M9.51696 6.38477C9.51696 6.38477 7.96739 10.945 8.35592 13.8879M18.2414 12.95C18.2414 12.95 13.3313 17.2357 9.92137 16.2326C8.95991 15.9498 8.50849 15.0435 8.35592 13.8879M8.35592 13.8879C8.35592 13.8879 6.72137 17.6395 2.24136 15.2947"
+        stroke="#9000FF"
         strokeWidth="1.6"
         strokeLinecap="round"
       />
       <path
-        d="M5.5 7c0 0 1.8 3 4 3s4-3 4-3"
-        stroke="#FF8C42"
-        strokeWidth="1.2"
+        d="M11.8893 5.07563C11.2171 3.41591 7.5961 3.41591 6.92382 5.07563C6.25154 6.73535 9.32 8.26807 9.32 8.26807C9.32 8.26807 12.5616 6.73535 11.8893 5.07563Z"
+        fill="#9000FF"
+        stroke="#9000FF"
         strokeLinecap="round"
       />
     </svg>
@@ -81,7 +81,7 @@ export default function AssistantPanel({
         aria-expanded={false}
         className="fixed bottom-5 right-5 z-30 flex size-12 items-center justify-center rounded-full bg-white shadow-[0_2px_12px_rgba(0,0,0,0.1),0_0_0_1px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_4px_20px_rgba(0,0,0,0.14)] hover:scale-105 active:scale-95"
       >
-        <CioLogo />
+        <DocumentLionLogo />
         {suggestions.length > 0 && (
           <span className="absolute -right-0.5 -top-0.5 flex size-[18px] items-center justify-center rounded-full bg-[#6B4EFF] font-mono text-[10px] font-bold text-white">
             {suggestions.length}
@@ -130,7 +130,7 @@ export default function AssistantPanel({
           </div>
 
           {/* CIO 로고 */}
-          <CioLogo />
+          <DocumentLionLogo />
 
           {/* 타이틀 */}
           <h2 className="mt-[18px] text-[16px] font-bold leading-tight text-black">
